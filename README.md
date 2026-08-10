@@ -111,12 +111,12 @@ pnpm dev   # http://localhost:3000
 
 ## 👥 팀 소개
 
-| 이름 | 역할 | GitHub |
+| 팀원 | 역할 | GitHub |
 | --- | --- | --- |
-| TBD | TBD | [@handle](https://github.com/handle) |
-| TBD | TBD | [@handle](https://github.com/handle) |
-| TBD | TBD | [@handle](https://github.com/handle) |
-| TBD | TBD | [@handle](https://github.com/handle) |
+| 팀원 A | 공구 도메인 (공고·목록·참여·금액 변경) | [@jiwookim925](https://github.com/jiwookim925) |
+| 팀원 B | 채팅 + 🎤 발표 총괄 | [@jungwoo9454](https://github.com/jungwoo9454) |
+| 팀원 C | 정산 · 대파페이 | [@sheunn](https://github.com/sheunn) |
+| 팀원 D | 플랫폼 (Supabase·알림·배포·공통) | [@NAri3040](https://github.com/NAri3040) |
 
 <br>
 
