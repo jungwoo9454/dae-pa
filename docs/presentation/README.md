@@ -2,14 +2,17 @@
 
 최종 발표(데모) 관련 자료를 이 폴더에 보관합니다. **담당: 팀원 B** (제작 총괄), 리허설은 전원 참여.
 
-## 파일 구성 (권장)
+## 파일 구성
 
 ```
 docs/presentation/
-├── slides.pdf (또는 링크.md)   # 발표 슬라이드
-├── demo-script.md              # 데모 시나리오 대본 (docs/PLANNING.md 11번 기반)
-└── assets/                     # 스크린샷, 시연 GIF, 로고
+├── slides.html      # ✅ 발표 슬라이드 (브라우저로 열기 → F11 풀스크린 → ←/→ 이동)
+├── demo-script.md   # ✅ 데모 대본 (배역·리스크 대응 포함)
+└── assets/          # 스크린샷, 시연 GIF (Day 2에 수집 — slides.html 5번 슬라이드에 교체 삽입)
 ```
+
+- `slides.html`은 더블클릭으로 열리는 단일 파일이다. PDF 제출본은 브라우저 인쇄(Cmd+P)로 저장.
+- 내용 수정은 HTML 텍스트만 고치면 된다 (7개 `<section class="slide">`가 슬라이드 1장씩).
 
 ## 슬라이드 구성 가이드 (5~7장)
 
