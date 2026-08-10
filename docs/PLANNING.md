@@ -145,28 +145,41 @@
 | 프로필 | 팝오버(통계·신뢰도 배지), 내 공구 내역 |
 | 설정 | 알림, 계좌, 송금 앱, 계정 관리 |
 
-## 7. 데이터 모델 초안 (Supabase Postgres)
+## 7. 데이터 모델 (Supabase Postgres)
+
+> 실제 DDL은 **[supabase/schema.sql](../supabase/schema.sql)** 이 단일 출처. 아래는 요약이며 스키마 변경 시 함께 갱신한다.
 
 ```
-profiles            id, nickname, avatar_url, bank_account, transfer_app, trust_score
-group_buys          id, host_id, title, description, category, store_link,
-                    total_amount, delivery_fee, target_count, deadline,
-                    status(recruiting|settling|completed|canceled), created_at
-participations      id, group_buy_id, user_id, amount_due, is_paid, paid_at, joined_at
-chat_rooms          id, type(lounge|group_buy), group_buy_id?, name
-messages            id, room_id, user_id?, type(text|system|group_buy_card),
-                    content, payload(jsonb), created_at
-settlements         id, group_buy_id, method(receipt|vote), receipt_url,
-                    recognized_total, status(pending|confirmed), confirmed_at
-settlement_votes    id, settlement_id, user_id, agree(boolean)
+profiles            id(=auth.users.id), nickname, avatar_url, bank_account,
+                    transfer_app, trust_score, created_at
 wallets             user_id, balance
-wallet_transactions id, user_id, type(charge|withdraw|pay|receive), amount,
-                    settlement_id?, created_at
+group_buys          id, host_id, title, description, category, store_link,
+                    total_amount, delivery_fee, goal, joined, deadline, place,
+                    status(recruit|settle|completed|canceled), created_at
+participations      id, group_buy_id, user_id, note, amount_due, is_paid,
+                    paid_at, joined_at            -- unique(group_buy_id, user_id)
+chat_rooms          id, type(lounge|group_buy), group_buy_id?, name
+messages            id, room_id, user_id?, kind(text|sys|card),
+                    content, payload(jsonb), created_at
+settlements         id, group_buy_id, total_amount, delivery_fee, receipt_url,
+                    status(pending|confirmed), confirmed_at
+settlement_votes    settlement_id, user_id, agree(boolean)
+wallet_transactions id, user_id, kind(charge|withdraw|pay|receive), amount,
+                    group_buy_id?, title, created_at
 notifications       id, user_id, type, payload(jsonb), is_read, created_at
 ```
 
-- 실시간: `group_buys`, `participations`, `messages`는 Supabase Realtime 구독
-- 영수증 이미지: Supabase Storage 버킷 `receipts`
+- 상태값은 `lib/types.ts`의 `DealStatus`와 동일하게 `recruit|settle` 을 쓴다 (매핑 레이어 없음).
+  `마감임박`은 DB 상태가 아니라 `deadline` 1시간 전부터 UI 파생.
+- `goal` = 목표 인원 = 정원, `joined` = 현재 참여 수(주최자 포함, 기본 1).
+- **참여는 `join_group_buy(id)` RPC 로만** 한다. 원자적 `UPDATE ... WHERE joined < goal` 로
+  정원 초과·중복·마감을 서버에서 차단하고, 정원 도달 시 `settle` 자동 전환 + 시스템 메시지 + 전원 알림.
+  `participations` 에는 INSERT RLS 정책이 없어 클라이언트 직접 삽입이 불가능하다.
+- 자동 생성 트리거: 가입 시 `profiles`+`wallets`, 공구 생성 시 채팅방·주최자 참여·개설 시스템 메시지.
+- 총 금액 변경은 RLS 로 **주최자 + `status='recruit'`** 일 때만 허용 (정산 진입 후 서버 거부).
+- 시스템 메시지(`kind='sys'`)는 클라이언트가 삽입할 수 없고 서버 함수만 기록한다.
+- 실시간: `group_buys`, `participations`, `messages`, `notifications` Realtime 구독
+- 영수증 이미지: Supabase Storage 버킷 `receipts` (자동 인식 없음, 참고용 첨부)
 
 ## 8. 기술 스택
 
