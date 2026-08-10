@@ -157,6 +157,12 @@ create trigger group_buy_created
 -- ─────────────────────────────────────────────
 -- 3. 참여 RPC — 정원 초과를 서버에서 원자적으로 차단
 --    (클라이언트 인원 체크만으로는 동시 클릭 레이스를 못 막음)
+--
+-- ⚠️ 설계 규약: group_buys.status / joined / goal 과 시스템 메시지(kind='sys'),
+--    남의 행(알림·지갑·amount_due·trust_score)에 쓰는 작업은 클라이언트가 직접 못 한다.
+--    RLS + 컬럼 GRANT 로 막아뒀으니, 그런 동작이 필요하면 RLS와 싸우지 말고
+--    여기에 security definer RPC 를 하나 추가해라. (#12 금액변경, #16 분배,
+--    #17 입금·마감, #18 자동결제가 각각 RPC 하나씩 필요하다)
 -- ─────────────────────────────────────────────
 
 create function public.join_group_buy(p_group_buy_id bigint)
@@ -167,6 +173,10 @@ declare
   rid  bigint;
   nick text;
 begin
+  if auth.uid() is null then
+    raise exception '로그인이 필요합니다';
+  end if;
+
   update group_buys
      set joined = joined + 1,
          status = case when joined + 1 >= goal then 'settle' else status end
@@ -264,7 +274,35 @@ create policy notifications_own on notifications for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 -- ─────────────────────────────────────────────
--- 5. Realtime 구독 대상
+-- 5. GRANT — Data API 노출
+--    2026-04 변경으로 새 public 테이블은 자동 노출되지 않는다.
+--    GRANT 가 없으면 RLS 와 무관하게 클라이언트에서 테이블이 아예 안 보인다.
+--    비로그인(anon)은 아무것도 못 한다 — 익명 로그인해도 역할은 authenticated 다.
+-- ─────────────────────────────────────────────
+
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+
+-- 상태 머신·인원 카운터는 컬럼 단위로 UPDATE 권한을 뺀다 → join_group_buy 같은 RPC로만 변경 가능
+revoke update on group_buys from authenticated;
+grant update (title, description, category, store_link,
+              total_amount, delivery_fee, deadline, place)
+  on group_buys to authenticated;
+
+-- amount_due 는 정산 RPC(#16)가 쓴다. 클라이언트는 본인 메모·입금 체크만.
+revoke update on participations from authenticated;
+grant update (note, is_paid, paid_at) on participations to authenticated;
+
+-- trust_score 는 정산 완료 RPC(#17)가 쓴다.
+revoke update on profiles from authenticated;
+grant update (nickname, avatar_url, bank_account, transfer_app) on profiles to authenticated;
+
+-- security definer 함수는 기본적으로 PUBLIC 에 EXECUTE 가 열린다 → 로그인 사용자로 제한
+revoke execute on function public.join_group_buy(bigint) from public;
+grant execute on function public.join_group_buy(bigint) to authenticated;
+
+-- ─────────────────────────────────────────────
+-- 6. Realtime 구독 대상
 -- ─────────────────────────────────────────────
 
 alter publication supabase_realtime add table group_buys;
@@ -273,7 +311,19 @@ alter publication supabase_realtime add table messages;
 alter publication supabase_realtime add table notifications;
 
 -- ─────────────────────────────────────────────
--- 6. 시드 — 동네 라운지 (전체 공개 자유 채팅방)
+-- 7. Storage — 영수증 사진 버킷 (#15 증빙 첨부, 자동 인식은 없음)
+-- ─────────────────────────────────────────────
+
+insert into storage.buckets (id, name, public) values ('receipts', 'receipts', true)
+on conflict (id) do nothing;
+
+create policy receipts_read   on storage.objects for select to authenticated
+  using (bucket_id = 'receipts');
+create policy receipts_upload on storage.objects for insert to authenticated
+  with check (bucket_id = 'receipts');
+
+-- ─────────────────────────────────────────────
+-- 8. 시드 — 동네 라운지 (전체 공개 자유 채팅방)
 -- ─────────────────────────────────────────────
 
 insert into chat_rooms (type, name) values ('lounge', '동네 라운지');

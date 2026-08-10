@@ -50,6 +50,7 @@ pnpm build          # 프로덕션 빌드 (standalone 출력)
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=   # 신규 프로젝트. 기존 프로젝트면 아래 anon key
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=   # 서버 전용 — 클라이언트 코드에서 절대 import 금지
 ```
@@ -62,7 +63,7 @@ app/api/        🔙 백엔드 Route Handlers (예정)
 components/     🎨 프론트 UI — views/(화면 단위 1파일), 나머지는 공통 컴포넌트
 lib/            공유 코드 — types.ts(도메인 타입), deal.ts(금액·상태 헬퍼), store.ts(Zustand)
 lib/server/     🔙 백엔드 전용 서비스 로직 (예정)
-supabase/       DB 스키마 SQL (예정)
+supabase/       DB 스키마 SQL — schema.sql 이 단일 출처 (테이블·RLS·GRANT·RPC·Storage)
 docs/           기획안·작업 목록·배포·디자인 시안·발표 자료
 ```
 
@@ -89,7 +90,9 @@ docs/           기획안·작업 목록·배포·디자인 시안·발표 자�
 6. 참여/마감/정산/금액 변경 이벤트는 해당 공구 채팅방에 **시스템 메시지**(`Msg.kind = "sys"`)로 기록한다.
 7. 시크릿(서비스 롤 키 등)은 서버 코드에서만 사용한다. 클라이언트 번들에 노출 금지.
 8. **선착순 정원 (확정)**: 목표 인원 = 정원. 참여로 목표에 도달하면 자동으로 `settling` 전환 + 추가 참여 차단.
-   참여 처리는 서버에서 원자적으로 한다 — `UPDATE group_buys SET joined = joined+1 WHERE id=$1 AND joined < goal AND status='recruiting' RETURNING joined` 패턴(RPC). 클라이언트 인원 체크만으로 막지 않는다 (동시 클릭 레이스 컨디션).
+   참여 처리는 서버에서 원자적으로 한다 — `supabase/schema.sql` 의 **`join_group_buy(id)` RPC** 를 쓴다 (`UPDATE ... WHERE joined < goal AND status='recruit' RETURNING` 패턴). 클라이언트 인원 체크만으로 막지 않는다 (동시 클릭 레이스 컨디션).
+9. **상태 전이·타인 행 쓰기는 RPC로만**. `group_buys.status`/`joined`/`goal`, 시스템 메시지(`kind='sys'`), 남의 알림·지갑·`amount_due`·`trust_score` 는 RLS + 컬럼 GRANT 로 클라이언트에서 차단돼 있다.
+   막히면 정책을 푸는 게 아니라 `supabase/schema.sql` 에 `security definer` RPC 를 하나 추가한다.
 
 ## 디자인
 
