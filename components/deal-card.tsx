@@ -1,0 +1,70 @@
+"use client";
+
+import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { useStore } from "@/lib/store";
+import type { Deal } from "@/lib/types";
+import { ProgressBar, StatusBadge } from "./ui";
+
+export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
+  const openDeal = useStore((s) => s.openDeal);
+  const openSettle = useStore((s) => s.openSettle);
+  const join = useStore((s) => s.join);
+
+  const st = statusOf(deal, now);
+  const pct = Math.min(100, Math.round((deal.joined / deal.goal) * 100));
+  const closing = st.key === "closing";
+  const active = joinable(deal, now);
+
+  const onJoin = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (deal.status === "settle") openSettle(deal.id);
+    else join(deal.id);
+  };
+
+  return (
+    <div
+      onClick={() => openDeal(deal.id)}
+      className="flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-[#dbe9da] bg-white p-4 shadow-[0_1px_2px_rgba(18,49,30,.05)] transition-all duration-150 hover:-translate-y-0.5 hover:border-[#9fd4ae] hover:shadow-[0_8px_20px_rgba(18,70,38,.13)]"
+    >
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-[#e9f6ec] text-[22px]">
+          {deal.emoji}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-extrabold">
+            {deal.title}
+          </div>
+          <div className="text-xs text-[#6b8573]">
+            {deal.cat} · {deal.host}
+          </div>
+        </div>
+        <StatusBadge s={st} />
+      </div>
+      <ProgressBar pct={pct} color={closing ? "#d97706" : "#1f8a4c"} />
+      <div className="flex items-baseline justify-between text-[13px]">
+        <span className="whitespace-nowrap">
+          <b>{deal.joined}</b>
+          <span className="text-[#6b8573]">/{deal.goal}명</span>
+        </span>
+        <span className="tnum font-extrabold" style={{ color: closing ? "#b45309" : "#1f8a4c" }}>
+          ⏱ {remainLabel(deal, now)}
+        </span>
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="text-[13px] text-[#6b8573]">
+          1인 <b className="text-[15px] text-[#17301f]">{fmt(perAmount(deal))}</b>
+        </div>
+        <div
+          onClick={onJoin}
+          className={`cursor-pointer rounded-[10px] px-4 py-2 text-[13.5px] font-extrabold hover:brightness-105 ${
+            active || deal.status === "settle"
+              ? "bg-[#1f8a4c] text-white"
+              : "bg-[#e6efe4] text-[#6b8573]"
+          }`}
+        >
+          {joinLabel(deal, now)}
+        </div>
+      </div>
+    </div>
+  );
+}

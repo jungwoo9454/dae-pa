@@ -1,0 +1,30 @@
+name: 🔧 작업 / 기타
+description: 프로젝트 세팅, 문서, 리팩터링 등 기능 외 작업을 등록합니다.
+title: "[Chore] "
+labels: ["🔧 chore"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 📋 작업 내용
+      description: 어떤 작업인지 적어주세요.
+      placeholder: 예) ESLint + Prettier 설정, 배포 파이프라인 구성
+    validations:
+      required: true
+  - type: textarea
+    id: todo
+    attributes:
+      label: ✅ 작업 목록
+      value: |
+        - [ ]
+        - [ ]
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 🔥 우선순위
+      options:
+        - P0 — 없으면 데모 불가
+        - P1 — 핵심 기능
+        - P2 — 여유 있으면
+    validations:
+      required: true

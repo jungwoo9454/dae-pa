@@ -1,0 +1,45 @@
+name: 🐛 버그 리포트
+description: 동작하지 않거나 이상하게 동작하는 문제를 등록합니다.
+title: "[Bug] "
+labels: ["🐛 bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 🐛 어떤 문제인가요?
+      description: 현재 어떻게 동작하는지 적어주세요.
+      placeholder: 예) 공구 상세에서 참여 버튼을 누르면 진행바가 갱신되지 않아요
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 🔁 재현 방법
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✨ 기대 동작
+      description: 원래 어떻게 동작해야 하나요?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 📸 스크린샷 / 에러 로그
+      description: 있으면 첨부해주세요. (선택)
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 🔥 우선순위
+      options:
+        - P0 — 없으면 데모 불가
+        - P1 — 핵심 기능
+        - P2 — 여유 있으면
+    validations:
+      required: true

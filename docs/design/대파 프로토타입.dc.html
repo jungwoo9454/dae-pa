@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+<style>body{margin:0;background:#eef4ec;font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif}a{color:#1f8a4c}a:hover{color:#166b3a}input{font-family:inherit}::placeholder{color:#9db5a4}</style>
+</helmet>
+<div style="display:flex;height:100vh;background:#eef4ec;color:#17301f;overflow:hidden;font-size:14px">
+<div style="width:192px;background:#12311e;color:#e9f4ec;display:flex;flex-direction:column;padding:16px 10px;gap:2px;flex:none">
+<div style="padding:8px 12px 20px">
+<div style="font-family:Jua,sans-serif;font-size:32px;color:#fff;line-height:1">대<span style="color:#7fdc95">파</span></div>
+<div style="font-size:11.5px;color:#8fbf9a;margin-top:5px;letter-spacing:.5px">대용량 파티원 · 같이 사면 이득</div>
+</div>
+<sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+<div onClick="{{ n.go }}" style="{{ n.style }}" style-hover="background:rgba(255,255,255,.09)">{{ n.label }}</div>
+</sc-for>
+<div style="margin-top:auto;font-size:11px;color:#6f9c7c;padding:10px 12px">대파 v0.1 프로토타입</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;min-width:0;position:relative">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 24px;border-bottom:1px solid #dde9dc;background:#fff;flex:none">
+<div style="font-family:Jua,sans-serif;font-size:19px">{{ pageTitle }}</div>
+<span style="flex:1"></span>
+<div onClick="{{ goNew }}" style="background:#1f8a4c;color:#fff;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13.5px" style-hover="background:#187741">+ 공구 올리기</div>
+<div onClick="{{ toggleProfile }}" style="width:36px;height:36px;border-radius:50%;background:#cde8d2;color:#14532d;display:flex;align-items:center;justify-content:center;font-weight:800;cursor:pointer;border:2px solid #9fd4ae">파</div>
+</div>
+<sc-if value="{{ profileOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:58px;right:20px;width:230px;background:#fff;border:1px solid #d5e6d6;border-radius:14px;box-shadow:0 12px 32px rgba(18,49,30,.18);padding:14px;z-index:50;display:flex;flex-direction:column;gap:9px">
+<div style="display:flex;gap:10px;align-items:center">
+<div style="width:40px;height:40px;border-radius:50%;background:#cde8d2;color:#14532d;display:flex;align-items:center;justify-content:center;font-weight:800">파</div>
+<div><div style="font-weight:800">파티원</div><div style="font-size:12px;color:#6b8573">참여 12 · 주최 3</div></div>
+</div>
+<div style="background:#e9f6ec;border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:700;color:#166b3a">🥬 정산 신뢰도 100%</div>
+<div style="height:1px;background:#e2eee2"></div>
+<div onClick="{{ goMyFromPop }}" style="cursor:pointer;padding:4px 2px" style-hover="color:#1f8a4c">내 공구 내역</div>
+<div onClick="{{ goPayFromPop }}" style="cursor:pointer;padding:4px 2px" style-hover="color:#1f8a4c">대파페이 지갑</div>
+<div onClick="{{ goSetFromPop }}" style="cursor:pointer;padding:4px 2px" style-hover="color:#1f8a4c">알림 · 계좌 설정</div>
+<div style="color:#94a89a;padding:4px 2px;cursor:pointer">로그아웃</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;overflow:auto;padding:20px 24px">
+<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+<sc-for list="{{ catChips }}" as="ch" hint-placeholder-count="4">
+<div onClick="{{ ch.pick }}" style="{{ ch.style }}" style-hover="border-color:#1f8a4c">{{ ch.label }}</div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:16px">
+<sc-for list="{{ cards }}" as="c" hint-placeholder-count="4">
+<div onClick="{{ c.open }}" style="background:#fff;border:1px solid #dbe9da;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;cursor:pointer;box-shadow:0 1px 2px rgba(18,49,30,.05);transition:all .15s" style-hover="box-shadow:0 8px 20px rgba(18,70,38,.13);border-color:#9fd4ae;transform:translateY(-2px)">
+<div style="display:flex;gap:10px;align-items:center">
+<div style="width:44px;height:44px;border-radius:12px;background:#e9f6ec;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none">{{ c.emoji }}</div>
+<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.title }}</div><div style="font-size:12px;color:#6b8573">{{ c.cat }} · {{ c.host }}</div></div>
+<span style="{{ c.badgeStyle }}">{{ c.statusLabel }}</span>
+</div>
+<div style="height:9px;background:#e6efe4;border-radius:99px;overflow:hidden"><div style="{{ c.barStyle }}"></div></div>
+<div style="display:flex;justify-content:space-between;font-size:13px;align-items:baseline">
+<span style="white-space:nowrap"><b>{{ c.joined }}</b><span style="color:#6b8573">/{{ c.goal }}명</span></span>
+<span style="{{ c.timeStyle }}">⏱ {{ c.remain }}</span>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div style="font-size:13px;color:#6b8573">1인 <b style="color:#17301f;font-size:15px">{{ c.per }}</b></div>
+<div onClick="{{ c.onJoin }}" style="{{ c.joinStyle }}" style-hover="filter:brightness(1.06)">{{ c.joinLabel }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;overflow:auto;padding:20px 28px">
+<div onClick="{{ goHome }}" style="cursor:pointer;color:#4d6d58;font-weight:700;margin-bottom:14px;display:inline-block" style-hover="color:#1f8a4c">← 목록으로</div>
+<div style="display:flex;gap:24px;align-items:flex-start;max-width:980px">
+<div style="flex:1.5;display:flex;flex-direction:column;gap:14px">
+<div style="height:220px;border-radius:16px;background:repeating-linear-gradient(45deg,#e4efe2 0 14px,#eef5ec 14px 28px);border:1px solid #d8e7d6;display:flex;align-items:center;justify-content:center;color:#8aa392;font-size:40px">{{ d.emoji }}</div>
+<div>
+<div style="display:flex;gap:10px;align-items:center"><span style="font-family:Jua,sans-serif;font-size:24px">{{ d.title }}</span><span style="{{ d.badgeStyle }}">{{ d.statusLabel }}</span></div>
+<div style="color:#6b8573;margin-top:4px">{{ d.cat }} · 주최 {{ d.host }}</div>
+</div>
+<div style="background:#fff;border:1px solid #dbe9da;border-radius:14px;padding:14px 16px;line-height:1.7;color:#3c5546">품질 좋은 걸 대용량으로 사서 나눠요. 마감되면 채팅방에서 수령 시간을 맞추고, 정산은 앱에서 자동 1/N로 진행됩니다.</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<div style="background:#fff;border:1px solid #dbe9da;border-radius:10px;padding:8px 12px;font-size:13px">📍 수령 · <b>{{ d.place }}</b></div>
+<div style="background:#fff;border:1px solid #dbe9da;border-radius:10px;padding:8px 12px;font-size:13px">💰 총액 · <b>{{ d.totalFmt }}</b> <span style="color:#8aa392;font-size:11.5px">정산 전까지 변경 가능</span></div>
+</div>
+</div>
+<div style="width:300px;flex:none;background:#fff;border:1px solid #cfe4d0;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 6px 18px rgba(18,70,38,.08)">
+<div style="text-align:center"><div style="font-family:Jua,sans-serif;font-size:30px;color:#1f8a4c;font-variant-numeric:tabular-nums">{{ d.remain }}</div><div style="font-size:12px;color:#6b8573">남은 시간 · 실시간</div></div>
+<div style="height:11px;background:#e6efe4;border-radius:99px;overflow:hidden"><div style="{{ d.barStyle }}"></div></div>
+<div style="display:flex;justify-content:space-between;font-size:14px"><span>참여 <b>{{ d.joined }}</b>/{{ d.goal }}명</span><span>1인 <b style="font-size:16px">{{ d.per }}</b></span></div>
+<div style="display:flex">
+<sc-for list="{{ d.faces }}" as="f" hint-placeholder-count="3">
+<div style="width:30px;height:30px;border-radius:50%;background:#dceede;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#2f6d45;margin-right:-7px">{{ f.ch }}</div>
+</sc-for>
+<span style="margin-left:14px;font-size:12.5px;color:#6b8573;align-self:center">{{ d.facesMore }}</span>
+</div>
+<div onClick="{{ d.onJoin }}" style="{{ d.joinBig }}" style-hover="filter:brightness(1.06)">{{ d.joinLabel }}</div>
+<div onClick="{{ d.goRoom }}" style="border:1.5px solid #1f8a4c;color:#1f8a4c;border-radius:12px;padding:10px;text-align:center;font-weight:800;cursor:pointer" style-hover="background:#e9f6ec">💬 공구 채팅방</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isMy }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;overflow:auto;padding:20px 24px;max-width:860px">
+<input value="{{ mySearch }}" onChange="{{ onMySearch }}" placeholder="내 공구 검색" style="width:280px;border:1.5px solid #d5e6d6;border-radius:10px;padding:9px 14px;font-size:13.5px;outline:none;margin-bottom:16px;background:#fff">
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ myDeals }}" as="m" hint-placeholder-count="3">
+<div style="background:#fff;border:1px solid #dbe9da;border-radius:14px;padding:14px 16px;display:flex;gap:14px;align-items:center">
+<div style="width:40px;height:40px;border-radius:10px;background:#e9f6ec;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none">{{ m.emoji }}</div>
+<div style="flex:1;min-width:0">
+<div style="display:flex;gap:8px;align-items:center"><b>{{ m.title }}</b><span style="{{ m.badgeStyle }}">{{ m.statusLabel }}</span><span style="font-size:11.5px;color:#8aa392">{{ m.roleLabel }}</span></div>
+<div style="font-size:12.5px;color:#6b8573;margin-top:3px">{{ m.joined }}/{{ m.goal }}명 · ⏱ {{ m.remain }} · 1인 {{ m.per }}</div>
+</div>
+<div onClick="{{ m.goRoom }}" style="border:1.5px solid #cfe4d0;border-radius:9px;padding:7px 12px;font-weight:700;cursor:pointer;font-size:13px" style-hover="border-color:#1f8a4c;color:#1f8a4c">채팅</div>
+<sc-if value="{{ m.canSettle }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ m.goSettle }}" style="background:#1f8a4c;color:#fff;border-radius:9px;padding:8px 12px;font-weight:800;cursor:pointer;font-size:13px" style-hover="background:#187741">정산하기</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;display:flex;min-height:0">
+<div style="width:250px;border-right:1px solid #dde9dc;background:#f7faf6;padding:14px;display:flex;flex-direction:column;gap:8px;overflow:auto">
+<input value="{{ search }}" onChange="{{ onSearch }}" placeholder="🔍 채팅방 검색" style="border:1.5px solid #d5e6d6;border-radius:10px;padding:8px 12px;font-size:13px;outline:none;background:#fff">
+<div style="font-size:11.5px;font-weight:800;color:#6b8573;margin-top:6px;letter-spacing:.5px">동네</div>
+<sc-for list="{{ loungeRooms }}" as="r" hint-placeholder-count="1">
+<div onClick="{{ r.pick }}" style="{{ r.style }}" style-hover="border-color:#9fd4ae"><span style="font-size:17px">{{ r.emoji }}</span><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div><div style="font-size:11.5px;color:#8aa392">{{ r.sub }}</div></div></div>
+</sc-for>
+<div style="font-size:11.5px;font-weight:800;color:#6b8573;margin-top:6px;letter-spacing:.5px">내 공구방</div>
+<sc-for list="{{ dealRooms }}" as="r" hint-placeholder-count="3">
+<div onClick="{{ r.pick }}" style="{{ r.style }}" style-hover="border-color:#9fd4ae"><span style="font-size:17px">{{ r.emoji }}</span><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div><div style="font-size:11.5px;color:#8aa392">{{ r.sub }}</div></div></div>
+</sc-for>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;min-width:0;background:#fff">
+<div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid #e6efe4">
+<b style="font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ roomTitle }}</b><span style="font-size:12px;color:#6b8573;white-space:nowrap;flex:none">{{ roomSub }}</span>
+</div>
+<div style="flex:1;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px;background:#fbfdf9">
+<sc-for list="{{ roomMsgs }}" as="mg" hint-placeholder-count="4">
+<sc-if value="{{ mg.sys }}" hint-placeholder-val="{{ false }}"><div style="align-self:center;background:#eaf3e8;color:#4d6d58;border-radius:99px;padding:4px 14px;font-size:12px">{{ mg.text }}</div></sc-if>
+<sc-if value="{{ mg.card }}" hint-placeholder-val="{{ false }}">
+<div style="align-self:flex-start;display:flex;gap:8px;max-width:78%"><div style="width:30px;height:30px;border-radius:50%;background:#dceede;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#2f6d45;flex:none">{{ mg.ch }}</div>
+<div onClick="{{ mg.openDeal }}" style="border:1.5px solid #9fd4ae;border-radius:14px;padding:10px 14px;background:#fff;cursor:pointer;display:flex;flex-direction:column;gap:5px" style-hover="box-shadow:0 4px 12px rgba(18,70,38,.12)">
+<div style="font-weight:800">{{ mg.dealEmoji }} {{ mg.dealTitle }}</div>
+<div style="font-size:12.5px;color:#1f8a4c;font-weight:700">{{ mg.dealMeta }} · 탭해서 보기 →</div>
+</div></div>
+</sc-if>
+<sc-if value="{{ mg.other }}" hint-placeholder-val="{{ false }}">
+<div style="align-self:flex-start;display:flex;gap:8px;max-width:72%"><div style="width:30px;height:30px;border-radius:50%;background:#dceede;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#2f6d45;flex:none">{{ mg.ch }}</div>
+<div><div style="font-size:11.5px;color:#8aa392;margin:0 0 3px 4px">{{ mg.who }}</div><div style="background:#fff;border:1px solid #e2eee2;border-radius:4px 16px 16px 16px;padding:9px 13px;line-height:1.5">{{ mg.text }}</div></div></div>
+</sc-if>
+<sc-if value="{{ mg.mine }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-end;background:#1f8a4c;color:#fff;border-radius:16px 4px 16px 16px;padding:9px 13px;max-width:72%;line-height:1.5">{{ mg.text }}</div></sc-if>
+</sc-for>
+</div>
+<div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid #e6efe4">
+<input value="{{ chatInput }}" onChange="{{ onChatInput }}" onKeyDown="{{ onChatKey }}" placeholder="메시지 입력…" style="flex:1;border:1.5px solid #d5e6d6;border-radius:12px;padding:10px 14px;font-size:14px;outline:none">
+<div onClick="{{ sendMsg }}" style="background:#1f8a4c;color:#fff;border-radius:12px;padding:10px 18px;font-weight:800;cursor:pointer" style-hover="background:#187741">전송</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSettle }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;overflow:auto;padding:20px 28px">
+<div onClick="{{ goMy }}" style="cursor:pointer;color:#4d6d58;font-weight:700;margin-bottom:14px;display:inline-block" style-hover="color:#1f8a4c">← 내 공구</div>
+<div style="display:flex;gap:20px;align-items:flex-start;max-width:900px">
+<div style="flex:1;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="font-family:Jua,sans-serif;font-size:22px;line-height:1.4">{{ s.emoji }} {{ s.title }} 정산</span><span style="background:#e0f0f1;color:#0e7490;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:800;flex:none">정산중</span></div>
+<div style="background:#fff;border:1px solid #cfe4d0;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+<div style="width:52px;height:64px;border-radius:8px;background:repeating-linear-gradient(0deg,#f2f6ef 0 6px,#fff 6px 12px);border:1px solid #d8e7d6;display:flex;align-items:center;justify-content:center">🧾</div>
+<div style="flex:1"><div style="font-weight:800">영수증 인증 완료 <span style="color:#1f8a4c">✓</span></div><div style="font-size:12.5px;color:#6b8573">인식 총액 {{ s.totalFmt }} · 금액 확정 · 수정 잠금 🔒</div></div>
+<div style="border:1.5px solid #cfe4d0;border-radius:9px;padding:6px 11px;font-size:12.5px;font-weight:700;cursor:pointer" style-hover="border-color:#1f8a4c;color:#1f8a4c">영수증 보기</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ s.members }}" as="p" hint-placeholder-count="4">
+<div style="background:#fff;border:1px solid #dbe9da;border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:11px">
+<div style="width:32px;height:32px;border-radius:50%;background:#dceede;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#2f6d45">{{ p.ch }}</div>
+<div style="flex:1;font-weight:700">{{ p.name }}<span style="font-weight:400;color:#8aa392;font-size:12px"> · {{ p.note }}</span></div>
+<b style="font-variant-numeric:tabular-nums">{{ p.amtFmt }}</b>
+<span style="{{ p.badgeStyle }}">{{ p.paidLabel }}</span>
+</div>
+</sc-for>
+</div>
+<div style="height:11px;background:#e6efe4;border-radius:99px;overflow:hidden"><div style="{{ s.barStyle }}"></div></div>
+<div style="text-align:center;color:#4d6d58;font-size:13px">{{ s.paidCount }} 입금 완료 — 전원 완료 시 자동으로 마감돼요</div>
+</div>
+<div style="width:290px;flex:none;background:#fff;border:1px solid #cfe4d0;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 18px rgba(18,70,38,.08)">
+<div style="text-align:center"><div style="font-size:12.5px;color:#6b8573">내가 낼 금액 (개별 조정 반영)</div><div style="font-family:Jua,sans-serif;font-size:30px;color:#17301f">{{ s.myAmtFmt }}</div></div>
+<sc-if value="{{ s.unpaid }}" hint-placeholder-val="{{ true }}">
+<div onClick="{{ s.payNow }}" style="background:#1f8a4c;color:#fff;border-radius:12px;padding:12px;text-align:center;font-weight:800;cursor:pointer;font-size:15px" style-hover="background:#187741">🥬 대파페이로 바로 내기</div>
+<div style="border:1.5px solid #d5e6d6;border-radius:12px;padding:10px;text-align:center;font-weight:700;cursor:pointer;font-size:13.5px" style-hover="border-color:#1f8a4c;color:#1f8a4c">🏦 계좌로 보내기 · 초록은행 1104-04 <span style="background:#e9f6ec;border-radius:6px;padding:1px 7px;font-size:11px;color:#166b3a">복사</span></div>
+<div style="border:1.5px solid #d5e6d6;border-radius:12px;padding:10px;text-align:center;font-weight:700;cursor:pointer;font-size:13.5px" style-hover="border-color:#1f8a4c;color:#1f8a4c">💸 토스 송금 링크 열기</div>
+<div style="font-size:11.5px;color:#8aa392;text-align:center">대파페이는 자동 확인 · 계좌/토스는 셀프 체크</div>
+</sc-if>
+<sc-if value="{{ s.paidMine }}" hint-placeholder-val="{{ false }}">
+<div style="background:#e9f6ec;color:#166b3a;border-radius:12px;padding:14px;text-align:center;font-weight:800">입금 완료 ✓<div style="font-weight:400;font-size:12px;margin-top:3px">대파페이 잔액에서 차감됐어요</div></div>
+</sc-if>
+<div style="font-size:12.5px;color:#6b8573;background:#f5f9f3;border-radius:10px;padding:9px 11px">잔액 <b>{{ balanceFmt }}</b> · 부족하면 충전 후 결제돼요</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPay }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;overflow:auto;padding:20px 24px">
+<div style="display:flex;gap:20px;align-items:flex-start;max-width:900px">
+<div style="width:320px;flex:none;display:flex;flex-direction:column;gap:12px">
+<div style="background:linear-gradient(135deg,#14532d,#1f8a4c);color:#fff;border-radius:18px;padding:22px;box-shadow:0 10px 24px rgba(18,70,38,.25)">
+<div style="font-size:13px;opacity:.85">🥬 대파페이 잔액</div>
+<div style="font-family:Jua,sans-serif;font-size:34px;margin-top:4px;font-variant-numeric:tabular-nums">{{ balanceFmt }}</div>
+<div style="display:flex;gap:8px;margin-top:14px">
+<div onClick="{{ toggleTopup }}" style="flex:1;background:rgba(255,255,255,.95);color:#14532d;border-radius:10px;padding:9px;text-align:center;font-weight:800;cursor:pointer" style-hover="background:#fff">+ 충전</div>
+<div style="flex:1;border:1.5px solid rgba(255,255,255,.5);border-radius:10px;padding:9px;text-align:center;font-weight:700;cursor:pointer" style-hover="border-color:#fff">출금</div>
+</div>
+</div>
+<sc-if value="{{ topupOpen }}" hint-placeholder-val="{{ false }}">
+<div style="background:#fff;border:1.5px solid #9fd4ae;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px">
+<b>충전 금액</b>
+<div style="display:flex;gap:6px">
+<sc-for list="{{ topupChips }}" as="tc" hint-placeholder-count="3">
+<div onClick="{{ tc.pick }}" style="{{ tc.style }}" style-hover="border-color:#1f8a4c">{{ tc.label }}</div>
+</sc-for>
+</div>
+<div onClick="{{ doTopup }}" style="background:#1f8a4c;color:#fff;border-radius:10px;padding:10px;text-align:center;font-weight:800;cursor:pointer" style-hover="background:#187741">{{ topupLabel }} 충전하기</div>
+<div style="font-size:11.5px;color:#8aa392">충전 수단 · 초록은행 1104-04 (자동이체)</div>
+</div>
+</sc-if>
+<div style="background:#fff;border:1px solid #dbe9da;border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">
+<div><b>정산 요청 자동 결제</b><div style="font-size:12px;color:#8aa392">요청 오면 잔액에서 바로 차감</div></div>
+<div onClick="{{ toggleAutoPay }}" style="{{ autoPayStyle }}"><div style="{{ autoPayKnob }}"></div></div>
+</div>
+</div>
+<div style="flex:1;background:#fff;border:1px solid #dbe9da;border-radius:16px;padding:16px 18px">
+<b style="font-size:15px">이용 내역</b>
+<div style="display:flex;flex-direction:column;margin-top:10px">
+<sc-for list="{{ history }}" as="h" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid #eef4ec">
+<div style="width:36px;height:36px;border-radius:10px;background:#e9f6ec;display:flex;align-items:center;justify-content:center;font-size:17px">{{ h.emoji }}</div>
+<div style="flex:1"><div style="font-weight:700">{{ h.title }}</div><div style="font-size:12px;color:#8aa392">{{ h.when }}</div></div>
+<b style="{{ h.amtStyle }}">{{ h.amt }}</b>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isNew }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;overflow:auto;padding:20px 28px">
+<div style="display:flex;gap:26px;align-items:flex-start;max-width:940px;flex-wrap:wrap">
+<div style="flex:1.3;display:flex;flex-direction:column;gap:13px">
+<div><div style="font-weight:800;margin-bottom:8px">카테고리</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<sc-for list="{{ formCats }}" as="fc" hint-placeholder-count="5">
+<div onClick="{{ fc.pick }}" style="{{ fc.style }}" style-hover="border-color:#1f8a4c">{{ fc.label }}</div>
+</sc-for>
+</div></div>
+<input value="{{ fTitle }}" onChange="{{ onFTitle }}" placeholder="제목 — 예: 제주 감귤 10kg 같이 사요" style="border:1.5px solid #d5e6d6;border-radius:11px;padding:12px 14px;font-size:14px;outline:none;background:#fff">
+<sc-if value="{{ isDelivery }}" hint-placeholder-val="{{ false }}">
+<input placeholder="🔗 가게/메뉴 링크 (배민 · 요기요 등)" style="border:1.5px solid #d5e6d6;border-radius:11px;padding:12px 14px;font-size:14px;outline:none;background:#fff">
+<div style="background:#f0f7ee;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#4d6d58">배달음식 공구 · 배달비도 자동 1/N · 메뉴는 채팅방에서 취합 · 주문 후 실제 금액으로 수정 가능</div>
+</sc-if>
+<div style="display:flex;gap:10px">
+<input value="{{ fTotal }}" onChange="{{ onFTotal }}" placeholder="예상 총 금액 (원)" style="flex:1;border:1.5px solid #d5e6d6;border-radius:11px;padding:12px 14px;font-size:14px;outline:none;background:#fff">
+<input value="{{ fGoal }}" onChange="{{ onFGoal }}" placeholder="목표 인원" style="flex:1;border:1.5px solid #d5e6d6;border-radius:11px;padding:12px 14px;font-size:14px;outline:none;background:#fff">
+</div>
+<div style="display:flex;gap:10px">
+<input value="{{ fMins }}" onChange="{{ onFMins }}" placeholder="마감까지 (분)" style="flex:1;border:1.5px solid #d5e6d6;border-radius:11px;padding:12px 14px;font-size:14px;outline:none;background:#fff">
+<input value="{{ fPlace }}" onChange="{{ onFPlace }}" placeholder="📍 수령 장소/방법" style="flex:1.4;border:1.5px solid #d5e6d6;border-radius:11px;padding:12px 14px;font-size:14px;outline:none;background:#fff">
+</div>
+<div style="font-size:12px;color:#8aa392">💰 총 금액은 정산 시작 전까지 언제든 수정할 수 있어요 (변경 시 전원 알림)</div>
+<div onClick="{{ submitNew }}" style="{{ submitStyle }}" style-hover="filter:brightness(1.06)">올리기 → 채팅방 자동 생성</div>
+</div>
+<div style="width:300px;flex:none;display:flex;flex-direction:column;gap:8px">
+<div style="font-size:12.5px;font-weight:800;color:#6b8573">미리보기 · 실시간</div>
+<div style="background:#fff;border:1px solid #dbe9da;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 18px rgba(18,70,38,.08)">
+<div style="display:flex;gap:10px;align-items:center">
+<div style="width:44px;height:44px;border-radius:12px;background:#e9f6ec;display:flex;align-items:center;justify-content:center;font-size:22px">{{ pvEmoji }}</div>
+<div style="flex:1;min-width:0"><div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ pvTitle }}</div><div style="font-size:12px;color:#6b8573">{{ pvCat }} · 나</div></div>
+<span style="background:#e9f6ec;color:#166b3a;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:800">모집중</span>
+</div>
+<div style="height:9px;background:#e6efe4;border-radius:99px;overflow:hidden"><div style="width:4%;height:100%;background:#1f8a4c"></div></div>
+<div style="display:flex;justify-content:space-between;font-size:13px"><span><b>1</b><span style="color:#6b8573">/{{ pvGoal }}명</span></span><span style="color:#1f8a4c;font-weight:700">⏱ {{ pvTime }}</span></div>
+<div style="font-size:13px;color:#6b8573">1인 <b style="color:#17301f;font-size:15px">{{ pvPer }}</b></div>
+</div>
+<div style="font-size:12px;color:#8aa392;line-height:1.6">올리는 즉시 공구 채팅방이 생기고, 동네 라운지에 카드로 공유할 수 있어요.</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSet }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;overflow:auto;padding:20px 24px;max-width:640px">
+<div style="background:#fff;border:1px solid #dbe9da;border-radius:16px;overflow:hidden">
+<div style="padding:14px 18px;border-bottom:1px solid #eef4ec;display:flex;justify-content:space-between;align-items:center"><div><b>마감 임박 알림</b><div style="font-size:12px;color:#8aa392">참여한 공구 마감 30분 전</div></div><div onClick="{{ toggleN1 }}" style="{{ n1Style }}"><div style="{{ n1Knob }}"></div></div></div>
+<div style="padding:14px 18px;border-bottom:1px solid #eef4ec;display:flex;justify-content:space-between;align-items:center"><div><b>입금 요청 알림</b><div style="font-size:12px;color:#8aa392">정산 시작·리마인드</div></div><div onClick="{{ toggleN2 }}" style="{{ n2Style }}"><div style="{{ n2Knob }}"></div></div></div>
+<div style="padding:14px 18px;border-bottom:1px solid #eef4ec;display:flex;justify-content:space-between;align-items:center;cursor:pointer" style-hover="background:#fbfdf9"><div><b>정산 받을 계좌</b><div style="font-size:12px;color:#8aa392">초록은행 1104-04</div></div><span style="color:#8aa392">›</span></div>
+<div style="padding:14px 18px;border-bottom:1px solid #eef4ec;display:flex;justify-content:space-between;align-items:center;cursor:pointer" style-hover="background:#fbfdf9"><div><b>기본 송금 앱</b><div style="font-size:12px;color:#8aa392">토스</div></div><span style="color:#8aa392">›</span></div>
+<div style="padding:14px 18px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" style-hover="background:#fbfdf9"><div><b>계정 관리</b><div style="font-size:12px;color:#8aa392">프로필 · 동네 인증 · 로그아웃</div></div><span style="color:#8aa392">›</span></div>
+</div>
+</div>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;chat&quot;,&quot;pay&quot;,&quot;new&quot;,&quot;set&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;데모&quot;},&quot;startBalance&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:23500,&quot;min&quot;:0,&quot;max&quot;:1000000,&quot;step&quot;:500,&quot;unit&quot;:&quot;원&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;데모&quot;}}">
+class Component extends DCLogic {
+  constructor(p){
+    super(p);
+    const now=Date.now();
+    const mk=(id,emoji,title,cat,total,goal,joined,endMin,place,host,opts)=>Object.assign({id,emoji,title,cat,total,goal,joined,end:now+endMin*60000,place,host,status:'recruit',me:false,mine:false},opts||{});
+    this.state={
+      page:this.props.startPage??'home',sel:null,room:'lounge',chatInput:'',search:'',mySearch:'',filter:'전체',
+      now,profileOpen:false,topupOpen:false,topupAmt:10000,balance:this.props.startBalance??23500,
+      autoPay:true,n1:true,n2:true,
+      f:{cat:'식료품',title:'',total:'',goal:'',mins:'',place:''},
+      deals:[
+        mk(1,'🧅','대파 5단 같이 나눠요','식료품',12500,5,3,134,'행복아파트 정문','파밍맘'),
+        mk(2,'🍗','치킨 같이 시켜요','배달음식',54500,4,4,-30,'201동 로비','준호',{status:'settle',me:true,members:[
+          {name:'민지',amt:15000,note:'후라이드+콜라',paid:true},
+          {name:'수현',amt:12500,note:'순살',paid:true},
+          {name:'준호',amt:13375,note:'양념 · 주최',paid:false},
+          {name:'나',amt:13625,note:'반반',paid:false}]}),
+        mk(3,'🍊','제주 감귤 10kg','식료품',45000,10,7,342,'회사 1층 로비','나',{me:true,mine:true}),
+        mk(4,'☕','원두 2kg 공구','식료품',80000,10,9,41,'3층 탕비실','커피덕후'),
+        mk(5,'🧻','화장지 48롤 반씩','생활용품',32000,2,1,1580,'경비실 앞','알뜰킹')
+      ],
+      msgs:{
+        lounge:[{sys:1,text:'🏘 역삼동 이웃 128명이 함께하고 있어요'},
+          {who:'민지',text:'치킨 같이 시키실 분? 배달비 아까워요 😂'},
+          {cardOf:2,who:'준호'},
+          {me:1,text:'저요저요!!'},
+          {cardOf:1,who:'파밍맘'}],
+        d1:[{sys:1,text:'공구방이 열렸어요 · 목표 5명'},{who:'파밍맘',text:'대파 좋아하는 분들 환영해요 🌿 한 단씩 나눠 가져요'}],
+        d2:[{sys:1,text:'목표 달성! 정산이 시작돼요 🎉'},{who:'준호',text:'영수증 올렸어요~ 각자 메뉴 금액 확인 부탁!'},{sys:1,text:'🧾 영수증 인증 완료 · 총 54,500원 · 금액 잠금'}],
+        d3:[{who:'수현',text:'작년에 여기 감귤 진짜 달았어요'},{me:1,text:'3명만 더 오면 마감!'}],
+        d4:[{who:'커피덕후',text:'마감 40분 전이에요! 원두 필요하신 분 서두르세요'}],
+        d5:[{sys:1,text:'공구방이 열렸어요 · 목표 2명'}]
+      },
+      history:[
+        {emoji:'🍊',title:'제주 감귤 정산 받음',when:'어제',amt:4500},
+        {emoji:'⚡',title:'충전',when:'8월 7일',amt:30000},
+        {emoji:'🧻',title:'화장지 공구 정산',when:'8월 2일',amt:-16000}
+      ]
+    };
+  }
+  componentDidMount(){this.t=setInterval(()=>this.setState({now:Date.now()}),1000);}
+  componentWillUnmount(){clearInterval(this.t);}
+  fmt(n){return n.toLocaleString('ko-KR')+'원';}
+  remain(d){
+    let ms=d.end-this.state.now;
+    if(d.status==='settle')return '마감됨';
+    if(ms<=0)return '마감됨';
+    const s=Math.floor(ms/1000),dd=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),ss=s%60,p=x=>String(x).padStart(2,'0');
+    return (dd>0?dd+'일 ':'')+p(h)+':'+p(m)+':'+p(ss);
+  }
+  statusOf(d){
+    if(d.status==='settle')return{l:'정산중',bg:'#e0f0f1',fg:'#0e7490'};
+    if(d.end-this.state.now<=0)return{l:'마감',bg:'#eceff0',fg:'#64748b'};
+    if(d.end-this.state.now<3600000)return{l:'마감임박',bg:'#fdf0dc',fg:'#b45309'};
+    return{l:'모집중',bg:'#e9f6ec',fg:'#166b3a'};
+  }
+  badge(st){return 'background:'+st.bg+';color:'+st.fg+';border-radius:99px;padding:3px 10px;font-size:12px;font-weight:800;flex:none';}
+  sysMsg(roomId,text){const msgs={...this.state.msgs};msgs[roomId]=[...(msgs[roomId]||[]),{sys:1,text}];return msgs;}
+  join(d,e){
+    if(e&&e.stopPropagation)e.stopPropagation();
+    if(d.me||d.status==='settle'||d.end-this.state.now<=0){if(d.status==='settle'){this.setState({page:'settle',sel:d.id});}return;}
+    this.setState(st=>{
+      const deals=st.deals.map(x=>{
+        if(x.id!==d.id)return x;
+        const joined=x.joined+1;const done=joined>=x.goal;
+        return{...x,joined,me:true,status:done?'settle':x.status,
+          members:done?[...Array(joined)].map((_,i)=>({name:i===joined-1?'나':'이웃'+(i+1),amt:Math.ceil(x.total/joined),note:'균등 1/N',paid:i<joined-2})):x.members};
+      });
+      const key='d'+d.id;const full=deals.find(x=>x.id===d.id);
+      let msgs={...st.msgs};msgs[key]=[...(msgs[key]||[]),{sys:1,text:'파티원님이 참여했어요 ('+full.joined+'/'+full.goal+')'}];
+      if(full.status==='settle')msgs[key]=[...msgs[key],{sys:1,text:'목표 달성! 정산이 시작돼요 🎉'}];
+      return{deals,msgs};
+    });
+  }
+  dealView(d){
+    const st=this.statusOf(d);
+    const pct=Math.min(100,Math.round(d.joined/d.goal*100));
+    const closing=st.l==='마감임박';
+    const joinLabel=d.status==='settle'?'정산 보기':(d.me?'참여중 ✓':(st.l==='마감'?'마감됨':'참여하기'));
+    const active=!d.me&&st.l!=='마감'&&d.status!=='settle';
+    return{
+      ...d,statusLabel:st.l,badgeStyle:this.badge(st),
+      barStyle:'width:'+pct+'%;height:100%;background:'+(closing?'#d97706':'#1f8a4c')+';border-radius:99px;transition:width .4s',
+      remain:this.remain(d),timeStyle:'font-variant-numeric:tabular-nums;font-weight:800;color:'+(closing?'#b45309':'#1f8a4c'),
+      per:this.fmt(Math.ceil(d.total/d.goal)),totalFmt:this.fmt(d.total),
+      joinLabel,
+      joinStyle:'border-radius:10px;padding:8px 16px;font-weight:800;cursor:pointer;font-size:13.5px;'+(active||d.status==='settle'?'background:#1f8a4c;color:#fff':'background:#e6efe4;color:#6b8573'),
+      joinBig:'border-radius:12px;padding:13px;text-align:center;font-weight:800;cursor:pointer;font-size:16px;'+(active||d.status==='settle'?'background:#1f8a4c;color:#fff':'background:#e6efe4;color:#6b8573'),
+      onJoin:(e)=>this.join(d,e),
+      open:()=>this.setState({page:'detail',sel:d.id}),
+      goRoom:()=>this.setState({page:'chat',room:'d'+d.id}),
+      goSettle:()=>this.setState({page:'settle',sel:d.id}),
+      canSettle:d.status==='settle',
+      roleLabel:d.mine?'주최':'참여',
+      faces:['김','이','박','최','정'].slice(0,Math.min(4,d.joined)).map(ch=>({ch})),
+      facesMore:d.joined>4?'+'+(d.joined-4)+'명 참여중':d.joined+'명 참여중'
+    };
+  }
+  roomList(ids){
+    return ids.map(r=>{
+      const on=this.state.room===r.id;
+      return{...r,pick:()=>this.setState({room:r.id}),
+        style:'display:flex;gap:9px;align-items:center;padding:9px 11px;border-radius:11px;cursor:pointer;border:1.5px solid '+(on?'#1f8a4c;background:#e9f6ec':'transparent;background:transparent')};
+    });
+  }
+  setF(k,v){this.setState(st=>({f:{...st.f,[k]:v}}));}
+  renderVals(){
+    const st=this.state;
+    const pages={home:'홈',detail:'공고 상세',my:'내 공구',chat:'채팅',pay:'대파페이',new:'공구 올리기',set:'설정',settle:'정산'};
+    const navDefs=[['home','홈'],['my','내 공구'],['chat','채팅'],['pay','대파페이'],['set','설정']];
+    const nav=navDefs.map(([k,label])=>({label,go:()=>this.setState({page:k,profileOpen:false}),
+      style:'padding:10px 12px;border-radius:10px;cursor:pointer;font-weight:700;font-size:14px;'+(st.page===k||(k==='home'&&st.page==='detail')||(k==='my'&&st.page==='settle')?'background:#1f8a4c;color:#fff':'color:#bcd6c2')}));
+    const cats=['전체','식료품','배달음식','생활용품'];
+    const catChips=cats.map(c=>({label:c,pick:()=>this.setState({filter:c}),
+      style:'border-radius:99px;padding:7px 15px;font-weight:700;font-size:13px;cursor:pointer;border:1.5px solid '+(st.filter===c?'#1f8a4c;background:#1f8a4c;color:#fff':'#d5e6d6;background:#fff;color:#4d6d58')}));
+    const cards=st.deals.filter(d=>st.filter==='전체'||d.cat===st.filter).map(d=>this.dealView(d));
+    const selDeal=st.deals.find(d=>d.id===st.sel)||st.deals[0];
+    const d=this.dealView(selDeal);
+    const myDeals=st.deals.filter(x=>x.me&&(!st.mySearch||x.title.includes(st.mySearch))).map(x=>this.dealView(x));
+    const roomDefs=[{id:'lounge',emoji:'🏘',name:'역삼동 라운지',sub:'이웃 128명 · 자유 수다'}];
+    const dealRoomDefs=st.deals.filter(x=>x.me).map(x=>({id:'d'+x.id,emoji:x.emoji,name:x.title,sub:x.joined+'명 · '+this.statusOf(x).l}));
+    const filt=r=>!st.search||r.name.includes(st.search);
+    const curRoom=[...roomDefs,...dealRoomDefs].find(r=>r.id===st.room)||roomDefs[0];
+    const roomMsgs=(st.msgs[curRoom.id]||[]).map((m,i)=>{
+      if(m.cardOf){const cd=st.deals.find(x=>x.id===m.cardOf);const cv=this.dealView(cd);
+        return{card:true,sys:false,other:false,mine:false,ch:(m.who||'?')[0],dealEmoji:cd.emoji,dealTitle:cd.title,
+          dealMeta:cd.joined+'/'+cd.goal+'명 · ⏱ '+this.remain(cd)+' · 1인 '+cv.per,
+          openDeal:()=>this.setState({page:'detail',sel:cd.id})};}
+      return{card:false,sys:!!m.sys,other:!m.sys&&!m.me,mine:!!m.me,who:m.who,ch:(m.who||'나')[0],text:m.text};
+    });
+    const send=()=>{const t=st.chatInput.trim();if(!t)return;
+      this.setState(s2=>{const msgs={...s2.msgs};msgs[curRoom.id]=[...(msgs[curRoom.id]||[]),{me:1,text:t}];return{msgs,chatInput:''};});};
+    const sd=st.deals.find(x=>x.id===st.sel&&x.status==='settle')||st.deals.find(x=>x.status==='settle')||st.deals[1];
+    const mem=sd.members||[];
+    const paidN=mem.filter(m=>m.paid).length;
+    const mine=mem.find(m=>m.name==='나');
+    const s={
+      emoji:sd.emoji,title:sd.title,totalFmt:this.fmt(sd.total),
+      members:mem.map(m=>({ch:m.name[0],name:m.name,note:m.note,amtFmt:this.fmt(m.amt),
+        paidLabel:m.paid?'입금완료':'대기중',
+        badgeStyle:'border-radius:99px;padding:3px 10px;font-size:12px;font-weight:800;flex:none;'+(m.paid?'background:#e9f6ec;color:#166b3a':'background:#f1f3ee;color:#8a9a8e')})),
+      barStyle:'width:'+Math.round(paidN/Math.max(1,mem.length)*100)+'%;height:100%;background:#1f8a4c;border-radius:99px;transition:width .4s',
+      paidCount:paidN+'/'+mem.length+'명',
+      myAmtFmt:mine?this.fmt(mine.amt):'—',unpaid:!!mine&&!mine.paid,paidMine:!!mine&&mine.paid,
+      payNow:()=>{if(!mine||mine.paid)return;
+        this.setState(s2=>{
+          const deals=s2.deals.map(x=>x.id!==sd.id?x:{...x,members:x.members.map(m=>m.name==='나'?{...m,paid:true}:m)});
+          const msgs={...s2.msgs};msgs['d'+sd.id]=[...(msgs['d'+sd.id]||[]),{sys:1,text:'파티원님이 '+this.fmt(mine.amt)+' 입금 완료 ✓ (대파페이)'}];
+          return{deals,msgs,balance:s2.balance-mine.amt,
+            history:[{emoji:sd.emoji,title:sd.title+' 정산',when:'방금',amt:-mine.amt},...s2.history]};
+        });}
+    };
+    const topupChips=[5000,10000,30000].map(v=>({label:'+'+(v/10000<1?v/1000+'천':v/10000+'만'),
+      pick:()=>this.setState({topupAmt:v}),
+      style:'flex:1;text-align:center;border-radius:9px;padding:8px 4px;font-weight:800;cursor:pointer;font-size:13px;border:1.5px solid '+(st.topupAmt===v?'#1f8a4c;background:#e9f6ec;color:#166b3a':'#d5e6d6;color:#4d6d58')}));
+    const tog=(on)=>'width:46px;height:26px;border-radius:99px;cursor:pointer;padding:3px;box-sizing:border-box;transition:background .2s;background:'+(on?'#1f8a4c':'#cbd8cc');
+    const knob=(on)=>'width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;transform:translateX('+(on?'20px':'0')+')';
+    const f=st.f;const goalN=parseInt(f.goal)||0;const totalN=parseInt(f.total)||0;
+    const formCats=['식료품','배달음식','생활용품','대량구매','기타'].map(c=>({label:c,pick:()=>this.setF('cat',c),
+      style:'border-radius:99px;padding:8px 16px;font-weight:700;font-size:13.5px;cursor:pointer;border:1.5px solid '+(f.cat===c?'#1f8a4c;background:#1f8a4c;color:#fff':'#d5e6d6;background:#fff;color:#4d6d58')}));
+    const catEmoji={'식료품':'🥬','배달음식':'🍗','생활용품':'🧻','대량구매':'📦','기타':'🛒'};
+    const canSubmit=f.title&&totalN>0&&goalN>1;
+    const submitNew=()=>{if(!canSubmit)return;
+      this.setState(s2=>{
+        const id=Math.max(...s2.deals.map(x=>x.id))+1;
+        const nd={id,emoji:catEmoji[f.cat],title:f.title,cat:f.cat,total:totalN,goal:goalN,joined:1,
+          end:Date.now()+(parseInt(f.mins)||60)*60000,place:f.place||'채팅방에서 협의',host:'나',status:'recruit',me:true,mine:true};
+        const msgs={...s2.msgs};msgs['d'+id]=[{sys:1,text:'공구방이 열렸어요 · 목표 '+goalN+'명'}];
+        msgs.lounge=[...msgs.lounge,{cardOf:id,who:'나'}];
+        return{deals:[nd,...s2.deals],msgs,page:'home',f:{cat:'식료품',title:'',total:'',goal:'',mins:'',place:''}};
+      });};
+    return{
+      nav,pageTitle:pages[st.page]||'홈',
+      goNew:()=>this.setState({page:'new',profileOpen:false}),
+      goHome:()=>this.setState({page:'home'}),goMy:()=>this.setState({page:'my'}),
+      toggleProfile:()=>this.setState({profileOpen:!st.profileOpen}),
+      profileOpen:st.profileOpen,
+      goMyFromPop:()=>this.setState({page:'my',profileOpen:false}),
+      goPayFromPop:()=>this.setState({page:'pay',profileOpen:false}),
+      goSetFromPop:()=>this.setState({page:'set',profileOpen:false}),
+      isHome:st.page==='home',isDetail:st.page==='detail',isMy:st.page==='my',isChat:st.page==='chat',
+      isPay:st.page==='pay',isNew:st.page==='new',isSet:st.page==='set',isSettle:st.page==='settle',
+      catChips,cards,d,myDeals,
+      mySearch:st.mySearch,onMySearch:e=>this.setState({mySearch:e.target.value}),
+      search:st.search,onSearch:e=>this.setState({search:e.target.value}),
+      loungeRooms:this.roomList(roomDefs.filter(filt)),dealRooms:this.roomList(dealRoomDefs.filter(filt)),
+      roomTitle:curRoom.emoji+' '+curRoom.name,roomSub:curRoom.sub,roomMsgs,
+      chatInput:st.chatInput,onChatInput:e=>this.setState({chatInput:e.target.value}),
+      onChatKey:e=>{if(e.key==='Enter')send();},sendMsg:send,
+      s,balanceFmt:this.fmt(st.balance),
+      topupOpen:st.topupOpen,toggleTopup:()=>this.setState({topupOpen:!st.topupOpen}),
+      topupChips,topupLabel:this.fmt(st.topupAmt),
+      doTopup:()=>this.setState(s2=>({balance:s2.balance+s2.topupAmt,topupOpen:false,
+        history:[{emoji:'⚡',title:'충전',when:'방금',amt:s2.topupAmt},...s2.history]})),
+      history:st.history.map(h=>({...h,amt:(h.amt>0?'+':'−')+Math.abs(h.amt).toLocaleString('ko-KR')+'원',
+        amtStyle:'font-variant-numeric:tabular-nums;color:'+(h.amt>0?'#1f8a4c':'#17301f')})),
+      autoPayStyle:tog(st.autoPay),autoPayKnob:knob(st.autoPay),toggleAutoPay:()=>this.setState({autoPay:!st.autoPay}),
+      n1Style:tog(st.n1),n1Knob:knob(st.n1),toggleN1:()=>this.setState({n1:!st.n1}),
+      n2Style:tog(st.n2),n2Knob:knob(st.n2),toggleN2:()=>this.setState({n2:!st.n2}),
+      formCats,isDelivery:f.cat==='배달음식',
+      fTitle:f.title,onFTitle:e=>this.setF('title',e.target.value),
+      fTotal:f.total,onFTotal:e=>this.setF('total',e.target.value.replace(/[^0-9]/g,'')),
+      fGoal:f.goal,onFGoal:e=>this.setF('goal',e.target.value.replace(/[^0-9]/g,'')),
+      fMins:f.mins,onFMins:e=>this.setF('mins',e.target.value.replace(/[^0-9]/g,'')),
+      fPlace:f.place,onFPlace:e=>this.setF('place',e.target.value),
+      submitNew,submitStyle:'border-radius:12px;padding:13px;text-align:center;font-weight:800;font-size:15px;cursor:pointer;'+(canSubmit?'background:#1f8a4c;color:#fff':'background:#e6efe4;color:#8a9a8e'),
+      pvEmoji:catEmoji[f.cat],pvTitle:f.title||'제목을 입력하면 여기 보여요',pvCat:f.cat,
+      pvGoal:goalN||'?',pvTime:(parseInt(f.mins)||60)+'분',
+      pvPer:goalN>0&&totalN>0?this.fmt(Math.ceil(totalN/goalN)):'— 원'
+    };
+  }
+}
+</script>
+</body>
+</html>
