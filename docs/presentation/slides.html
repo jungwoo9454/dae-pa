@@ -48,7 +48,7 @@
   .dark .pill { background: rgba(127,220,149,.15); color: #7fdc95; }
 
   /* 와이어프레임 워크스루 레이아웃 */
-  .wfrow { display: flex; gap: 3.5vw; align-items: flex-start; }
+  .wfrow { display: flex; gap: 2.6vw; align-items: flex-start; }
   .wfcol { display: flex; flex-direction: column; gap: 2vh; flex: none; }
   .wfpair { display: flex; gap: 1.5vw; align-items: flex-start; flex: none; }
   .expl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.4vh; }
@@ -59,8 +59,8 @@
   .cap .tid { font: 600 1.6vh ui-monospace, Menlo, monospace; background: #1a1a1a; color: #fff; border-radius: .5vh; padding: .2vh 1vh; margin-right: .8vh; }
 
   /* ── 와이어프레임 원본 스타일 (공구앱 와이어프레임.dc.html에서 그대로) ── */
-  .wf { width: 400px; height: 270px; background: #fff; border: 1.5px solid #2b2b2b; border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; font: 11px/1.25 Gaegu, sans-serif; color: #2b2b2b; flex: none; zoom: var(--wfz, 1.25); }
-  .wf.wf-s { zoom: var(--wfzs, 1.05); } /* 와이어프레임 2개가 나란한 슬라이드용 (조금만 확대) */
+  .wf { width: 400px; height: 270px; background: #fff; border: 1.5px solid #2b2b2b; border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; font: 11px/1.25 Gaegu, sans-serif; color: #2b2b2b; flex: none; zoom: var(--wfz, 1.45); }
+  .wf.wf-s { zoom: var(--wfzs, 1.15); } /* 와이어프레임 2개가 나란한 슬라이드용 (조금만 확대) */
   .bx { border: 1.5px solid #2b2b2b; border-radius: 4px; }
   .dsh { border: 1.5px dashed #aaa; border-radius: 4px; }
   .ph { background: repeating-linear-gradient(45deg,#eee 0 6px,#f8f8f8 6px 12px); border: 1.5px solid #bbb; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 10px; }
@@ -530,9 +530,10 @@
 
   // 화면 크기에 맞춰 와이어프레임 확대율 조정 (큰 화면일수록 크게)
   function fitWf() {
-    const z = Math.min(1.7, Math.max(1.0, innerWidth / 1350));
-    document.documentElement.style.setProperty("--wfz", z);
-    document.documentElement.style.setProperty("--wfzs", Math.max(1.0, z * 0.84));
+    // 가로·세로 둘 다 고려해 최대한 키우되 화면을 넘지 않게
+    const z = Math.min(2.0, Math.max(1.05, innerWidth / 1150), innerHeight / 620);
+    document.documentElement.style.setProperty("--wfz", Math.max(1.0, z));
+    document.documentElement.style.setProperty("--wfzs", Math.max(1.0, z * 0.8));
   }
   addEventListener("resize", fitWf);
   fitWf();
