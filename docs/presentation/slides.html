@@ -51,15 +51,16 @@
   .wfrow { display: flex; gap: 3.5vw; align-items: flex-start; }
   .wfcol { display: flex; flex-direction: column; gap: 2vh; flex: none; }
   .wfpair { display: flex; gap: 1.5vw; align-items: flex-start; flex: none; }
-  .expl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.6vh; }
-  .expl .pt { background: #fff; border: 1px solid #dbe9da; border-left: .7vh solid #1f8a4c; border-radius: 1.2vh; padding: 1.8vh 2.2vh; }
-  .expl .pt b { display: block; font-size: 2.3vh; margin-bottom: .5vh; }
-  .expl .pt p { font-size: 2vh; color: #4d6d58; line-height: 1.5; }
+  .expl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.4vh; }
+  .expl .pt { background: #fff; border: 1px solid #dbe9da; border-left: .7vh solid #1f8a4c; border-radius: 1.2vh; padding: 1.5vh 2vh; }
+  .expl .pt b { display: block; font-size: 2.1vh; margin-bottom: .4vh; }
+  .expl .pt p { font-size: 1.85vh; color: #4d6d58; line-height: 1.5; }
   .cap { font: 700 1.9vh Gaegu, sans-serif; color: #555; }
   .cap .tid { font: 600 1.6vh ui-monospace, Menlo, monospace; background: #1a1a1a; color: #fff; border-radius: .5vh; padding: .2vh 1vh; margin-right: .8vh; }
 
   /* ── 와이어프레임 원본 스타일 (공구앱 와이어프레임.dc.html에서 그대로) ── */
-  .wf { width: 400px; height: 270px; background: #fff; border: 1.5px solid #2b2b2b; border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; font: 11px/1.25 Gaegu, sans-serif; color: #2b2b2b; flex: none; }
+  .wf { width: 400px; height: 270px; background: #fff; border: 1.5px solid #2b2b2b; border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; font: 11px/1.25 Gaegu, sans-serif; color: #2b2b2b; flex: none; zoom: var(--wfz, 1.25); }
+  .wf.wf-s { zoom: var(--wfzs, 1.05); } /* 와이어프레임 2개가 나란한 슬라이드용 (조금만 확대) */
   .bx { border: 1.5px solid #2b2b2b; border-radius: 4px; }
   .dsh { border: 1.5px dashed #aaa; border-radius: 4px; }
   .ph { background: repeating-linear-gradient(45deg,#eee 0 6px,#f8f8f8 6px 12px); border: 1.5px solid #bbb; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 10px; }
@@ -212,7 +213,7 @@
   <div class="wfpair">
     <div class="wfcol">
       <div class="cap"><span class="tid">턴 2 · 2a</span>올리기 — 실시간 미리보기</div>
-      <div class="wf" style="width:420px;height:300px">
+      <div class="wf wf-s" style="width:420px;height:300px">
         <div style="display:flex;flex:1;min-height:0">
           <div class="side"><b>🛒 같이사요</b><span>홈</span><span>내 공구</span><span>채팅</span><span>정산</span><span class="acc">올리기</span><span>설정</span></div>
           <div style="flex:1;display:flex;flex-direction:column;min-height:0">
@@ -238,7 +239,7 @@
     </div>
     <div class="wfcol">
       <div class="cap"><span class="tid">턴 2 · 2b</span>프로필 팝오버</div>
-      <div class="wf" style="width:420px;height:300px">
+      <div class="wf wf-s" style="width:420px;height:300px">
         <div style="display:flex;flex:1;min-height:0">
           <div class="side"><b>🛒 같이사요</b><span class="acc">홈</span><span>내 공구</span><span>채팅</span><span>정산</span><span>설정</span></div>
           <div style="flex:1;display:flex;flex-direction:column;min-height:0;position:relative">
@@ -440,7 +441,7 @@
     <div class="wfpair">
       <div class="wfcol">
         <div class="cap"><span class="tid">턴 5 · 5a</span>지갑 — 잔액·충전·자동 결제</div>
-        <div class="wf" style="width:420px;height:300px">
+        <div class="wf wf-s" style="width:420px;height:300px">
           <div style="display:flex;flex:1;min-height:0">
             <div class="side"><b>🛒 같이사요</b><span>홈</span><span>내 공구</span><span>채팅</span><span class="acc">페이</span><span>설정</span></div>
             <div style="flex:1;display:flex;flex-direction:column;min-height:0">
@@ -466,7 +467,7 @@
       </div>
       <div class="wfcol">
         <div class="cap"><span class="tid">턴 5 · 5b</span>영수증이 없다면 — 동의 투표</div>
-        <div class="wf" style="width:420px;height:165px">
+        <div class="wf wf-s" style="width:420px;height:165px">
           <div style="display:flex;flex:1;min-height:0">
             <div style="flex:1;padding:6px;display:flex;flex-direction:column;gap:4px;border-right:1.5px solid #2b2b2b">
               <div class="sysmsg" style="border:1.5px solid #2a78d6;color:#2a78d6">✍️ 미인증 정산 요청 45,000원 (1인 4,500) — 동의해주세요</div>
@@ -526,6 +527,15 @@
   });
   addEventListener("click", (e) => show(e.clientX > innerWidth / 2 ? cur + 1 : cur - 1));
   show(cur);
+
+  // 화면 크기에 맞춰 와이어프레임 확대율 조정 (큰 화면일수록 크게)
+  function fitWf() {
+    const z = Math.min(1.7, Math.max(1.0, innerWidth / 1350));
+    document.documentElement.style.setProperty("--wfz", z);
+    document.documentElement.style.setProperty("--wfzs", Math.max(1.0, z * 0.84));
+  }
+  addEventListener("resize", fitWf);
+  fitWf();
 </script>
 </body>
 </html>
