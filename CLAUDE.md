@@ -81,7 +81,7 @@ docs/           기획안·작업 목록·배포·디자인 시안·발표 자�
 
 ## 핵심 비즈니스 규칙 (위반 금지)
 
-1. **공구 상태 머신**: `recruit(모집중) → settle(정산중) → completed(마감)` (+ `canceled`).
+1. **공구 상태 머신**: `recruiting(모집중) → settling(정산중) → completed(마감)` (+ `canceled`).
    `마감임박`은 DB 상태가 아니라 **마감 1시간 전부터 UI에서 파생 표시**한다 (`lib/deal.ts statusOf()`).
 2. **총 금액 변경**은 주최자만, 모집중 상태에서만 가능. 정산 진입 시 잠금 — 클라이언트 비활성화 + **서버에서도 거부**해야 한다.
 3. **금액 변경 시** 참여자 전원 알림 + 1인당 금액 재계산 + 채팅방 시스템 메시지 3종 세트가 항상 함께 발생한다.
@@ -90,7 +90,7 @@ docs/           기획안·작업 목록·배포·디자인 시안·발표 자�
 6. 참여/마감/정산/금액 변경 이벤트는 해당 공구 채팅방에 **시스템 메시지**(`Msg.kind = "sys"`)로 기록한다.
 7. 시크릿(서비스 롤 키 등)은 서버 코드에서만 사용한다. 클라이언트 번들에 노출 금지.
 8. **선착순 정원 (확정)**: 목표 인원 = 정원. 참여로 목표에 도달하면 자동으로 `settling` 전환 + 추가 참여 차단.
-   참여 처리는 서버에서 원자적으로 한다 — `supabase/schema.sql` 의 **`join_group_buy(id)` RPC** 를 쓴다 (`UPDATE ... WHERE joined < goal AND status='recruit' RETURNING` 패턴). 클라이언트 인원 체크만으로 막지 않는다 (동시 클릭 레이스 컨디션).
+   참여 처리는 서버에서 원자적으로 한다 — `supabase/schema.sql` 의 **`join_group_buy(id)` RPC** 를 쓴다 (`UPDATE ... WHERE joined < goal AND status='recruiting' RETURNING` 패턴). 클라이언트 인원 체크만으로 막지 않는다 (동시 클릭 레이스 컨디션).
 9. **상태 전이·타인 행 쓰기는 RPC로만**. `group_buys.status`/`joined`/`goal`, 시스템 메시지(`kind='sys'`), 남의 알림·지갑·`amount_due`·`trust_score` 는 RLS + 컬럼 GRANT 로 클라이언트에서 차단돼 있다.
    막히면 정책을 푸는 게 아니라 `supabase/schema.sql` 에 `security definer` RPC 를 하나 추가한다.
 

@@ -13,7 +13,7 @@ export type PageKey =
 
 export type AuthMode = "login" | "signup";
 
-export type DealStatus = "recruit" | "settle";
+export type DealStatus = "recruiting" | "settling";
 
 export interface Member {
   name: string;

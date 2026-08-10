@@ -34,9 +34,9 @@ create table group_buys (
   joined        int  not null default 1 check (joined >= 0),  -- 주최자 포함
   deadline      timestamptz not null,
   place         text,
-  -- recruit(모집중) → settle(정산중) → completed(마감), canceled
+  -- recruiting(모집중) → settling(정산중) → completed(마감), canceled
   -- '마감임박'은 상태가 아니라 deadline 1시간 전부터 UI에서 파생 (lib/deal.ts statusOf)
-  status        text not null default 'recruit' check (status in ('recruit','settle','completed','canceled')),
+  status        text not null default 'recruiting' check (status in ('recruiting','settling','completed','canceled')),
   created_at    timestamptz not null default now(),
   constraint joined_within_goal check (joined <= goal)
 );
@@ -179,9 +179,9 @@ begin
 
   update group_buys
      set joined = joined + 1,
-         status = case when joined + 1 >= goal then 'settle' else status end
+         status = case when joined + 1 >= goal then 'settling' else status end
    where group_buys.id = p_group_buy_id
-     and group_buys.status = 'recruit'
+     and group_buys.status = 'recruiting'
      and group_buys.deadline > now()
      and group_buys.joined < group_buys.goal
      and not exists (
@@ -203,7 +203,7 @@ begin
   values (rid, 'sys', nick || '님이 참여했어요 (' || g.joined || '/' || g.goal || ')');
 
   -- 정원 도달 → 자동 정산 전환 + 전원 알림
-  if g.status = 'settle' then
+  if g.status = 'settling' then
     insert into messages (room_id, kind, content)
     values (rid, 'sys', '목표 달성! 정산이 시작돼요 🎉');
 
@@ -240,10 +240,10 @@ create policy wallets_own on wallets for all to authenticated
 
 create policy group_buys_read on group_buys for select to authenticated using (true);
 create policy group_buys_host_insert on group_buys for insert to authenticated
-  with check (host_id = auth.uid() and joined = 1 and status = 'recruit');
+  with check (host_id = auth.uid() and joined = 1 and status = 'recruiting');
 -- 총 금액 변경은 주최자 + 모집중일 때만. 정산 진입 후 서버에서 거부된다.
 create policy group_buys_host_update on group_buys for update to authenticated
-  using (host_id = auth.uid() and status = 'recruit')
+  using (host_id = auth.uid() and status = 'recruiting')
   with check (host_id = auth.uid());
 
 create policy participations_read on participations for select to authenticated using (true);

@@ -155,7 +155,7 @@ profiles            id(=auth.users.id), nickname, avatar_url, bank_account,
 wallets             user_id, balance
 group_buys          id, host_id, title, description, category, store_link,
                     total_amount, delivery_fee, goal, joined, deadline, place,
-                    status(recruit|settle|completed|canceled), created_at
+                    status(recruiting|settling|completed|canceled), created_at
 participations      id, group_buy_id, user_id, note, amount_due, is_paid,
                     paid_at, joined_at            -- unique(group_buy_id, user_id)
 chat_rooms          id, type(lounge|group_buy), group_buy_id?, name
@@ -169,14 +169,14 @@ wallet_transactions id, user_id, kind(charge|withdraw|pay|receive), amount,
 notifications       id, user_id, type, payload(jsonb), is_read, created_at
 ```
 
-- 상태값은 `lib/types.ts`의 `DealStatus`와 동일하게 `recruit|settle` 을 쓴다 (매핑 레이어 없음).
+- 상태값은 `recruiting|settling|completed|canceled`. `lib/types.ts`의 `DealStatus`도 같은 값이라 매핑 레이어가 없다.
   `마감임박`은 DB 상태가 아니라 `deadline` 1시간 전부터 UI 파생.
 - `goal` = 목표 인원 = 정원, `joined` = 현재 참여 수(주최자 포함, 기본 1).
 - **참여는 `join_group_buy(id)` RPC 로만** 한다. 원자적 `UPDATE ... WHERE joined < goal` 로
-  정원 초과·중복·마감을 서버에서 차단하고, 정원 도달 시 `settle` 자동 전환 + 시스템 메시지 + 전원 알림.
+  정원 초과·중복·마감을 서버에서 차단하고, 정원 도달 시 `settling` 자동 전환 + 시스템 메시지 + 전원 알림.
   `participations` 에는 INSERT RLS 정책이 없어 클라이언트 직접 삽입이 불가능하다.
 - 자동 생성 트리거: 가입 시 `profiles`+`wallets`, 공구 생성 시 채팅방·주최자 참여·개설 시스템 메시지.
-- 총 금액 변경은 RLS 로 **주최자 + `status='recruit'`** 일 때만 허용 (정산 진입 후 서버 거부).
+- 총 금액 변경은 RLS 로 **주최자 + `status='recruiting'`** 일 때만 허용 (정산 진입 후 서버 거부).
 - 시스템 메시지(`kind='sys'`)는 클라이언트가 삽입할 수 없고 서버 함수만 기록한다.
 - 실시간: `group_buys`, `participations`, `messages`, `notifications` Realtime 구독
 - 영수증 이미지: Supabase Storage 버킷 `receipts` (자동 인식 없음, 참고용 첨부)

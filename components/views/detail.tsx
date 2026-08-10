@@ -26,7 +26,7 @@ export default function DetailView() {
   const faces = FACES.slice(0, Math.min(4, deal.joined));
 
   const onJoin = () => {
-    if (deal.status === "settle") openSettle(deal.id);
+    if (deal.status === "settling") openSettle(deal.id);
     else join(deal.id);
   };
 
@@ -99,7 +99,7 @@ export default function DetailView() {
           <div
             onClick={onJoin}
             className={`cursor-pointer rounded-xl p-[13px] text-center text-base font-extrabold hover:brightness-105 ${
-              active || deal.status === "settle"
+              active || deal.status === "settling"
                 ? "bg-[#1f8a4c] text-white"
                 : "bg-[#e6efe4] text-[#6b8573]"
             }`}
