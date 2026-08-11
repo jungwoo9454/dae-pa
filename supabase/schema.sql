@@ -167,6 +167,7 @@ create trigger on_auth_user_created
 --                               chat_rooms 에도 INSERT 정책이 없다.
 --   #9  시스템 메시지            kind='sys' 는 클라이언트 INSERT 가 막혀 있어 RPC/트리거로만 기록.
 --   #12 금액 변경 / #13 알림 / #16 분배 / #17 입금·마감 / #18 자동결제
+--   #29 cancel_group_buy(id)   주최자 취소 → canceled. 현재 canceled 로 가는 경로가 없다.
 --
 -- 참고 구현: 브랜치 `feat/#1-supabase-schema` 에 join_group_buy·공구 생성 트리거 원본이 있다.
 -- ─────────────────────────────────────────────
