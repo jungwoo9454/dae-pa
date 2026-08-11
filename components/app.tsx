@@ -4,6 +4,7 @@ import { useStore } from "@/lib/store";
 import Sidebar from "./sidebar";
 import TopBar from "./top-bar";
 import ProfilePopover from "./profile-popover";
+import NotiPopover from "./noti-popover";
 import AuthView from "./views/auth";
 import HomeView from "./views/home";
 import DetailView from "./views/detail";
@@ -17,6 +18,7 @@ import SettingsView from "./views/settings";
 export default function App() {
   const page = useStore((s) => s.page);
   const profileOpen = useStore((s) => s.profileOpen);
+  const notiOpen = useStore((s) => s.notiOpen);
   if (page === "login") return <AuthView />;
   return (
     <div className="flex h-screen overflow-hidden bg-[#eef4ec] text-[14px] text-[#17301f]">
@@ -24,6 +26,7 @@ export default function App() {
       <div className="relative flex min-w-0 flex-1 flex-col">
         <TopBar />
         {profileOpen && <ProfilePopover />}
+        {notiOpen && <NotiPopover />}
         {page === "home" && <HomeView />}
         {page === "detail" && <DetailView />}
         {page === "my" && <MyView />}
