@@ -221,24 +221,11 @@ end $$;
 -- ─────────────────────────────────────────────
 -- 2-1. 정산·지갑 RPC (#15~18, 팀원 C)
 --
--- ⚠️ #9(시스템 메시지 post_system_message RPC)가 아직 main에 없어서, 그 사이엔
--- emit_sys_message 를 자체 구현해 쓴다. #9가 머지되면 emit_sys_message 를 지우고
--- 그 안의 post_system_message 호출로 교체할 것.
+-- 시스템 메시지는 #9의 post_system_message(group_buy_id, text) 를 그대로 호출한다.
+-- 문구는 lib/sys-messages.ts 의 sysText 와 맞춘다.
 -- ⚠️ #5(join_group_buy)가 아직 없어서 participations.amount_due 초기값을 넣어주는
 -- 주체가 없다 — 정산 시작 전까지는 amount_due 가 null 일 수 있다는 전제로 짰다.
 -- ─────────────────────────────────────────────
-
--- 채팅방이 없으면(#8 트리거 미병합) 조용히 무시한다 — 다른 RPC를 막지 않기 위해.
-create or replace function public.emit_sys_message(p_group_buy_id bigint, p_text text) returns void
-language plpgsql security definer set search_path = public as $$
-declare v_room_id bigint;
-begin
-  select id into v_room_id from public.chat_rooms where group_buy_id = p_group_buy_id;
-  if v_room_id is null then return; end if;
-
-  insert into public.messages (room_id, user_id, kind, content)
-  values (v_room_id, null, 'sys', p_text);
-end $$;
 
 -- 확정 총액을 참여자 수만큼 균등 분배하고, 항목·배달비 나머지는 모두 주최자가 흡수한다.
 -- (CLAUDE.md 규칙 4·5 — 배달비 항상 균등, 1/N 나머지는 주최자 부담)
@@ -315,10 +302,10 @@ begin
 
   if v_status = 'confirmed' then
     perform public.apply_settlement_split(p_group_buy_id, p_total_amount, p_delivery_fee);
-    perform public.emit_sys_message(p_group_buy_id,
+    perform public.post_system_message(p_group_buy_id,
       '🧾 영수증 인증 완료 · 총 ' || to_char(p_total_amount, 'FM999,999,999') || '원 · 금액 잠금');
   else
-    perform public.emit_sys_message(p_group_buy_id,
+    perform public.post_system_message(p_group_buy_id,
       '총 ' || to_char(p_total_amount, 'FM999,999,999') || '원으로 정산 요청 · 영수증 없이 참여자 과반 동의로 확정돼요');
   end if;
 
@@ -358,7 +345,7 @@ begin
 
   update public.settlements set status = 'confirmed', confirmed_at = now() where id = p_settlement_id;
   perform public.apply_settlement_split(v_group_buy_id, v_total_amount, v_delivery_fee);
-  perform public.emit_sys_message(v_group_buy_id,
+  perform public.post_system_message(v_group_buy_id,
     '✅ 참여자 과반 동의로 총 ' || to_char(v_total_amount, 'FM999,999,999') || '원 확정 · 금액 잠금');
 
   return true;
@@ -422,7 +409,8 @@ begin
   update public.profiles set trust_score = trust_score + 1
   where id in (select user_id from public.participations where group_buy_id = p_group_buy_id);
 
-  perform public.emit_sys_message(p_group_buy_id, '🎉 전원 입금 완료 — 공구가 마감됐어요! 정산 신뢰도가 올랐어요 ⭐');
+  -- 문구는 lib/sys-messages.ts 의 sysText.allPaid() 와 맞춘다.
+  perform public.post_system_message(p_group_buy_id, '전원 입금 완료! 공구가 마감됐어요 🎉');
 end $$;
 
 -- 미입금자 리마인드 (#17). 주최자만 호출 가능.
@@ -443,7 +431,7 @@ begin
 
   if v_names is null then return; end if;
 
-  perform public.emit_sys_message(p_group_buy_id, '🔔 아직 입금 안 하신 분들 확인해주세요 — ' || v_names);
+  perform public.post_system_message(p_group_buy_id, '🔔 아직 입금 안 하신 분들 확인해주세요 — ' || v_names);
 end $$;
 
 -- 대파페이 잔액 결제 (#18). 검증→차감→입금 처리→내역 기록을 한 트랜잭션(RPC 1회 호출)
@@ -457,6 +445,7 @@ declare
   v_is_paid boolean;
   v_balance int;
   v_title text;
+  v_nickname text;
 begin
   select group_buy_id, user_id, amount_due, is_paid
     into v_group_buy_id, v_user_id, v_amount, v_is_paid
@@ -487,8 +476,10 @@ begin
   insert into public.wallet_transactions (user_id, kind, amount, group_buy_id, title)
   values (v_user_id, 'pay', -v_amount, v_group_buy_id, v_title || ' 정산');
 
-  perform public.emit_sys_message(v_group_buy_id,
-    '파티원님이 ' || to_char(v_amount, 'FM999,999,999') || '원 입금 완료 ✓ (대파페이)');
+  -- 문구는 lib/sys-messages.ts 의 sysText.paid(who, amount) 와 맞춘다.
+  select nickname into v_nickname from public.profiles where id = v_user_id;
+  perform public.post_system_message(v_group_buy_id,
+    v_nickname || '님이 ' || to_char(v_amount, 'FM999,999,999') || '원 입금 완료 ✓ (대파페이)');
 
   perform public.complete_group_buy_if_all_paid(v_group_buy_id);
 end $$;
@@ -502,6 +493,7 @@ declare
   v_amount int;
   v_is_paid boolean;
   v_label text;
+  v_nickname text;
 begin
   if p_method not in ('account', 'toss') then
     raise exception '잘못된 입금 수단입니다';
@@ -523,9 +515,10 @@ begin
 
   update public.participations set is_paid = true, paid_at = now() where id = p_participation_id;
 
+  select nickname into v_nickname from public.profiles where id = v_user_id;
   v_label := case p_method when 'account' then '계좌 이체' else '토스 송금' end;
-  perform public.emit_sys_message(v_group_buy_id,
-    '파티원님이 ' || to_char(v_amount, 'FM999,999,999') || '원 입금 완료 ✓ (' || v_label || ' · 셀프 체크)');
+  perform public.post_system_message(v_group_buy_id,
+    v_nickname || '님이 ' || to_char(v_amount, 'FM999,999,999') || '원 입금 완료 ✓ (' || v_label || ' · 셀프 체크)');
 
   perform public.complete_group_buy_if_all_paid(v_group_buy_id);
 end $$;
@@ -576,9 +569,8 @@ end $$;
 --   #5  join_group_buy(id)      선착순 정원 원자 처리 (UPDATE ... WHERE joined < goal
 --                               AND status='recruiting' RETURNING). 정원 도달 시 settling 전환.
 --                               ⚠️ participations 에 INSERT 정책이 없으므로 이 RPC 없이는 참여 불가.
---   #8  공구 생성 트리거         chat_rooms 자동 생성 + 주최자 participations 삽입.
---                               chat_rooms 에도 INSERT 정책이 없다.
---   #9  시스템 메시지            kind='sys' 는 클라이언트 INSERT 가 막혀 있어 RPC/트리거로만 기록.
+--   #8  공구 생성 트리거         — ✅ 추가됨 (섹션 2, on_group_buy_created)
+--   #9  시스템 메시지            — ✅ 추가됨 (섹션 2, post_system_message)
 --   #12 금액 변경 / #13 알림
 --   #15 confirm_settlement·finalize_settlement_vote — ✅ 추가됨 (섹션 2-1)
 --   #16 adjust_participation_amount               — ✅ 추가됨 (섹션 2-1)
@@ -679,9 +671,8 @@ revoke execute on function public.on_group_buy_created() from public, anon, auth
 revoke execute on function public.sync_chat_room_name() from public, anon, authenticated;
 revoke execute on function public.post_system_message(bigint, text) from public, anon, authenticated;
 
--- 정산·지갑 RPC (#15~18) — emit_sys_message·apply_settlement_split·
--- complete_group_buy_if_all_paid 는 다른 RPC 안에서만 쓰는 내부 함수라 authenticated 에도 안 연다.
-revoke execute on function public.emit_sys_message(bigint, text) from public, anon, authenticated;
+-- 정산·지갑 RPC (#15~18) — apply_settlement_split·complete_group_buy_if_all_paid 는
+-- 다른 RPC 안에서만 쓰는 내부 함수라 authenticated 에도 안 연다.
 revoke execute on function public.apply_settlement_split(bigint, int, int) from public, anon, authenticated;
 revoke execute on function public.complete_group_buy_if_all_paid(bigint) from public, anon, authenticated;
 

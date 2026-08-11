@@ -184,7 +184,7 @@ notifications       id, user_id, type, payload(jsonb), is_read, created_at
   본인 몫은 나머지로 자동 계산)·`pay_with_wallet`(잔액 검증→차감→`is_paid`→`wallet_transactions`을 한
   트랜잭션으로 원자 처리)·`confirm_self_paid`(계좌·토스 셀프 체크)·`complete_group_buy_if_all_paid`(전원
   입금 시 `completed` 전환 + `trust_score` +1, 내부 전용)·`remind_unpaid`(주최자 전용 리마인드).
-  시스템 메시지는 `emit_sys_message` 내부 함수로 임시 구현 — **#9의 `post_system_message` 머지되면 교체 예정**.
+  시스템 메시지는 #9의 `post_system_message` RPC 를 호출해 기록한다 (문구는 `lib/sys-messages.ts`의 `sysText`와 일치).
 - 소셜 로그인(Google·Kakao)은 Supabase Auth 가 처리하므로 **테이블 추가가 없다**. 제공자 계정은
   `auth.identities` 에 쌓이고, 어떤 제공자로 들어왔는지는 JWT 의 `app_metadata.provider` 로 읽는다.
   가입 트리거가 제공자별 메타데이터 키(`full_name`/`name`/`user_name`, `avatar_url`/`picture`)에서
