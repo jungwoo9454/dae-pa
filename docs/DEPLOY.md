@@ -15,7 +15,8 @@
 2. ⚠️ 오라클 Ubuntu 이미지는 **자체 iptables가 막혀 있음** — 인스턴스 안에서도 열어야 함:
 
 ```bash
-sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT 5 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT 5 -m state --state NEW -p tcp --dport 443 -j ACCEPT
 sudo netfilter-persistent save
 ```
 
@@ -54,23 +55,29 @@ cd ~/dae-pa && docker compose up -d --build
 docker compose logs -f web
 ```
 
-→ `http://<서버 공인 IP>` 접속 확인.
+→ `https://daepa.nari3040.dev` 접속 확인.
 
-## 5. (선택) 도메인 + HTTPS
+## 5. 도메인 + HTTPS (적용 완료)
 
-도메인이 있으면 Caddy 하나로 HTTPS 자동 발급. 이때는 `docker-compose.yml` 의 포트를 `3000:3000` 으로 되돌린다 (80은 Caddy 차지):
+`https://daepa.nari3040.dev` — Cloudflare DNS(A 레코드, 프록시 OFF) → 서버 Caddy → 컨테이너.
 
-```bash
-sudo apt install -y caddy
-echo "daepa.example.com {
-  reverse_proxy localhost:3000
-}" | sudo tee /etc/caddy/Caddyfile
-sudo systemctl reload caddy
+- 앱 컨테이너는 `127.0.0.1:3000` 에만 바인딩. 외부 노출은 Caddy 만 한다 (80/443)
+- Caddy 가 Let's Encrypt 인증서를 자동 발급·갱신하고 80은 443으로 리다이렉트
+- `/etc/caddy/Caddyfile`:
+
 ```
+daepa.nari3040.dev {
+  reverse_proxy 127.0.0.1:3000
+}
+```
+
+- 방화벽: 22·80·443 개방 (iptables-persistent 저장). 3000은 열지 않는다
+- 인증서 문제 시: `sudo journalctl -u caddy -n 50`
 
 ## 6. 데모 전 체크리스트
 
 - [ ] `docker compose ps` — 컨테이너 `Up` 상태
+- [ ] `systemctl is-active caddy` — `active`
 - [ ] 재부팅 후 자동 복구 확인 (`restart: unless-stopped`)
 - [ ] Supabase 프로젝트 리전/키가 `.env`와 일치
 - [ ] 데모 직전 `git pull` + 재빌드 금지 (Day 3 오전 이후 배포 프리즈)
