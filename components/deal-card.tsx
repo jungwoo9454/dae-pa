@@ -42,13 +42,13 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
         <StatusBadge s={st} />
       </div>
       <ProgressBar pct={pct} color={closing ? "#d97706" : "#1f8a4c"} />
-      <div className="flex items-baseline justify-between text-[13px]">
+      <div className="flex items-center justify-between text-[13px]">
         <span className="whitespace-nowrap">
           <b>{deal.joined}</b>
           <span className="text-[#6b8573]">/{deal.goal}명</span>
         </span>
-        <span className="tnum font-extrabold" style={{ color: closing ? "#b45309" : "#1f8a4c" }}>
-          <Timer aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> {remainLabel(deal, now)}
+        <span className="tnum inline-flex items-center gap-1 font-extrabold" style={{ color: closing ? "#b45309" : "#1f8a4c" }}>
+          <Timer aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> {remainLabel(deal, now)}
         </span>
       </div>
       <div className="flex items-center justify-between">

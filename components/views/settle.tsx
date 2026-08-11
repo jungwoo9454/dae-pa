@@ -101,14 +101,16 @@ export default function SettleView() {
                 </div>
                 <div className="text-[12.5px] text-[#6b8573]">
                   확정 총액 {fmt(settlement.finalTotal)} · 금액 확정 ·{" "}
-                  <Lock aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 수정 잠금
+                  <span className="inline-flex items-center gap-1 align-middle">
+                    <Lock aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 수정 잠금
+                  </span>
                 </div>
               </div>
             </div>
           ) : settlement ? (
             <div className="flex flex-col gap-2.5 rounded-[14px] border border-[#f0dca0] bg-[#fdf8ec] px-4 py-3.5">
-              <div className="font-extrabold">
-                <Vote aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 영수증 없이 정산 · 과반 동의 필요
+              <div className="flex items-center gap-1.5 font-extrabold">
+                <Vote aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 영수증 없이 정산 · 과반 동의 필요
               </div>
               <div className="text-[12.5px] text-[#6b8573]">
                 제안 총액 {fmt(settlement.finalTotal)} · {agreeN}/{mem.length}명 동의
@@ -161,8 +163,9 @@ export default function SettleView() {
             </div>
           )}
           {!!sd.deliveryFee && (
-            <div className="text-[12.5px] text-[#6b8573]">
-              <Bike aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 배달비 {fmt(sd.deliveryFee)} · 참여자 {mem.length}명 균등 분담
+            <div className="flex items-center gap-1.5 text-[12.5px] text-[#6b8573]">
+              <Bike aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+              <span>배달비 {fmt(sd.deliveryFee)} · 참여자 {mem.length}명 균등 분담</span>
             </div>
           )}
           <div className="flex flex-col gap-2">
@@ -216,9 +219,9 @@ export default function SettleView() {
           {isHost && sd.status === "settling" && paidN < mem.length && (
             <div
               onClick={() => remindUnpaid(sd.id)}
-              className="cursor-pointer self-center rounded-lg border-[1.5px] border-[#f0dca0] bg-[#fdf8ec] px-3.5 py-2 text-[12.5px] font-bold text-[#8a6d1f] hover:border-[#d9b64a]"
+              className="flex cursor-pointer items-center gap-1.5 self-center rounded-lg border-[1.5px] border-[#f0dca0] bg-[#fdf8ec] px-3.5 py-2 text-[12.5px] font-bold text-[#8a6d1f] hover:border-[#d9b64a]"
             >
-              <Bell aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 미입금자에게 리마인드 보내기
+              <Bell aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 미입금자에게 리마인드 보내기
             </div>
           )}
         </div>
@@ -237,33 +240,33 @@ export default function SettleView() {
                   잔액이 {fmt((mine.amount_due ?? 0) - balance)} 부족해요
                   <div
                     onClick={() => go("pay")}
-                    className="mt-1.5 cursor-pointer text-[12.5px] font-bold text-[#1f8a4c] underline"
+                    className="mt-1.5 inline-flex cursor-pointer items-center gap-1 text-[12.5px] font-bold text-[#1f8a4c] underline"
                   >
-                    <Wallet aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 대파페이 충전하러 가기 →
+                    <Wallet aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 대파페이 충전하러 가기 →
                   </div>
                 </div>
               ) : (
                 <div
                   onClick={() => payNow(mine.id)}
-                  className="cursor-pointer rounded-xl bg-[#1f8a4c] p-3 text-center text-[15px] font-extrabold text-white hover:bg-[#187741]"
+                  className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#1f8a4c] p-3 text-[15px] font-extrabold text-white hover:bg-[#187741]"
                 >
-                  <Wallet aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 대파페이로 바로 내기
+                  <Wallet aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 대파페이로 바로 내기
                 </div>
               )}
               <div
                 onClick={() => confirmSelfPaid(mine.id, "account")}
-                className="cursor-pointer rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-center text-[13.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
+                className="flex cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-[13.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
               >
-                <Landmark aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 계좌로 보내기 · 초록은행 1104-04{" "}
+                <Landmark aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 계좌로 보내기 · 초록은행 1104-04
                 <span className="rounded-md bg-[#e9f6ec] px-[7px] py-px text-[11px] text-[#166b3a]">
                   복사
                 </span>
               </div>
               <div
                 onClick={() => confirmSelfPaid(mine.id, "toss")}
-                className="cursor-pointer rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-center text-[13.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
+                className="flex cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-[13.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
               >
-                <Send aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 토스 송금 링크 열기
+                <Send aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 토스 송금 링크 열기
               </div>
               <div className="text-center text-[11.5px] text-[#8aa392]">
                 {insufficient

@@ -145,13 +145,13 @@ export default function ChatView() {
 
       <div className="flex min-w-0 flex-1 flex-col bg-white">
         <div className="flex items-center gap-2.5 border-b border-[#e6efe4] px-[18px] py-3">
-          <b className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[15px]">
+          <b className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[15px]">
             {current.icon ? (
-              <current.icon aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" />
+              <current.icon aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
             ) : (
               current.emoji
-            )}{" "}
-            {current.name}
+            )}
+            <span className="min-w-0 overflow-hidden text-ellipsis">{current.name}</span>
           </b>
           <span className="flex-none whitespace-nowrap text-xs text-[#6b8573]">{current.sub}</span>
         </div>
@@ -186,9 +186,14 @@ export default function ChatView() {
                     <div className="font-extrabold">
                       {cd.emoji} {cd.title}
                     </div>
-                    <div className="text-[12.5px] font-bold text-[#1f8a4c]">
-                      {cd.joined}/{cd.goal}명 · <Timer aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> {remainLabel(cd, now)} · 1인{" "}
-                      {fmt(perAmount(cd))}
+                    <div className="flex flex-wrap items-center gap-x-1 text-[12.5px] font-bold text-[#1f8a4c]">
+                      <span>
+                        {cd.joined}/{cd.goal}명 ·
+                      </span>
+                      <Timer aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+                      <span>
+                        {remainLabel(cd, now)} · 1인 {fmt(perAmount(cd))}
+                      </span>
                     </div>
                     {/* 대화 중 카드에서 바로 참여 — 상세로 안 나가도 됨 (#10) */}
                     <div
