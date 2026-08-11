@@ -1,0 +1,40 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency: deploy
+
+env:
+  HOST: ubuntu@64.110.116.62
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH 키 설정
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 64.110.116.62 >> ~/.ssh/known_hosts
+
+      - name: 소스 동기화
+        run: rsync -az --delete --exclude .git --exclude .env ./ $HOST:~/dae-pa/
+
+      - name: 빌드 + 재기동
+        run: ssh $HOST 'cd ~/dae-pa && docker compose up -d --build && docker image prune -f'
+
+      - name: 헬스체크
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://64.110.116.62/ || true)
+            [ "$code" = "200" ] && echo "OK" && exit 0
+            sleep 5
+          done
+          ssh $HOST 'cd ~/dae-pa && docker compose logs --tail 50 web'
+          exit 1

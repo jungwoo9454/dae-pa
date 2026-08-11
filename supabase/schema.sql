@@ -1,16 +1,21 @@
 -- 대파(대용량 파티원) — Supabase 스키마
 -- 적용: Supabase 대시보드 > SQL Editor에 전체 붙여넣고 실행 (처음 1회)
--- 사전 설정: Authentication > Providers 에서 Anonymous sign-in / Google / Kakao 활성화
+-- 사전 설정: Authentication > Providers 에서 Email / Google / Kakao 활성화
 --            (소셜 제공자별 Client ID·Secret 입력 + 리디렉트 URL 등록은 대시보드에서)
+--            데모 편의상 Email > "Confirm email" 은 끈다 (켜두면 가입 직후 세션이 안 나옴)
+--            URL Configuration > Redirect URLs 에 http://localhost:3000/auth/callback 등록
 
 -- ─────────────────────────────────────────────
 -- 1. 테이블
 -- ─────────────────────────────────────────────
 
+-- 이미 스키마를 돌린 프로젝트는 이 파일 전체 대신 아래 한 줄만 실행한다 (#2 동네 컬럼 추가)
+--   alter table profiles add column if not exists dong text;
 create table profiles (
   id            uuid primary key references auth.users(id) on delete cascade,
   nickname      text not null,
   avatar_url    text,
+  dong          text,          -- 회원가입 동네 인증 결과 (예: '역삼동')
   bank_account  text,
   transfer_app  text,
   trust_score   int not null default 100,
@@ -130,7 +135,7 @@ language plpgsql security definer set search_path = public as $$
 declare m jsonb;
 begin
   m := new.raw_user_meta_data;   -- null 이어도 아래 ->> 가 전부 null 로 떨어져 기본값으로 감
-  insert into public.profiles (id, nickname, avatar_url)
+  insert into public.profiles (id, nickname, avatar_url, dong)
   values (
     new.id,
     coalesce(
@@ -140,7 +145,8 @@ begin
       nullif(m->>'user_name', ''),       -- Kakao
       '이웃' || left(new.id::text, 4)
     ),
-    coalesce(nullif(m->>'avatar_url', ''), nullif(m->>'picture', ''))
+    coalesce(nullif(m->>'avatar_url', ''), nullif(m->>'picture', '')),
+    nullif(m->>'dong', '')             -- 이메일 회원가입 폼의 동네 인증 (소셜은 null)
   );
   insert into public.wallets (user_id) values (new.id);
   return new;
@@ -149,6 +155,62 @@ end $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- 공구를 만들면 공구 채팅방이 자동으로 생기고, 주최자가 첫 참여자로 들어간다 (#8).
+-- chat_rooms / participations 에는 클라이언트 INSERT 정책이 없으므로(#1 규약)
+-- 이 두 행은 오직 이 트리거(security definer)를 통해서만 만들어진다.
+-- amount_due 는 정산 확정 때 채우므로 여기서는 null.
+create or replace function public.on_group_buy_created() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.chat_rooms (type, group_buy_id, name)
+  values ('group_buy', new.id, new.title);
+
+  insert into public.participations (group_buy_id, user_id)
+  values (new.id, new.host_id)
+  on conflict (group_buy_id, user_id) do nothing;
+
+  return new;
+end $$;
+
+create trigger on_group_buy_created
+  after insert on group_buys
+  for each row execute function public.on_group_buy_created();
+
+-- 공구 제목이 바뀌면 채팅방 이름도 따라간다 (목록에서 방을 못 찾는 것 방지).
+create or replace function public.sync_chat_room_name() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.title is distinct from old.title then
+    update public.chat_rooms set name = new.title where group_buy_id = new.id;
+  end if;
+  return new;
+end $$;
+
+create trigger on_group_buy_title_changed
+  after update of title on group_buys
+  for each row execute function public.sync_chat_room_name();
+
+-- 시스템 메시지 (#9) — kind='sys' 는 messages_own_insert 정책상 클라이언트가 넣을 수 없다.
+-- 참여·마감·금액변경·정산 이벤트 RPC(#5·#12·#16·#17·#18)가 이 함수를 호출해 기록한다.
+-- 문구는 lib/sys-messages.ts 의 sysText 와 동일하게 맞춘다.
+-- authenticated 에는 execute 를 주지 않는다 → 클라이언트가 시스템 메시지를 위조할 수 없다.
+-- (다른 security definer RPC 는 소유자 권한으로 실행되므로 호출 가능)
+create or replace function public.post_system_message(p_group_buy_id bigint, p_text text)
+returns bigint language plpgsql security definer set search_path = public as $$
+declare v_room_id bigint; v_id bigint;
+begin
+  select id into v_room_id from public.chat_rooms where group_buy_id = p_group_buy_id;
+  if v_room_id is null then
+    raise exception '공구 % 의 채팅방이 없습니다', p_group_buy_id;
+  end if;
+
+  insert into public.messages (room_id, user_id, kind, content)
+  values (v_room_id, null, 'sys', p_text)   -- user_id null = 시스템
+  returning id into v_id;
+
+  return v_id;
+end $$;
 
 -- ─────────────────────────────────────────────
 -- 3. ⚠️ 설계 규약 — 상태 전이·타인 행 쓰기는 RPC로만
@@ -252,11 +314,14 @@ grant update (note, is_paid, paid_at) on participations to authenticated;
 
 -- trust_score 는 정산 완료 RPC(#17)가 쓴다.
 revoke update on profiles from authenticated;
-grant update (nickname, avatar_url, bank_account, transfer_app) on profiles to authenticated;
+grant update (nickname, avatar_url, dong, bank_account, transfer_app) on profiles to authenticated;
 
 -- 트리거 함수는 /rest/v1/rpc/ 로 노출될 이유가 없다. EXECUTE 권한은 CREATE TRIGGER 시점에만
 -- 검사되므로 전부 회수해도 트리거는 정상 동작한다.
 revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.on_group_buy_created() from public, anon, authenticated;
+revoke execute on function public.sync_chat_room_name() from public, anon, authenticated;
+revoke execute on function public.post_system_message(bigint, text) from public, anon, authenticated;
 
 -- ⚠️ 앞으로 security definer RPC 를 추가할 때마다 아래 두 줄을 같이 넣어라.
 -- security definer 함수는 PUBLIC 에 EXECUTE 가 열리고, Supabase 기본 default privileges 가
@@ -289,4 +354,5 @@ create policy receipts_upload on storage.objects for insert to authenticated
 -- 8. 시드 — 동네 라운지 (전체 공개 자유 채팅방)
 -- ─────────────────────────────────────────────
 
-insert into chat_rooms (type, name) values ('lounge', '동네 라운지');
+-- 이름은 UI(components/views/chat.tsx)의 라운지 표기와 맞춘다.
+insert into chat_rooms (type, name) values ('lounge', '역삼동 라운지');
