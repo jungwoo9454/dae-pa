@@ -153,6 +153,7 @@ interface StoreState {
   setFilter: (v: string) => void;
   setForm: (patch: Partial<DealForm>) => void;
   join: (id: number) => void;
+  shareDeal: (dealId: number, roomId: string) => void;
   adjustMemberItem: (dealId: number, name: string, itemAmt: number) => void;
   sendMsg: () => void;
   payNow: (dealId: number) => void;
@@ -371,6 +372,15 @@ export const useStore = create<StoreState>((set, get) => ({
       const recalced = recalcMembers(deal, members);
       const deals = st.deals.map((d) => (d.id === dealId ? { ...d, members: recalced } : d));
       return { deals };
+    }),
+
+  /** 공구 카드를 채팅방에 말풍선으로 공유하고 그 방으로 이동 (#10) */
+  shareDeal: (dealId, roomId) =>
+    set((st) => {
+      if (!st.deals.some((d) => d.id === dealId)) return {};
+      const msgs = { ...st.msgs };
+      msgs[roomId] = [...(msgs[roomId] ?? []), { kind: "card", cardOf: dealId, who: "나" }];
+      return { msgs, page: "chat", room: roomId, profileOpen: false };
     }),
 
   sendMsg: () =>

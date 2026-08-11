@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Avatar } from "@/components/ui";
-import { fmt, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
 
@@ -47,6 +47,7 @@ export default function ChatView() {
   const goRoom = useStore((s) => s.goRoom);
   const sendMsg = useStore((s) => s.sendMsg);
   const openDeal = useStore((s) => s.openDeal);
+  const join = useStore((s) => s.join);
 
   const loungeRooms: RoomDef[] = [
     { id: "lounge", emoji: "🏘", name: "역삼동 라운지", sub: "이웃 128명 · 자유 수다" },
@@ -129,8 +130,21 @@ export default function ChatView() {
                       {cd.emoji} {cd.title}
                     </div>
                     <div className="text-[12.5px] font-bold text-[#1f8a4c]">
-                      {cd.joined}/{cd.goal}명 · ⏱ {remainLabel(cd, now)} · 1인 {fmt(perAmount(cd))} ·
-                      탭해서 보기 →
+                      {cd.joined}/{cd.goal}명 · ⏱ {remainLabel(cd, now)} · 1인 {fmt(perAmount(cd))}
+                    </div>
+                    {/* 대화 중 카드에서 바로 참여 — 상세로 안 나가도 됨 (#10) */}
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        join(cd.id);
+                      }}
+                      className={`mt-0.5 rounded-lg py-1.5 text-center text-[12.5px] font-extrabold ${
+                        joinable(cd, now)
+                          ? "cursor-pointer bg-[#1f8a4c] text-white hover:bg-[#187741]"
+                          : "cursor-default bg-[#e6efe4] text-[#6b8573]"
+                      }`}
+                    >
+                      {joinable(cd, now) ? "바로 참여하기" : joinLabel(cd, now)}
                     </div>
                   </div>
                 </div>
