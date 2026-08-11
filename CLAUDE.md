@@ -18,7 +18,7 @@ git switch -c feat/#23-작업명        # 타입: feat|fix|design|refactor|chore
 - 작업이 끝나면 **PR을 만든다** (본문에 `closes #이슈번호`). 머지는 사람이 승인 후 Squash merge.
 - **이미 `main`에서 수정해버렸다면** — 커밋 전이면 `git switch -c feat/#번호-작업명` 으로 변경분을 그대로 가져가고,
   이미 커밋했다면 `git switch -c feat/#번호-작업명` (커밋이 새 브랜치로 따라옴) → `git switch main` → `git reset --hard origin/main`.
-- 이 저장소는 private이라 GitHub 브랜치 보호가 걸려 있지 않다. **막아주는 장치가 없으므로 이 규칙을 스스로 지켜야 한다.**
+- `.githooks/pre-push`가 `main` 푸시를 차단한다 (`pnpm install` 시 자동 설치). **`--no-verify`로 우회하지 않는다.**
 - 유일한 예외: 사용자가 "main에 직접 커밋해라"라고 **명시적으로 지시한 경우**에만.
 
 ## 프로젝트 개요

@@ -10,9 +10,14 @@
 main ←─ PR (approve 1명, Squash merge) ←─ feat/#12-post-form
 ```
 
-- **`main`** : 항상 실행 가능한 상태 유지. 직접 push 금지 (브랜치 보호 설정)
+- **`main`** : 항상 실행 가능한 상태 유지. **직접 push 금지 — `pre-push` hook이 차단합니다**
 - **작업 브랜치** : 이슈 하나당 브랜치 하나. `main`에서 분기해 `main`으로 PR
 - 머지된 브랜치는 바로 삭제
+
+> 🛡 **main 푸시 차단 (자동 설치)** — 저장소가 private이라 GitHub 브랜치 보호를 쓸 수 없어서 로컬 git hook으로 막습니다.
+> `pnpm install`을 하면 `prepare` 스크립트가 `core.hooksPath`를 잡아주므로 별도 작업은 없습니다.
+> 수동 설치가 필요하면: `git config core.hooksPath .githooks`
+> `main`으로 push를 시도하면 차단되고 복구 방법이 안내됩니다. **`--no-verify`로 우회하지 마세요.**
 
 ### 브랜치 네이밍
 
