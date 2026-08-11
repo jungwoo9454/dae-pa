@@ -72,6 +72,26 @@ export function recalcMembers(deal: Pick<Deal, "total" | "host" | "deliveryFee">
   });
 }
 
+/** 입금 유예 — 마감 후 하루까지는 미납이어도 신뢰도를 깎지 않는다 */
+const PAY_GRACE_MS = 24 * 3_600_000;
+
+/**
+ * 프로필 팝오버용 집계 (#19).
+ * 신뢰도 = 기한 내 입금율 — 정산에 들어간 내 공구 중 마감 + 유예까지 안 낸 건만 감점한다.
+ * 집계 대상이 없으면 100%.
+ */
+export function profileStats(deals: Deal[], now: number) {
+  const hosted = deals.filter((d) => d.mine).length;
+  const joined = deals.filter((d) => d.me && !d.mine).length;
+  const dues = deals
+    .filter((d) => d.status === "settling" || d.status === "completed")
+    .map((d) => ({ deal: d, mine: d.members?.find((m) => m.name === "나") }))
+    .filter((x): x is { deal: Deal; mine: Member } => !!x.mine);
+  const late = dues.filter((x) => !x.mine.paid && x.deal.end + PAY_GRACE_MS <= now).length;
+  const trust = dues.length === 0 ? 100 : Math.round(((dues.length - late) / dues.length) * 100);
+  return { hosted, joined, trust };
+}
+
 export function joinable(d: Deal, now: number) {
   return d.status === "recruiting" && !d.me && d.end - now > 0;
 }

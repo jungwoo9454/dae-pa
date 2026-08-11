@@ -119,17 +119,16 @@ const seedHistory: HistoryItem[] = [
 
 const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "" };
 
-/** 전원 입금 완료 시 공구를 마감 처리하고 시스템 메시지 + 신뢰도 반영까지 함께 적용한다 */
+/** 전원 입금 완료 시 공구를 마감 처리하고 시스템 메시지까지 함께 적용한다 (신뢰도는 deals 에서 파생) */
 function completeIfAllPaid(
   deals: Deal[],
   msgs: Record<string, Msg[]>,
   dealId: number,
-  trustScore: number,
-): { deals: Deal[]; msgs: Record<string, Msg[]>; trustScore: number } {
+): { deals: Deal[]; msgs: Record<string, Msg[]> } {
   const deal = deals.find((d) => d.id === dealId);
   const mem = deal?.members ?? [];
   const allPaid = mem.length > 0 && mem.every((m) => m.paid);
-  if (!deal || !allPaid) return { deals, msgs, trustScore };
+  if (!deal || !allPaid) return { deals, msgs };
   const nextDeals = deals.map((d) => (d.id === dealId ? { ...d, status: "completed" as const } : d));
   const key = "d" + dealId;
   const nextMsgs = { ...msgs };
@@ -137,7 +136,7 @@ function completeIfAllPaid(
     ...(nextMsgs[key] ?? []),
     { kind: "sys" as const, text: "🎉 전원 입금 완료 — 공구가 마감됐어요! 정산 신뢰도가 올랐어요 ⭐" },
   ];
-  return { deals: nextDeals, msgs: nextMsgs, trustScore: trustScore + 1 };
+  return { deals: nextDeals, msgs: nextMsgs };
 }
 
 interface AuthForm {
@@ -172,7 +171,6 @@ interface StoreState {
   withdrawOpen: boolean;
   withdrawAmt: number;
   balance: number;
-  trustScore: number;
   autoPay: boolean;
   n1: boolean;
   n2: boolean;
@@ -254,7 +252,6 @@ export const useStore = create<StoreState>((set, get) => ({
   withdrawOpen: false,
   withdrawAmt: 10000,
   balance: 23500,
-  trustScore: 100,
   autoPay: true,
   n1: true,
   n2: true,
@@ -556,7 +553,7 @@ export const useStore = create<StoreState>((set, get) => ({
         ...(msgs[key] ?? []),
         { kind: "sys", text: sysText.paid("파티원", mine.amt) },
       ];
-      const after = completeIfAllPaid(deals, msgs, dealId, st.trustScore);
+      const after = completeIfAllPaid(deals, msgs, dealId);
       return {
         ...after,
         balance: st.balance - mine.amt,
@@ -581,7 +578,7 @@ export const useStore = create<StoreState>((set, get) => ({
         ...(msgs[key] ?? []),
         { kind: "sys", text: `파티원님이 ${fmt(mine.amt)} 입금 완료 ✓ (${label} · 셀프 체크)` },
       ];
-      return completeIfAllPaid(deals, msgs, dealId, st.trustScore);
+      return completeIfAllPaid(deals, msgs, dealId);
     }),
 
   remindUnpaid: (dealId) =>
