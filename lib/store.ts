@@ -117,7 +117,7 @@ const seedHistory: HistoryItem[] = [
   { emoji: "🧻", title: "화장지 공구 정산", when: "8월 2일", amt: -16000 },
 ];
 
-const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "" };
+const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "",store_link: "", };
 
 /** 전원 입금 완료 시 공구를 마감 처리하고 시스템 메시지까지 함께 적용한다 (신뢰도는 deals 에서 파생) */
 function completeIfAllPaid(
