@@ -21,6 +21,17 @@ export interface Me {
   dong: string | null;
 }
 
+/** 인앱 알림 한 건 (#13) — notifications 행에서 만든다 */
+export interface Noti {
+  id: number;
+  type: "deadline_soon" | "total_changed" | "payment_reminder" | "settle_start" | "join";
+  text: string;
+  /** 누르면 이동할 공구. 없으면 이동하지 않는다 */
+  dealId: number | null;
+  isRead: boolean;
+  createdAt: number;
+}
+
 export type DealStatus = "recruiting" | "settling" | "completed" | "canceled";
 
 export interface Member {

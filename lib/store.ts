@@ -3,12 +3,20 @@
 import { create } from "zustand";
 import { CAT_EMOJI, fmt, joinable, recalcMembers } from "./deal";
 import { createClient } from "./supabase/client";
-import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, PageKey, Settlement } from "./types";
+import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, Noti, PageKey, Settlement } from "./types";
 
 /** 동네 인증은 아직 모의 — 위치 기반 판정은 별도 이슈 */
 export const DONG = "역삼동";
 
 const t0 = Date.now();
+
+/** 마감 몇 분 전에 알림을 넣을지 (#13) */
+const DEADLINE_MS = 30 * 60_000;
+
+/** 같은 공구로 마감 알림을 두 번 넣지 않으려는 표시 */
+const firedDeadlines = new Set<number>();
+
+let notiSeq = 100;
 
 const mk = (
   id: number,
@@ -86,6 +94,33 @@ const seedMsgs: Record<string, Msg[]> = {
   d5: [{ kind: "sys", text: "공구방이 열렸어요 · 목표 2명" }],
 };
 
+const seedNotis: Noti[] = [
+  {
+    id: 3,
+    type: "payment_reminder",
+    text: "치킨 같이 시켜요 · 12,500원 입금을 기다리고 있어요",
+    dealId: 2,
+    isRead: false,
+    createdAt: t0 - 8 * 60_000,
+  },
+  {
+    id: 2,
+    type: "settle_start",
+    text: "치킨 같이 시켜요 · 목표 달성! 정산이 시작됐어요",
+    dealId: 2,
+    isRead: false,
+    createdAt: t0 - 62 * 60_000,
+  },
+  {
+    id: 1,
+    type: "total_changed",
+    text: "제주 감귤 10kg · 총 금액이 45,000원으로 바뀌었어요",
+    dealId: 3,
+    isRead: true,
+    createdAt: t0 - 26 * 60 * 60_000,
+  },
+];
+
 const seedHistory: HistoryItem[] = [
   { emoji: "🍊", title: "제주 감귤 정산 받음", when: "어제", amt: 4500 },
   { emoji: "⚡", title: "충전", when: "8월 7일", amt: 30000 },
@@ -117,6 +152,8 @@ interface StoreState {
   mySearch: string;
   filter: string;
   profileOpen: boolean;
+  notiOpen: boolean;
+  notis: Noti[];
   topupOpen: boolean;
   topupAmt: number;
   settleTotalInput: string;
@@ -146,6 +183,10 @@ interface StoreState {
   openSettle: (id: number) => void;
   goRoom: (roomId: string) => void;
   toggleProfile: () => void;
+  /** 열 때 미읽음을 전부 읽음 처리한다 */
+  toggleNoti: () => void;
+  /** 참여한 공구의 마감 30분 전 알림을 넣는다 — 주기 호출 */
+  notifyDeadlines: () => void;
   setChatInput: (v: string) => void;
   setSearch: (v: string) => void;
   setMySearch: (v: string) => void;
@@ -187,6 +228,8 @@ export const useStore = create<StoreState>((set, get) => ({
   mySearch: "",
   filter: "전체",
   profileOpen: false,
+  notiOpen: false,
+  notis: seedNotis,
   topupOpen: false,
   topupAmt: 10000,
   settleTotalInput: "",
@@ -222,6 +265,7 @@ export const useStore = create<StoreState>((set, get) => ({
           page: "login",
           authMode: "login",
           profileOpen: false,
+          notiOpen: false,
           authReady: true,
           auth: { ...st.auth, pw: "" },
         }));
@@ -305,11 +349,44 @@ export const useStore = create<StoreState>((set, get) => ({
     // 화면 정리는 onAuthStateChange 가 한다
   },
 
-  go: (page) => set({ page, profileOpen: false }),
-  openDeal: (id) => set({ page: "detail", sel: id, profileOpen: false }),
-  openSettle: (id) => set({ page: "settle", sel: id, profileOpen: false }),
-  goRoom: (roomId) => set({ page: "chat", room: roomId, profileOpen: false }),
-  toggleProfile: () => set((st) => ({ profileOpen: !st.profileOpen })),
+  go: (page) => set({ page, profileOpen: false, notiOpen: false }),
+  openDeal: (id) => set({ page: "detail", sel: id, profileOpen: false, notiOpen: false }),
+  openSettle: (id) => set({ page: "settle", sel: id, profileOpen: false, notiOpen: false }),
+  goRoom: (roomId) => set({ page: "chat", room: roomId, profileOpen: false, notiOpen: false }),
+  toggleProfile: () => set((st) => ({ profileOpen: !st.profileOpen, notiOpen: false })),
+
+  toggleNoti: () =>
+    set((st) => ({
+      notiOpen: !st.notiOpen,
+      profileOpen: false,
+      // 여는 순간 미읽음을 다 읽은 것으로 본다
+      notis: st.notiOpen ? st.notis : st.notis.map((n) => (n.isRead ? n : { ...n, isRead: true })),
+    })),
+
+  notifyDeadlines: () =>
+    set((st) => {
+      if (!st.n1) return {};
+      const now = Date.now();
+      const due = st.deals.filter(
+        (d) =>
+          d.me &&
+          d.status === "recruiting" &&
+          d.end - now > 0 &&
+          d.end - now <= DEADLINE_MS &&
+          !firedDeadlines.has(d.id),
+      );
+      if (!due.length) return {};
+      due.forEach((d) => firedDeadlines.add(d.id));
+      const fresh: Noti[] = due.map((d) => ({
+        id: ++notiSeq,
+        type: "deadline_soon",
+        text: `${d.title} · 마감 30분 전이에요`,
+        dealId: d.id,
+        isRead: false,
+        createdAt: now,
+      }));
+      return { notis: [...fresh, ...st.notis] };
+    }),
   setChatInput: (v) => set({ chatInput: v }),
   setSearch: (v) => set({ search: v }),
   setMySearch: (v) => set({ mySearch: v }),
