@@ -1,0 +1,30 @@
+#!/bin/sh
+# main 브랜치로의 직접 푸시를 차단한다.
+# 설치: pnpm install (자동) 또는 git config core.hooksPath .githooks
+
+PROTECTED="main"
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  case "$remote_ref" in
+    "refs/heads/$PROTECTED")
+      cat >&2 <<MSG
+
+  ⛔ main 브랜치에는 직접 푸시할 수 없습니다.
+
+     작업 브랜치를 만들어 PR로 올려주세요:
+       git switch -c feat/#이슈번호-작업명
+       git push -u origin feat/#이슈번호-작업명
+
+     이미 main에 커밋했다면 (커밋이 새 브랜치로 따라갑니다):
+       git switch -c feat/#이슈번호-작업명
+       git switch main && git reset --hard origin/main
+
+     자세한 규칙: CONTRIBUTING.md · docs/GITHUB_GUIDE.md
+
+MSG
+      exit 1
+      ;;
+  esac
+done
+
+exit 0

@@ -48,7 +48,7 @@ export default function MyView() {
             >
               채팅
             </div>
-            {m.status === "settle" && (
+            {m.status === "settling" && (
               <div
                 onClick={() => openSettle(m.id)}
                 className="cursor-pointer rounded-[9px] bg-[#1f8a4c] px-3 py-2 text-[13px] font-extrabold text-white hover:bg-[#187741]"

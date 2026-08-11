@@ -18,8 +18,8 @@ export default function SettleView() {
   const voteSettlement = useStore((s) => s.voteSettlement);
 
   const sd =
-    deals.find((x) => x.id === sel && x.status === "settle") ??
-    deals.find((x) => x.status === "settle");
+    deals.find((x) => x.id === sel && x.status === "settling") ??
+    deals.find((x) => x.status === "settling");
 
   if (!sd) {
     return (

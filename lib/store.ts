@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { CAT_EMOJI, fmt } from "./deal";
+import { CAT_EMOJI, fmt, joinable } from "./deal";
 import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey, Settlement } from "./types";
 
 const t0 = Date.now();
@@ -29,7 +29,7 @@ const mk = (
   end: t0 + endMin * 60_000,
   place,
   host,
-  status: "recruit",
+  status: "recruiting",
   me: false,
   mine: false,
   ...extra,
@@ -38,7 +38,7 @@ const mk = (
 const seedDeals: Deal[] = [
   mk(1, "🧅", "대파 5단 같이 나눠요", "식료품", 12500, 5, 3, 134, "행복아파트 정문", "파밍맘"),
   mk(2, "🍗", "치킨 같이 시켜요", "배달음식", 54500, 4, 4, -30, "201동 로비", "준호", {
-    status: "settle",
+    status: "settling",
     me: true,
     members: [
       { name: "민지", amt: 15000, note: "후라이드+콜라", paid: true },
@@ -108,6 +108,8 @@ interface StoreState {
   topupAmt: number;
   settleTotalInput: string;
   settleReceipt: boolean;
+  withdrawOpen: boolean;
+  withdrawAmt: number;
   balance: number;
   autoPay: boolean;
   n1: boolean;
@@ -142,6 +144,9 @@ interface StoreState {
   toggleSettleReceipt: () => void;
   confirmSettlement: (dealId: number) => void;
   voteSettlement: (dealId: number, agree: boolean) => void;
+  toggleWithdraw: () => void;
+  setWithdrawAmt: (v: number) => void;
+  doWithdraw: () => void;
   toggleAutoPay: () => void;
   toggleN1: () => void;
   toggleN2: () => void;
@@ -164,6 +169,8 @@ export const useStore = create<StoreState>((set) => ({
   topupAmt: 10000,
   settleTotalInput: "",
   settleReceipt: false,
+  withdrawOpen: false,
+  withdrawAmt: 10000,
   balance: 23500,
   autoPay: true,
   n1: true,
@@ -194,7 +201,7 @@ export const useStore = create<StoreState>((set) => ({
   join: (id) =>
     set((st) => {
       const target = st.deals.find((d) => d.id === id);
-      if (!target || target.me || target.status === "settle" || target.end - Date.now() <= 0) return {};
+      if (!target || !joinable(target, Date.now())) return {};
       const deals = st.deals.map((x) => {
         if (x.id !== id) return x;
         const joined = x.joined + 1;
@@ -203,7 +210,7 @@ export const useStore = create<StoreState>((set) => ({
           ...x,
           joined,
           me: true,
-          status: done ? ("settle" as const) : x.status,
+          status: done ? ("settling" as const) : x.status,
           members: done
             ? Array.from({ length: joined }, (_, i) => ({
                 name: i === joined - 1 ? "나" : "이웃" + (i + 1),
@@ -221,7 +228,7 @@ export const useStore = create<StoreState>((set) => ({
         ...(msgs[key] ?? []),
         { kind: "sys", text: `파티원님이 참여했어요 (${full.joined}/${full.goal})` },
       ];
-      if (full.status === "settle") {
+      if (full.status === "settling") {
         msgs[key] = [...msgs[key], { kind: "sys", text: "목표 달성! 정산이 시작돼요 🎉" }];
       }
       return { deals, msgs };
@@ -318,6 +325,18 @@ export const useStore = create<StoreState>((set) => ({
       return { deals, msgs };
     }),
 
+  toggleWithdraw: () => set((st) => ({ withdrawOpen: !st.withdrawOpen })),
+  setWithdrawAmt: (v) => set({ withdrawAmt: v }),
+  doWithdraw: () =>
+    set((st) => {
+      if (st.withdrawAmt <= 0 || st.withdrawAmt > st.balance) return {};
+      return {
+        balance: st.balance - st.withdrawAmt,
+        withdrawOpen: false,
+        history: [{ emoji: "🏧", title: "출금", when: "방금", amt: -st.withdrawAmt }, ...st.history],
+      };
+    }),
+
   toggleAutoPay: () => set((st) => ({ autoPay: !st.autoPay })),
   toggleN1: () => set((st) => ({ n1: !st.n1 })),
   toggleN2: () => set((st) => ({ n2: !st.n2 })),
@@ -340,7 +359,7 @@ export const useStore = create<StoreState>((set) => ({
         end: Date.now() + (parseInt(f.mins) || 60) * 60_000,
         place: f.place || "채팅방에서 협의",
         host: "나",
-        status: "recruit",
+        status: "recruiting",
         me: true,
         mine: true,
       };
