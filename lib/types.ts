@@ -21,6 +21,10 @@ export interface Me {
   nickname: string;
   avatarUrl: string | null;
   dong: string | null;
+  /** 정산 받을 계좌 (#20) */
+  bankAccount: string | null;
+  /** 기본 송금 앱 (#20) */
+  transferApp: string | null;
 }
 
 /** 인앱 알림 한 건 (#13) — notifications 행에서 만든다 */
@@ -93,10 +97,20 @@ export interface Deal {
 }
 
 export type Msg =
-  | { kind: "sys"; text: string }
-  | { kind: "card"; cardOf: number; who: string }
-  | { kind: "other"; who: string; text: string }
-  | { kind: "mine"; text: string };
+  | { kind: "sys"; text: string; id?: number }
+  | { kind: "card"; cardOf: number; who: string; id?: number }
+  | { kind: "other"; who: string; text: string; id?: number }
+  | { kind: "mine"; text: string; id?: number };
+
+/** 채팅방 한 개 (#7) — chat_rooms 행에서 만든다 */
+export interface Room {
+  /** chat_rooms.id — 메시지 조회·구독 키 */
+  id: number;
+  type: "lounge" | "group_buy";
+  name: string;
+  /** 공구방이면 해당 공구 id, 라운지면 null */
+  dealId: number | null;
+}
 
 export interface HistoryItem {
   emoji: string;

@@ -134,9 +134,10 @@ export async function GET() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    // 주최자는 UUID 가 아니라 닉네임으로 보여야 한다 — profiles 를 함께 읽는다
     const { data, error } = await supabase
       .from("group_buys")
-      .select("*")
+      .select("*, profiles!host_id(nickname)")
       .order("created_at", { ascending: false });
 
     if (error) {

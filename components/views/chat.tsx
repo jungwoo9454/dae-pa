@@ -1,13 +1,10 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { Avatar } from "@/components/ui";
-import { createClient } from "@/lib/supabase/client";
 import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
-import { useStore } from "@/lib/store";
+import { isSubmitEnter } from "@/lib/keys";
+import { RECENT_LIMIT, useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
-
-/** 입장 시 보여줄 최근 메시지 수 — Supabase 연동 후엔 이 값으로 쿼리 limit을 건다 */
-const RECENT_LIMIT = 100;
 
 interface RoomDef {
   id: string;
@@ -39,6 +36,8 @@ export default function ChatView() {
   const now = useNow();
   const deals = useStore((s) => s.deals);
   const msgs = useStore((s) => s.msgs);
+  const rooms = useStore((s) => s.rooms);
+  const chatReady = useStore((s) => s.chatReady);
   const room = useStore((s) => s.room);
   const search = useStore((s) => s.search);
   const chatInput = useStore((s) => s.chatInput);
@@ -49,92 +48,34 @@ export default function ChatView() {
   const openDeal = useStore((s) => s.openDeal);
   const join = useStore((s) => s.join);
 
-  useEffect(() => {
-  const loadMessages = async () => {
-    const supabase = createClient();
+  // 방 목록·메시지·구독은 store 의 initChat 이 DB 에서 채운다 (#7).
+  // 로그인 전이거나 아직 못 읽었으면(chatReady=false) 로컬 시드로 그린다.
+  const loungeRooms: RoomDef[] = chatReady
+    ? rooms
+        .filter((r) => r.type === "lounge")
+        .map((r) => ({ id: "lounge", emoji: "🏘", name: r.name, sub: "이웃과 자유 수다" }))
+    : [{ id: "lounge", emoji: "🏘", name: "역삼동 라운지", sub: "이웃 128명 · 자유 수다" }];
 
-    let roomQuery = supabase
-      .from("chat_rooms")
-      .select("id")
-      .limit(1);
-
-    if (room === "lounge") {
-      roomQuery = roomQuery.eq("type", "lounge");
-    } else if (room.startsWith("d")) {
-      const groupBuyId = Number(room.slice(1));
-
-      roomQuery = roomQuery
-        .eq("type", "group_buy")
-        .eq("group_buy_id", groupBuyId);
-    } else {
-      return;
-    }
-
-    const { data: roomData, error: roomError } = await roomQuery.single();
-
-    if (roomError || !roomData) {
-      console.error("[chat_rooms]", roomError);
-      return;
-    }
-
-    const dbRoomId = roomData.id;
-
-    const { data: messageRows, error: messageError } = await supabase
-      .from("messages")
-      .select("id, user_id, kind, content, payload, created_at")
-      .eq("room_id", dbRoomId)
-      .order("created_at", { ascending: true });
-
-    if (messageError) {
-      console.error("[messages]", messageError);
-      return;
-    }
-
-    const mappedMessages = (messageRows ?? []).map((row: any) => {
-      if (row.kind === "card") {
-        return {
-          kind: "card" as const,
-          cardOf: Number(row.payload?.group_buy_id),
-          who: "나",
-        };
-      }
-
-      if (row.kind === "sys") {
-        return {
-          kind: "sys" as const,
-          text: row.content ?? "",
-        };
-      }
-
-      return {
-        kind: "other" as const,
-        who: "나",
-        text: row.content ?? "",
-      };
-    });
-
-    useStore.setState((st) => ({
-      msgs: {
-        ...st.msgs,
-        [room]: mappedMessages,
-      },
-    }));
-  };
-
-  loadMessages();
-}, [room]);
-
-  const loungeRooms: RoomDef[] = [
-    { id: "lounge", emoji: "🏘", name: "역삼동 라운지", sub: "이웃 128명 · 자유 수다" },
-  ];
-  const dealRooms: RoomDef[] = deals
-    .filter((x) => x.me)
-    .map((x) => ({
-      id: "d" + x.id,
-      emoji: x.emoji,
-      name: x.title,
-      sub: `${x.joined}명 · ${statusOf(x, now).label}`,
-    }));
+  const dealRooms: RoomDef[] = chatReady
+    ? rooms
+        .filter((r) => r.type === "group_buy")
+        .map((r) => {
+          const d = deals.find((x) => x.id === r.dealId);
+          return {
+            id: "d" + r.dealId,
+            emoji: d?.emoji ?? "🛒",
+            name: r.name,
+            sub: d ? `${d.joined}명 · ${statusOf(d, now).label}` : "공구방",
+          };
+        })
+    : deals
+        .filter((x) => x.me)
+        .map((x) => ({
+          id: "d" + x.id,
+          emoji: x.emoji,
+          name: x.title,
+          sub: `${x.joined}명 · ${statusOf(x, now).label}`,
+        }));
   // 검색: 대소문자·앞뒤 공백 무시 (#11)
   const q = search.trim().toLowerCase();
   const bySearch = (r: RoomDef) => !q || r.name.toLowerCase().includes(q);
@@ -280,7 +221,7 @@ export default function ChatView() {
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") sendMsg();
+              if (isSubmitEnter(e)) sendMsg();
             }}
             placeholder="메시지 입력…"
             className="flex-1 rounded-xl border-[1.5px] border-[#d5e6d6] px-3.5 py-2.5 text-sm outline-none"

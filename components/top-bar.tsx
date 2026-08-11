@@ -34,6 +34,12 @@ export default function TopBar() {
     return useStore.getState().initNotis(uid);
   }, [uid]);
 
+  // 채팅은 어느 화면에 있든 받아야 해서 채팅 화면이 아니라 여기서 구독한다 (#7)
+  useEffect(() => {
+    if (!uid) return;
+    return useStore.getState().initChat(uid);
+  }, [uid]);
+
   useEffect(() => {
     if (!uid) return;
     const { notifyDeadlines } = useStore.getState();
