@@ -131,9 +131,10 @@ export async function GET() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    // 주최자는 UUID 가 아니라 닉네임으로 보여야 한다 — profiles 를 함께 읽는다
     const { data, error } = await supabase
       .from("group_buys")
-      .select("*")
+      .select("*, profiles!host_id(nickname)")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -150,7 +151,7 @@ export async function GET() {
       joined: row.joined,
       end: new Date(row.deadline).getTime(),
       place: row.place,
-      host: row.host_id,
+      host: row.host_id === user?.id ? "나" : (row.profiles?.nickname ?? "이웃"),
       status: row.status,
       me: row.host_id === user?.id,
       mine: row.host_id === user?.id,
