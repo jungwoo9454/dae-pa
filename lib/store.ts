@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { CAT_EMOJI, fmt, joinable } from "./deal";
+import { CAT_EMOJI, fmt, joinable, recalcMembers } from "./deal";
 import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey, Settlement } from "./types";
 
 const t0 = Date.now();
@@ -40,12 +40,16 @@ const seedDeals: Deal[] = [
   mk(2, "🍗", "치킨 같이 시켜요", "배달음식", 54500, 4, 4, -30, "201동 로비", "준호", {
     status: "settling",
     me: true,
-    members: [
-      { name: "민지", amt: 15000, note: "후라이드+콜라", paid: true },
-      { name: "수현", amt: 12500, note: "순살", paid: true },
-      { name: "준호", amt: 13375, note: "양념 · 주최", paid: false },
-      { name: "나", amt: 13625, note: "반반", paid: false },
-    ],
+    deliveryFee: 3050,
+    members: recalcMembers(
+      { total: 54500, host: "준호", deliveryFee: 3050 },
+      [
+        { name: "민지", itemAmt: 13000, amt: 0, note: "후라이드+콜라", paid: true },
+        { name: "수현", itemAmt: 11000, amt: 0, note: "순살", paid: true },
+        { name: "준호", itemAmt: 0, amt: 0, note: "양념 · 주최", paid: false },
+        { name: "나", itemAmt: 12500, amt: 0, note: "반반", paid: false },
+      ],
+    ),
     settlement: { finalTotal: 54500, hasReceipt: true, confirmed: true, votes: {} },
   }),
   mk(3, "🍊", "제주 감귤 10kg", "식료품", 45000, 10, 7, 342, "회사 1층 로비", "나", { me: true, mine: true }),
@@ -135,6 +139,7 @@ interface StoreState {
   setFilter: (v: string) => void;
   setForm: (patch: Partial<DealForm>) => void;
   join: (id: number) => void;
+  adjustMemberItem: (dealId: number, name: string, itemAmt: number) => void;
   sendMsg: () => void;
   payNow: (dealId: number) => void;
   toggleTopup: () => void;
@@ -206,19 +211,28 @@ export const useStore = create<StoreState>((set) => ({
         if (x.id !== id) return x;
         const joined = x.joined + 1;
         const done = joined >= x.goal;
+        const deliveryFee = x.deliveryFee ?? 0;
+        const itemShare = Math.floor((x.total - deliveryFee) / joined);
+        const roughMembers = done
+          ? Array.from({ length: joined }, (_, i) => {
+              const isLast = i === joined - 1;
+              const isHostSlot = i === 0;
+              const name = isLast ? "나" : isHostSlot ? x.host : "이웃" + i;
+              return {
+                name,
+                itemAmt: itemShare,
+                amt: 0,
+                note: isHostSlot && !isLast ? "균등 1/N · 주최" : "균등 1/N",
+                paid: i < joined - 2,
+              };
+            })
+          : x.members;
         return {
           ...x,
           joined,
           me: true,
           status: done ? ("settling" as const) : x.status,
-          members: done
-            ? Array.from({ length: joined }, (_, i) => ({
-                name: i === joined - 1 ? "나" : "이웃" + (i + 1),
-                amt: Math.ceil(x.total / joined),
-                note: "균등 1/N",
-                paid: i < joined - 2,
-              }))
-            : x.members,
+          members: done ? recalcMembers(x, roughMembers!) : x.members,
         };
       });
       const full = deals.find((x) => x.id === id)!;
@@ -232,6 +246,17 @@ export const useStore = create<StoreState>((set) => ({
         msgs[key] = [...msgs[key], { kind: "sys", text: "목표 달성! 정산이 시작돼요 🎉" }];
       }
       return { deals, msgs };
+    }),
+
+  adjustMemberItem: (dealId, name, itemAmt) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      if (!deal || name === deal.host) return {};
+      const safeAmt = Math.max(0, Math.floor(itemAmt) || 0);
+      const members = (deal.members ?? []).map((m) => (m.name === name ? { ...m, itemAmt: safeAmt } : m));
+      const recalced = recalcMembers(deal, members);
+      const deals = st.deals.map((d) => (d.id === dealId ? { ...d, members: recalced } : d));
+      return { deals };
     }),
 
   sendMsg: () =>

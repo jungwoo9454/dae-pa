@@ -10,6 +10,7 @@ export default function SettleView() {
   const balance = useStore((s) => s.balance);
   const go = useStore((s) => s.go);
   const payNow = useStore((s) => s.payNow);
+  const adjustMemberItem = useStore((s) => s.adjustMemberItem);
   const settleTotalInput = useStore((s) => s.settleTotalInput);
   const settleReceipt = useStore((s) => s.settleReceipt);
   const setSettleTotalInput = useStore((s) => s.setSettleTotalInput);
@@ -130,30 +131,53 @@ export default function SettleView() {
               주최자가 최종 총액을 입력하면 정산이 시작돼요
             </div>
           )}
+          {!!sd.deliveryFee && (
+            <div className="text-[12.5px] text-[#6b8573]">
+              🛵 배달비 {fmt(sd.deliveryFee)} · 참여자 {mem.length}명 균등 분담
+            </div>
+          )}
           <div className="flex flex-col gap-2">
-            {mem.map((p) => (
-              <div
-                key={p.name}
-                className="flex items-center gap-[11px] rounded-xl border border-[#dbe9da] bg-white px-3.5 py-[11px]"
-              >
-                <Avatar ch={p.name[0]} size={32} />
-                <div className="flex-1 font-bold">
-                  {p.name}
-                  <span className="text-xs font-normal text-[#8aa392]"> · {p.note}</span>
-                </div>
-                <b className="tnum">{fmt(p.amt)}</b>
-                <span
-                  className="badge"
-                  style={
-                    p.paid
-                      ? { background: "#e9f6ec", color: "#166b3a" }
-                      : { background: "#f1f3ee", color: "#8a9a8e" }
-                  }
+            {mem.map((p) => {
+              const isHostRow = p.name === sd.host;
+              const editable = sd.host === "나" && !isHostRow;
+              return (
+                <div
+                  key={p.name}
+                  className="flex items-center gap-[11px] rounded-xl border border-[#dbe9da] bg-white px-3.5 py-[11px]"
                 >
-                  {p.paid ? "입금완료" : "대기중"}
-                </span>
-              </div>
-            ))}
+                  <Avatar ch={p.name[0]} size={32} />
+                  <div className="flex-1 font-bold">
+                    {p.name}
+                    <span className="text-xs font-normal text-[#8aa392]"> · {p.note}</span>
+                    {isHostRow && (
+                      <span className="ml-1 text-[10.5px] font-normal text-[#8aa392]">(나머지 자동 부담)</span>
+                    )}
+                  </div>
+                  {editable && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-[#8aa392]">항목</span>
+                      <input
+                        type="number"
+                        value={p.itemAmt}
+                        onChange={(e) => adjustMemberItem(sd.id, p.name, parseInt(e.target.value) || 0)}
+                        className="tnum w-[90px] rounded-lg border border-[#d5e6d6] px-2 py-1 text-right text-[13px] outline-none focus:border-[#1f8a4c]"
+                      />
+                    </div>
+                  )}
+                  <b className="tnum">{fmt(p.amt)}</b>
+                  <span
+                    className="badge"
+                    style={
+                      p.paid
+                        ? { background: "#e9f6ec", color: "#166b3a" }
+                        : { background: "#f1f3ee", color: "#8a9a8e" }
+                    }
+                  >
+                    {p.paid ? "입금완료" : "대기중"}
+                  </span>
+                </div>
+              );
+            })}
           </div>
           <ProgressBar pct={Math.round((paidN / Math.max(1, mem.length)) * 100)} h={11} />
           <div className="text-center text-[13px] text-[#4d6d58]">

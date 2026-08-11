@@ -17,6 +17,9 @@ export type DealStatus = "recruiting" | "settling" | "completed" | "canceled";
 
 export interface Member {
   name: string;
+  /** 개인 항목 금액 — 배달비 제외, 주최자가 조정 가능 (주최자 본인 몫은 나머지로 자동 계산) */
+  itemAmt: number;
+  /** 최종 부담금 = itemAmt + 배달비 균등 분담분 */
   amt: number;
   note: string;
   paid: boolean;
@@ -45,6 +48,8 @@ export interface Deal {
   me: boolean;
   mine: boolean;
   members?: Member[];
+  /** 배달비 — 있으면 항상 균등 분배, 개별 조정 대상 아님 */
+  deliveryFee?: number;
   settlement?: Settlement;
 }
 
