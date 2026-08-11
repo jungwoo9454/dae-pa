@@ -1,16 +1,21 @@
 -- 대파(대용량 파티원) — Supabase 스키마
 -- 적용: Supabase 대시보드 > SQL Editor에 전체 붙여넣고 실행 (처음 1회)
--- 사전 설정: Authentication > Providers 에서 Anonymous sign-in / Google / Kakao 활성화
+-- 사전 설정: Authentication > Providers 에서 Email / Google / Kakao 활성화
 --            (소셜 제공자별 Client ID·Secret 입력 + 리디렉트 URL 등록은 대시보드에서)
+--            데모 편의상 Email > "Confirm email" 은 끈다 (켜두면 가입 직후 세션이 안 나옴)
+--            URL Configuration > Redirect URLs 에 http://localhost:3000/auth/callback 등록
 
 -- ─────────────────────────────────────────────
 -- 1. 테이블
 -- ─────────────────────────────────────────────
 
+-- 이미 스키마를 돌린 프로젝트는 이 파일 전체 대신 아래 한 줄만 실행한다 (#2 동네 컬럼 추가)
+--   alter table profiles add column if not exists dong text;
 create table profiles (
   id            uuid primary key references auth.users(id) on delete cascade,
   nickname      text not null,
   avatar_url    text,
+  dong          text,          -- 회원가입 동네 인증 결과 (예: '역삼동')
   bank_account  text,
   transfer_app  text,
   trust_score   int not null default 100,
@@ -130,7 +135,7 @@ language plpgsql security definer set search_path = public as $$
 declare m jsonb;
 begin
   m := new.raw_user_meta_data;   -- null 이어도 아래 ->> 가 전부 null 로 떨어져 기본값으로 감
-  insert into public.profiles (id, nickname, avatar_url)
+  insert into public.profiles (id, nickname, avatar_url, dong)
   values (
     new.id,
     coalesce(
@@ -140,7 +145,8 @@ begin
       nullif(m->>'user_name', ''),       -- Kakao
       '이웃' || left(new.id::text, 4)
     ),
-    coalesce(nullif(m->>'avatar_url', ''), nullif(m->>'picture', ''))
+    coalesce(nullif(m->>'avatar_url', ''), nullif(m->>'picture', '')),
+    nullif(m->>'dong', '')             -- 이메일 회원가입 폼의 동네 인증 (소셜은 null)
   );
   insert into public.wallets (user_id) values (new.id);
   return new;
@@ -252,7 +258,7 @@ grant update (note, is_paid, paid_at) on participations to authenticated;
 
 -- trust_score 는 정산 완료 RPC(#17)가 쓴다.
 revoke update on profiles from authenticated;
-grant update (nickname, avatar_url, bank_account, transfer_app) on profiles to authenticated;
+grant update (nickname, avatar_url, dong, bank_account, transfer_app) on profiles to authenticated;
 
 -- 트리거 함수는 /rest/v1/rpc/ 로 노출될 이유가 없다. EXECUTE 권한은 CREATE TRIGGER 시점에만
 -- 검사되므로 전부 회수해도 트리거는 정상 동작한다.
