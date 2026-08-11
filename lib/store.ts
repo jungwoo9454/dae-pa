@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { CAT_EMOJI, fmt } from "./deal";
+import { CAT_EMOJI, fmt, joinable } from "./deal";
 import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey } from "./types";
 
 const t0 = Date.now();
@@ -185,7 +185,7 @@ export const useStore = create<StoreState>((set) => ({
   join: (id) =>
     set((st) => {
       const target = st.deals.find((d) => d.id === id);
-      if (!target || target.me || target.status === "settling" || target.end - Date.now() <= 0) return {};
+      if (!target || !joinable(target, Date.now())) return {};
       const deals = st.deals.map((x) => {
         if (x.id !== id) return x;
         const joined = x.joined + 1;

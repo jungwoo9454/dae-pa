@@ -23,13 +23,14 @@ export interface StatusView {
 export function statusOf(d: Deal, now: number): StatusView {
   if (d.status === "settling") return { key: "settling", label: "정산중", bg: "#e0f0f1", fg: "#0e7490" };
   const left = d.end - now;
-  if (left <= 0) return { key: "closed", label: "마감", bg: "#eceff0", fg: "#64748b" };
+  // completed/canceled 는 배지 문구가 '마감' 으로 같다 (CLAUDE.md 디자인 규칙)
+  if (d.status !== "recruiting" || left <= 0) return { key: "closed", label: "마감", bg: "#eceff0", fg: "#64748b" };
   if (left < 3_600_000) return { key: "closing", label: "마감임박", bg: "#fdf0dc", fg: "#b45309" };
   return { key: "recruiting", label: "모집중", bg: "#e9f6ec", fg: "#166b3a" };
 }
 
 export function remainLabel(d: Deal, now: number) {
-  if (d.status === "settling") return "마감됨";
+  if (d.status !== "recruiting") return "마감됨";
   const ms = d.end - now;
   if (ms <= 0) return "마감됨";
   const s = Math.floor(ms / 1000);
@@ -46,12 +47,12 @@ export function perAmount(d: Deal) {
 }
 
 export function joinable(d: Deal, now: number) {
-  return !d.me && d.status !== "settling" && d.end - now > 0;
+  return d.status === "recruiting" && !d.me && d.end - now > 0;
 }
 
 export function joinLabel(d: Deal, now: number) {
   if (d.status === "settling") return "정산 보기";
   if (d.me) return "참여중 ✓";
-  if (d.end - now <= 0) return "마감됨";
+  if (!joinable(d, now)) return "마감됨";
   return "참여하기";
 }
