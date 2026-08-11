@@ -1,9 +1,13 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Avatar } from "@/components/ui";
-import { fmt, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
+
+/** 입장 시 보여줄 최근 메시지 수 — Supabase 연동 후엔 이 값으로 쿼리 limit을 건다 */
+const RECENT_LIMIT = 100;
 
 interface RoomDef {
   id: string;
@@ -43,6 +47,7 @@ export default function ChatView() {
   const goRoom = useStore((s) => s.goRoom);
   const sendMsg = useStore((s) => s.sendMsg);
   const openDeal = useStore((s) => s.openDeal);
+  const join = useStore((s) => s.join);
 
   const loungeRooms: RoomDef[] = [
     { id: "lounge", emoji: "🏘", name: "역삼동 라운지", sub: "이웃 128명 · 자유 수다" },
@@ -55,9 +60,22 @@ export default function ChatView() {
       name: x.title,
       sub: `${x.joined}명 · ${statusOf(x, now).label}`,
     }));
-  const bySearch = (r: RoomDef) => !search || r.name.includes(search);
+  // 검색: 대소문자·앞뒤 공백 무시 (#11)
+  const q = search.trim().toLowerCase();
+  const bySearch = (r: RoomDef) => !q || r.name.toLowerCase().includes(q);
+  const foundLounge = loungeRooms.filter(bySearch);
+  const foundDeals = dealRooms.filter(bySearch);
+  const noResult = q !== "" && foundLounge.length === 0 && foundDeals.length === 0;
   const current = [...loungeRooms, ...dealRooms].find((r) => r.id === room) ?? loungeRooms[0];
-  const roomMsgs = msgs[current.id] ?? [];
+  const allMsgs = msgs[current.id] ?? [];
+  const roomMsgs = allMsgs.slice(-RECENT_LIMIT);
+
+  // 방 전환·새 메시지 시 항상 최신 메시지가 보이도록 하단 고정
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [current.id, allMsgs.length]);
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -68,14 +86,36 @@ export default function ChatView() {
           placeholder="🔍 채팅방 검색"
           className="rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white px-3 py-2 text-[13px] outline-none"
         />
-        <div className="mt-1.5 text-[11.5px] font-extrabold tracking-[.5px] text-[#6b8573]">동네</div>
-        {loungeRooms.filter(bySearch).map((r) => (
+        {foundLounge.length > 0 && (
+          <div className="mt-1.5 text-[11.5px] font-extrabold tracking-[.5px] text-[#6b8573]">동네</div>
+        )}
+        {foundLounge.map((r) => (
           <RoomItem key={r.id} room={r} active={room === r.id} onPick={() => goRoom(r.id)} />
         ))}
-        <div className="mt-1.5 text-[11.5px] font-extrabold tracking-[.5px] text-[#6b8573]">내 공구방</div>
-        {dealRooms.filter(bySearch).map((r) => (
+        {foundDeals.length > 0 && (
+          <div className="mt-1.5 text-[11.5px] font-extrabold tracking-[.5px] text-[#6b8573]">
+            내 공구방
+          </div>
+        )}
+        {foundDeals.map((r) => (
           <RoomItem key={r.id} room={r} active={room === r.id} onPick={() => goRoom(r.id)} />
         ))}
+        {noResult && (
+          <div className="mt-4 text-center text-[12.5px] leading-relaxed text-[#8aa392]">
+            &lsquo;{search.trim()}&rsquo; 검색 결과가 없어요
+            <div
+              onClick={() => setSearch("")}
+              className="mt-1.5 cursor-pointer font-bold text-[#1f8a4c]"
+            >
+              검색 지우기
+            </div>
+          </div>
+        )}
+        {!q && dealRooms.length === 0 && (
+          <div className="mt-2 px-1 text-[12px] leading-relaxed text-[#8aa392]">
+            참여한 공구가 없어요. 공구에 참여하면 채팅방이 여기에 생겨요.
+          </div>
+        )}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col bg-white">
@@ -85,7 +125,13 @@ export default function ChatView() {
           </b>
           <span className="flex-none whitespace-nowrap text-xs text-[#6b8573]">{current.sub}</span>
         </div>
-        <div className="flex flex-1 flex-col gap-2.5 overflow-auto bg-[#fbfdf9] px-[18px] py-4">
+        <div ref={scrollRef} className="flex flex-1 flex-col gap-2.5 overflow-auto bg-[#fbfdf9] px-[18px] py-4">
+          {roomMsgs.length === 0 && (
+            <div className="m-auto text-center text-[13px] text-[#8aa392]">
+              아직 대화가 없어요
+              <div className="mt-1 text-xs">첫 메시지를 보내 이웃과 이야기를 시작해보세요</div>
+            </div>
+          )}
           {roomMsgs.map((mg, i) => {
             if (mg.kind === "sys") {
               return (
@@ -111,8 +157,21 @@ export default function ChatView() {
                       {cd.emoji} {cd.title}
                     </div>
                     <div className="text-[12.5px] font-bold text-[#1f8a4c]">
-                      {cd.joined}/{cd.goal}명 · ⏱ {remainLabel(cd, now)} · 1인 {fmt(perAmount(cd))} ·
-                      탭해서 보기 →
+                      {cd.joined}/{cd.goal}명 · ⏱ {remainLabel(cd, now)} · 1인 {fmt(perAmount(cd))}
+                    </div>
+                    {/* 대화 중 카드에서 바로 참여 — 상세로 안 나가도 됨 (#10) */}
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        join(cd.id);
+                      }}
+                      className={`mt-0.5 rounded-lg py-1.5 text-center text-[12.5px] font-extrabold ${
+                        joinable(cd, now)
+                          ? "cursor-pointer bg-[#1f8a4c] text-white hover:bg-[#187741]"
+                          : "cursor-default bg-[#e6efe4] text-[#6b8573]"
+                      }`}
+                    >
+                      {joinable(cd, now) ? "바로 참여하기" : joinLabel(cd, now)}
                     </div>
                   </div>
                 </div>
@@ -124,7 +183,7 @@ export default function ChatView() {
                   <Avatar ch={mg.who[0] ?? "?"} />
                   <div>
                     <div className="mb-[3px] ml-1 text-[11.5px] text-[#8aa392]">{mg.who}</div>
-                    <div className="rounded-[4px_16px_16px_16px] border border-[#e2eee2] bg-white px-[13px] py-[9px] leading-normal">
+                    <div className="whitespace-pre-wrap break-words rounded-[4px_16px_16px_16px] border border-[#e2eee2] bg-white px-[13px] py-[9px] leading-normal">
                       {mg.text}
                     </div>
                   </div>
@@ -134,7 +193,7 @@ export default function ChatView() {
             return (
               <div
                 key={i}
-                className="max-w-[72%] self-end rounded-[16px_4px_16px_16px] bg-[#1f8a4c] px-[13px] py-[9px] leading-normal text-white"
+                className="max-w-[72%] self-end whitespace-pre-wrap break-words rounded-[16px_4px_16px_16px] bg-[#1f8a4c] px-[13px] py-[9px] leading-normal text-white"
               >
                 {mg.text}
               </div>

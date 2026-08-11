@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { CAT_EMOJI, fmt, joinable, recalcMembers } from "./deal";
 import { createClient } from "./supabase/client";
+import { sysText } from "./sys-messages";
 import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, PageKey, Settlement } from "./types";
 
 /** 동네 인증은 아직 모의 — 위치 기반 판정은 별도 이슈 */
@@ -94,6 +95,27 @@ const seedHistory: HistoryItem[] = [
 
 const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "" };
 
+/** 전원 입금 완료 시 공구를 마감 처리하고 시스템 메시지 + 신뢰도 반영까지 함께 적용한다 */
+function completeIfAllPaid(
+  deals: Deal[],
+  msgs: Record<string, Msg[]>,
+  dealId: number,
+  trustScore: number,
+): { deals: Deal[]; msgs: Record<string, Msg[]>; trustScore: number } {
+  const deal = deals.find((d) => d.id === dealId);
+  const mem = deal?.members ?? [];
+  const allPaid = mem.length > 0 && mem.every((m) => m.paid);
+  if (!deal || !allPaid) return { deals, msgs, trustScore };
+  const nextDeals = deals.map((d) => (d.id === dealId ? { ...d, status: "completed" as const } : d));
+  const key = "d" + dealId;
+  const nextMsgs = { ...msgs };
+  nextMsgs[key] = [
+    ...(nextMsgs[key] ?? []),
+    { kind: "sys" as const, text: "🎉 전원 입금 완료 — 공구가 마감됐어요! 정산 신뢰도가 올랐어요 ⭐" },
+  ];
+  return { deals: nextDeals, msgs: nextMsgs, trustScore: trustScore + 1 };
+}
+
 interface AuthForm {
   nick: string;
   email: string;
@@ -124,6 +146,7 @@ interface StoreState {
   withdrawOpen: boolean;
   withdrawAmt: number;
   balance: number;
+  trustScore: number;
   autoPay: boolean;
   n1: boolean;
   n2: boolean;
@@ -152,9 +175,12 @@ interface StoreState {
   setFilter: (v: string) => void;
   setForm: (patch: Partial<DealForm>) => void;
   join: (id: number) => void;
+  shareDeal: (dealId: number, roomId: string) => void;
   adjustMemberItem: (dealId: number, name: string, itemAmt: number) => void;
   sendMsg: () => void;
   payNow: (dealId: number) => void;
+  confirmSelfPaid: (dealId: number, method: "account" | "toss") => void;
+  remindUnpaid: (dealId: number) => void;
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => void;
@@ -194,6 +220,7 @@ export const useStore = create<StoreState>((set, get) => ({
   withdrawOpen: false,
   withdrawAmt: 10000,
   balance: 23500,
+  trustScore: 100,
   autoPay: true,
   n1: true,
   n2: true,
@@ -353,10 +380,10 @@ export const useStore = create<StoreState>((set, get) => ({
       const msgs = { ...st.msgs };
       msgs[key] = [
         ...(msgs[key] ?? []),
-        { kind: "sys", text: `파티원님이 참여했어요 (${full.joined}/${full.goal})` },
+        { kind: "sys", text: sysText.joined("파티원", full.joined, full.goal) },
       ];
       if (full.status === "settling") {
-        msgs[key] = [...msgs[key], { kind: "sys", text: "목표 달성! 정산이 시작돼요 🎉" }];
+        msgs[key] = [...msgs[key], { kind: "sys", text: sysText.goalReached() }];
       }
       return { deals, msgs };
     }),
@@ -370,6 +397,15 @@ export const useStore = create<StoreState>((set, get) => ({
       const recalced = recalcMembers(deal, members);
       const deals = st.deals.map((d) => (d.id === dealId ? { ...d, members: recalced } : d));
       return { deals };
+    }),
+
+  /** 공구 카드를 채팅방에 말풍선으로 공유하고 그 방으로 이동 (#10) */
+  shareDeal: (dealId, roomId) =>
+    set((st) => {
+      if (!st.deals.some((d) => d.id === dealId)) return {};
+      const msgs = { ...st.msgs };
+      msgs[roomId] = [...(msgs[roomId] ?? []), { kind: "card", cardOf: dealId, who: "나" }];
+      return { msgs, page: "chat", room: roomId, profileOpen: false };
     }),
 
   sendMsg: () =>
@@ -390,20 +426,60 @@ export const useStore = create<StoreState>((set, get) => ({
       const deals = st.deals.map((x) =>
         x.id !== dealId
           ? x
-          : { ...x, members: x.members!.map((m) => (m.name === "나" ? { ...m, paid: true } : m)) },
+          : {
+              ...x,
+              members: x.members!.map((m) =>
+                m.name === "나" ? { ...m, paid: true, payMethod: "wallet" as const } : m,
+              ),
+            },
       );
       const key = "d" + dealId;
       const msgs = { ...st.msgs };
       msgs[key] = [
         ...(msgs[key] ?? []),
-        { kind: "sys", text: `파티원님이 ${fmt(mine.amt)} 입금 완료 ✓ (대파페이)` },
+        { kind: "sys", text: sysText.paid("파티원", mine.amt) },
       ];
+      const after = completeIfAllPaid(deals, msgs, dealId, st.trustScore);
       return {
-        deals,
-        msgs,
+        ...after,
         balance: st.balance - mine.amt,
         history: [{ emoji: deal.emoji, title: deal.title + " 정산", when: "방금", amt: -mine.amt }, ...st.history],
       };
+    }),
+
+  confirmSelfPaid: (dealId, method) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      const mine = deal?.members?.find((m) => m.name === "나");
+      if (!deal || !mine || mine.paid) return {};
+      const deals = st.deals.map((x) =>
+        x.id !== dealId
+          ? x
+          : { ...x, members: x.members!.map((m) => (m.name === "나" ? { ...m, paid: true, payMethod: method } : m)) },
+      );
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      const label = method === "account" ? "계좌 이체" : "토스 송금";
+      msgs[key] = [
+        ...(msgs[key] ?? []),
+        { kind: "sys", text: `파티원님이 ${fmt(mine.amt)} 입금 완료 ✓ (${label} · 셀프 체크)` },
+      ];
+      return completeIfAllPaid(deals, msgs, dealId, st.trustScore);
+    }),
+
+  remindUnpaid: (dealId) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      if (!deal || deal.host !== "나") return {};
+      const unpaid = (deal.members ?? []).filter((m) => !m.paid).map((m) => m.name);
+      if (unpaid.length === 0) return {};
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      msgs[key] = [
+        ...(msgs[key] ?? []),
+        { kind: "sys", text: `🔔 아직 입금 안 하신 분들 확인해주세요 — ${unpaid.join(", ")}` },
+      ];
+      return { msgs };
     }),
 
   toggleTopup: () => set((st) => ({ topupOpen: !st.topupOpen })),
@@ -433,11 +509,8 @@ export const useStore = create<StoreState>((set, get) => ({
       msgs[key] = [
         ...(msgs[key] ?? []),
         hasReceipt
-          ? { kind: "sys" as const, text: `🧾 영수증 인증 완료 · 총 ${fmt(finalTotal)} · 금액 잠금` }
-          : {
-              kind: "sys" as const,
-              text: `총 ${fmt(finalTotal)}으로 정산 요청 · 영수증 없이 참여자 과반 동의로 확정돼요`,
-            },
+          ? { kind: "sys" as const, text: sysText.settleReceipt(finalTotal) }
+          : { kind: "sys" as const, text: sysText.settleVoteOpen(finalTotal) },
       ];
       return { deals, msgs, settleTotalInput: "", settleReceipt: false };
     }),
@@ -458,7 +531,7 @@ export const useStore = create<StoreState>((set, get) => ({
       if (confirmed) {
         msgs[key] = [
           ...(msgs[key] ?? []),
-          { kind: "sys", text: `✅ 참여자 과반 동의로 총 ${fmt(settlement.finalTotal)} 확정 · 금액 잠금` },
+          { kind: "sys", text: sysText.settleVoteConfirmed(settlement.finalTotal) },
         ];
       }
       return { deals, msgs };
@@ -503,7 +576,7 @@ export const useStore = create<StoreState>((set, get) => ({
         mine: true,
       };
       const msgs = { ...st.msgs };
-      msgs["d" + id] = [{ kind: "sys", text: `공구방이 열렸어요 · 목표 ${goalN}명` }];
+      msgs["d" + id] = [{ kind: "sys", text: sysText.roomOpened(goalN) }];
       msgs.lounge = [...(msgs.lounge ?? []), { kind: "card", cardOf: id, who: "나" }];
       return { deals: [nd, ...st.deals], msgs, page: "home", form: EMPTY_FORM };
     }),
