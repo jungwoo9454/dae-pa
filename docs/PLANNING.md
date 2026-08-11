@@ -134,7 +134,12 @@
 취소 경로(#29)는 상세 화면의 주최자 전용 "🚫 공구 취소" 버튼 → 확인 → `cancel_group_buy(id)` RPC 다.
 `group_buys.status` 는 컬럼 GRANT 로 클라이언트 UPDATE 가 막혀 있어 이 `security definer` RPC 로만 `canceled` 가 된다.
 RPC 는 주최자 본인 + `status in (recruiting, settling)` 을 확인하고, 채팅방 시스템 메시지(`kind='sys'`)와
-참여자 전원 알림(`type='cancel'`)을 함께 넣는다. 취소된 공구의 상태 배지는 `마감` 으로 표시한다(배지 문구 4종 고정).
+참여자 전원 알림(`type='cancel'`)을 함께 넣는다. 취소된 공구의 상태 배지는 `마감` 으로 표시하고(배지 문구 4종 고정),
+홈 목록에서는 감춘다 — 내 공구·채팅방에는 기록으로 남는다.
+
+정산중에 취소하면 **대파페이로 이미 낸 사람은 자동 환불**된다. RPC 가 해당 공구의 `wallet_transactions.kind='pay'`
+행을 되감아 `wallets.balance` 를 복구하고 `receive` 내역·환불 알림을 남긴다(환불 알림을 받은 사람은 취소 알림에서 제외).
+계좌·토스로 낸 사람은 앱 밖 송금이라 환불이 불가능해서, 채팅방에 주최자 직접 환불 안내 메시지를 남긴다.
 
 ## 6. 화면 구성
 

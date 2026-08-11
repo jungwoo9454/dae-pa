@@ -605,7 +605,8 @@ begin
               || to_char(v_refund.amt, 'FM999,999,999') || '원 환불됐어요', 'dealId', p_group_buy_id));
   end loop;
 
-  -- 앱 밖(계좌·토스)으로 낸 사람이 있으면 채팅방에 환불 안내를 남긴다
+  -- 앱 밖(계좌·토스)으로 낸 사람이 있으면 채팅방에 환불 안내를 남긴다.
+  -- 문구는 lib/sys-messages.ts 의 sysText.cancelRefundOffApp() 와 맞춘다.
   if exists (
     select 1 from public.participations pt
     where pt.group_buy_id = p_group_buy_id and pt.is_paid

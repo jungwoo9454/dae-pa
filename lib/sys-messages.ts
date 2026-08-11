@@ -22,4 +22,6 @@ export const sysText = {
   allPaid: () => "전원 입금 완료! 공구가 마감됐어요 🎉",
   /** 주최자 취소 (#29) — DB 의 cancel_group_buy RPC 도 같은 문구를 넣는다 */
   canceled: () => "🚫 주최자가 공구를 취소했어요",
+  /** 취소 시 계좌·토스 입금자가 있을 때. 대파페이 결제는 RPC 가 자동 환불한다 (#29) */
+  cancelRefundOffApp: () => "💸 계좌·토스로 입금한 분은 주최자가 직접 환불해 주세요",
 } as const;
