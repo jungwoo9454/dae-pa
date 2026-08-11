@@ -26,6 +26,17 @@ interface NotiRow {
   created_at: string;
 }
 
+/** profiles 본인 행 갱신 (#20) — RLS·컬럼 GRANT 가 본인 행의 허용 컬럼만 열어준다 */
+const patchProfile = (uid: string, patch: Record<string, unknown>) =>
+  createClient().from("profiles").update(patch).eq("id", uid);
+
+/** Me 필드 → profiles 컬럼 */
+const PROFILE_COL: Record<string, string> = {
+  nickname: "nickname",
+  bankAccount: "bank_account",
+  transferApp: "transfer_app",
+};
+
 const toNoti = (r: NotiRow): Noti => ({
   id: r.id,
   type: r.type,
@@ -224,6 +235,8 @@ interface StoreState {
   toggleAutoPay: () => void;
   toggleN1: () => void;
   toggleN2: () => void;
+  /** 닉네임·계좌·송금 앱 저장 (#20) — 화면은 즉시 바꾸고 profiles 에 반영한다 */
+  saveProfile: (patch: Partial<Pick<Me, "nickname" | "bankAccount" | "transferApp">>) => void;
   submitNew: () => void;
 }
 
@@ -275,11 +288,13 @@ export const useStore = create<StoreState>((set, get) => ({
     const { data } = sb.auth.onAuthStateChange((_event, session) => {
       const uid = session?.user.id;
       if (!uid) {
-        // 다음 사람이 남의 알림을 보지 않게 목록·중복 표시를 비운다
+        // 다음 사람이 남의 알림·설정을 보지 않게 목록·중복 표시·토글을 비운다
         firedDeadlines.clear();
         set((st) => ({
           me: null,
           notis: [],
+          n1: true,
+          n2: true,
           page: "login",
           authMode: "login",
           profileOpen: false,
@@ -300,7 +315,9 @@ export const useStore = create<StoreState>((set, get) => ({
       setTimeout(async () => {
         const { data: p } = await sb
           .from("profiles")
-          .select("nickname, avatar_url, dong")
+          .select(
+            "nickname, avatar_url, dong, bank_account, transfer_app, notify_deadline, notify_payment",
+          )
           .eq("id", uid)
           .single();
         set({
@@ -309,7 +326,11 @@ export const useStore = create<StoreState>((set, get) => ({
             nickname: p?.nickname ?? "파티원",
             avatarUrl: p?.avatar_url ?? null,
             dong: p?.dong ?? null,
+            bankAccount: p?.bank_account ?? null,
+            transferApp: p?.transfer_app ?? null,
           },
+          n1: p?.notify_deadline ?? true,
+          n2: p?.notify_payment ?? true,
         });
       }, 0);
     });
@@ -664,8 +685,28 @@ export const useStore = create<StoreState>((set, get) => ({
     }),
 
   toggleAutoPay: () => set((st) => ({ autoPay: !st.autoPay })),
-  toggleN1: () => set((st) => ({ n1: !st.n1 })),
-  toggleN2: () => set((st) => ({ n2: !st.n2 })),
+  toggleN1: () => {
+    const n1 = !get().n1;
+    set({ n1 });
+    const me = get().me;
+    if (me) void patchProfile(me.id, { notify_deadline: n1 });
+  },
+  toggleN2: () => {
+    const n2 = !get().n2;
+    set({ n2 });
+    const me = get().me;
+    if (me) void patchProfile(me.id, { notify_payment: n2 });
+  },
+
+  saveProfile: (patch) => {
+    const me = get().me;
+    if (!me) return;
+    set({ me: { ...me, ...patch } });
+    void patchProfile(
+      me.id,
+      Object.fromEntries(Object.entries(patch).map(([k, v]) => [PROFILE_COL[k], v])),
+    );
+  },
 
   submitNew: () =>
     set((st) => {
