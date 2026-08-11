@@ -37,17 +37,27 @@ export async function GET(req: Request) {
 
   // Idempotency-Key 를 일부러 안 붙인다. 뒤로가기·새로고침으로 같은 paymentKey 가
   // 두 번 들어오면 토스가 ALREADY_PROCESSED_PAYMENT 로 막아주는 게 중복 충전 방지가 된다.
-  const res = await fetch(TOSS_CONFIRM_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${secretKey}:`).toString("base64")}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ paymentKey, orderId, amount }),
-  });
-  const payment = await res.json();
-  if (!res.ok) {
-    console.error("[payments/confirm]", payment.code, payment.message);
+  // 토스가 죽었거나 JSON 아닌 응답(502 HTML 등)을 줘도 500 대신 실패로 돌려보낸다.
+  let res: Response;
+  let payment: { totalAmount?: number; code?: string; message?: string } | null;
+  try {
+    res = await fetch(TOSS_CONFIRM_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${secretKey}:`).toString("base64")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ paymentKey, orderId, amount }),
+    });
+    payment = await res.json();
+  } catch (e) {
+    console.error("[payments/confirm] 승인 요청 실패", e);
+    return back("topup=fail");
+  }
+
+  // 승인 응답에 금액이 없으면 얼마를 넣어야 할지 모른다 — 쿼리 amount 로 대신하지 않는다.
+  if (!res.ok || !payment || !Number.isInteger(payment.totalAmount)) {
+    console.error("[payments/confirm]", res.status, payment?.code, payment?.message);
     return back("topup=fail");
   }
 

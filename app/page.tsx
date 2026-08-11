@@ -24,6 +24,11 @@ export default function Page() {
     const topup = new URLSearchParams(window.location.search).get("topup");
     if (topup !== "ok" && topup !== "fail") return;
     window.history.replaceState({}, "", "/"); // 새로고침 때 결과 띠가 다시 뜨지 않게
+    // 로그아웃 상태로 이 주소에 들어오면 로그인 화면을 그대로 둔다 — go("pay") 는
+    // page:"login" 을 덮어써서 비로그인 사용자에게 앱 껍데기를 보여준다.
+    // me 로 판단하면 안 된다 — me 는 profiles 조회 뒤에 채워져서 이 시점엔 아직 null 이다.
+    // page 는 authReady 와 같은 set() 에서 정해지므로 여기서 이미 확정돼 있다.
+    if (useStore.getState().page === "login") return;
     useStore.getState().setTopupResult(topup);
     useStore.getState().go("pay");
   }, [authReady]);

@@ -868,7 +868,9 @@ export const useStore = create<StoreState>((set, get) => ({
         method: "CARD",
         amount: { currency: "KRW", value: amt },
         // 주문번호는 6~64자 영문·숫자·`-`·`_` 만 허용된다 — UUID 가 그대로 맞는다.
-        orderId: crypto.randomUUID(),
+        // randomUUID 는 secure context 전용이라 http://192.168.x.x:3000 같은 LAN 주소로
+        // 시연할 때는 없다 — 그 경우엔 충돌 확률만 낮으면 되므로 임시 문자열로 대체한다.
+        orderId: crypto.randomUUID?.() ?? `dp-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`,
         orderName: "대파페이 충전",
         successUrl: `${window.location.origin}/api/payments/confirm`,
         failUrl: `${window.location.origin}/?topup=fail`,
