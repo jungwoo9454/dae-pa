@@ -1,5 +1,6 @@
 "use client";
 
+import { isSubmitEnter } from "@/lib/keys";
 import { DONG, useStore } from "@/lib/store";
 
 export default function AuthView() {
@@ -61,7 +62,7 @@ export default function AuthView() {
             value={auth.pw}
             onChange={(e) => setAuth({ pw: e.target.value })}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && authOk) (isSignup ? signUp : signIn)();
+              if (isSubmitEnter(e) && authOk) (isSignup ? signUp : signIn)();
             }}
             type="password"
             placeholder="비밀번호"
