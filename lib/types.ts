@@ -1,3 +1,5 @@
+import type { ParticipationRow } from "./db-types";
+
 export type Category = "식료품" | "배달음식" | "생활용품" | "대량구매" | "기타";
 
 export type PageKey =
@@ -72,6 +74,22 @@ export interface Deal {
   /** 배달비 — 있으면 항상 균등 분배, 개별 조정 대상 아님 */
   deliveryFee?: number;
   settlement?: Settlement;
+
+  // Supabase fields
+  /** UUID string (Supabase auth.users.id) */
+  host_id?: string;
+
+  /** 상점 링크 */
+  store_link?: string;
+
+  /** 공구 설명 */
+  description?: string;
+
+  /** ISO 8601 timestamp (생성 시간) */
+  created_at?: string;
+
+  /** Realtime 데이터 (participations 테이블 행들) */
+  participations?: ParticipationRow[];
 }
 
 export type Msg =
