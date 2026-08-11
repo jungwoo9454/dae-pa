@@ -1,5 +1,6 @@
 "use client";
 
+import { Bell } from "lucide-react";
 import { useEffect } from "react";
 import { useStore } from "@/lib/store";
 import type { PageKey } from "@/lib/types";
@@ -63,7 +64,7 @@ export default function TopBar() {
         title="알림"
         className="relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-[#9fd4ae] bg-white text-[15px] hover:bg-[#e9f6ec]"
       >
-        🔔
+        <Bell aria-hidden className="h-[18px] w-[18px]" />
         {unread > 0 && (
           <span className="absolute -right-1 -top-1 min-w-[17px] rounded-full bg-[#d97706] px-1 text-center text-[10.5px] font-extrabold leading-[17px] text-white">
             {unread > 9 ? "9+" : unread}

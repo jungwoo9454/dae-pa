@@ -1,5 +1,6 @@
 "use client";
 
+import { ShieldCheck } from "lucide-react";
 import { profileStats } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
@@ -25,12 +26,12 @@ export default function ProfilePopover() {
         <div className="min-w-0">
           <div className="truncate font-extrabold">{me?.nickname ?? "파티원"}</div>
           <div className="text-xs text-[#6b8573]">
-            {me?.dong ? `📍 ${me.dong} · ` : ""}참여 {joined} · 주최 {hosted}
+            {me?.dong ? `${me.dong} · ` : ""}참여 {joined} · 주최 {hosted}
           </div>
         </div>
       </div>
       <div className="rounded-lg bg-[#e9f6ec] px-2.5 py-1.5 text-[12.5px] font-bold text-[#166b3a]">
-        🥬 정산 신뢰도 {trust}%
+        <ShieldCheck aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 정산 신뢰도 {trust}%
       </div>
       <div className="h-px bg-[#e2eee2]" />
       <div onClick={() => go("my")} className="cursor-pointer px-0.5 py-1 hover:text-[#1f8a4c]">

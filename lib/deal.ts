@@ -13,12 +13,6 @@ export function fmt(n: number) {
   return n.toLocaleString("ko-KR") + "원";
 }
 
-const TX_EMOJI: Record<string, string> = { charge: "⚡", withdraw: "🏧", pay: "🧾", receive: "💰" };
-
-export function emojiForTxKind(kind: string) {
-  return TX_EMOJI[kind] ?? "💳";
-}
-
 /** wallet_transactions.created_at(ISO) → "방금"/"N분 전"/"어제"/"8월 7일" 같은 상대 표기 */
 export function relativeWhen(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();

@@ -149,7 +149,7 @@ export default function SettingsView() {
 
         <Row
           title="계정 관리"
-          sub={`${me?.nickname ?? "파티원"}${me?.dong ? ` · 📍 ${me.dong}` : ""} · 로그아웃`}
+          sub={`${me?.nickname ?? "파티원"}${me?.dong ? ` · ${me.dong}` : ""} · 로그아웃`}
           right={chevron}
           onClick={() => open("account")}
         >
