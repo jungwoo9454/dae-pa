@@ -385,7 +385,8 @@ export const useStore = create<StoreState>((set, get) => ({
     set((st) => {
       const deal = st.deals.find((d) => d.id === dealId);
       const mine = deal?.members?.find((m) => m.name === "나");
-      if (!deal || !mine || mine.paid) return {};
+      // 잔액 검증 → 차감·입금 처리·내역 기록을 한 번의 set()으로 원자적으로 묶는다
+      if (!deal || !mine || mine.paid || st.balance < mine.amt) return {};
       const deals = st.deals.map((x) =>
         x.id !== dealId
           ? x
