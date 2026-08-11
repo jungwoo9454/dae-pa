@@ -38,6 +38,9 @@ cp ~/.env .env 2>/dev/null || touch .env   # NEXT_PUBLIC_SUPABASE_* 채우기
 
 - 서버에 저장소를 클론하지 않는다. 러너가 rsync 로 소스를 밀어 넣는다.
 - `~/dae-pa/.env` 는 rsync 제외 대상 — 서버에만 있고 덮어써지지 않는다. 값 바꿀 땐 서버에서 직접 수정 후 재배포.
+- `NEXT_PUBLIC_*` 는 **빌드 시점에 클라이언트 번들로 박힌다.** compose 가 `.env` 를 읽어 build args 로
+  넘기므로(`docker-compose.yml`), 서버 `.env` 가 비어 있으면 로그인 화면이 통째로 죽는다. 값을 바꾸면
+  **재빌드**(`docker compose up -d --build`)해야 반영된다 — 컨테이너 재시작만으로는 안 바뀐다.
 - 리포지토리 시크릿 `DEPLOY_KEY` = 배포 전용 ed25519 개인키 (공개키는 서버 `~/.ssh/authorized_keys`).
 - 수동 실행: Actions 탭 → deploy → Run workflow.
 
