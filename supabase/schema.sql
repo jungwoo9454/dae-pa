@@ -1,6 +1,7 @@
 -- 대파(대용량 파티원) — Supabase 스키마
 -- 적용: Supabase 대시보드 > SQL Editor에 전체 붙여넣고 실행 (처음 1회)
--- 사전 설정: Authentication > Providers > Anonymous sign-in 활성화
+-- 사전 설정: Authentication > Providers 에서 Anonymous sign-in / Google / Kakao 활성화
+--            (소셜 제공자별 Client ID·Secret 입력 + 리디렉트 URL 등록은 대시보드에서)
 
 -- ─────────────────────────────────────────────
 -- 1. 테이블
@@ -121,11 +122,25 @@ create index on wallet_transactions (user_id, created_at desc);
 -- 2. 트리거 — 가입 시 프로필·지갑, 공구 생성 시 채팅방·주최자 참여
 -- ─────────────────────────────────────────────
 
-create function public.handle_new_user() returns trigger
+-- 닉네임·아바타는 제공자마다 키가 다르다. 이메일 폼은 nickname 을 직접 넣지만
+-- 구글은 full_name/name + avatar_url(picture), 카카오는 name/user_name + avatar_url 로 온다.
+-- 하나라도 못 찾으면 기존처럼 '이웃abcd' 로 떨어진다.
+create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
+declare m jsonb := coalesce(new.raw_user_meta_data, '{}'::jsonb);
 begin
-  insert into public.profiles (id, nickname)
-  values (new.id, coalesce(new.raw_user_meta_data->>'nickname', '이웃' || left(new.id::text, 4)));
+  insert into public.profiles (id, nickname, avatar_url)
+  values (
+    new.id,
+    coalesce(
+      nullif(m->>'nickname', ''),        -- 이메일 회원가입 폼
+      nullif(m->>'full_name', ''),       -- Google
+      nullif(m->>'name', ''),            -- Google / Kakao
+      nullif(m->>'user_name', ''),       -- Kakao
+      '이웃' || left(new.id::text, 4)
+    ),
+    coalesce(nullif(m->>'avatar_url', ''), nullif(m->>'picture', ''))
+  );
   insert into public.wallets (user_id) values (new.id);
   return new;
 end $$;

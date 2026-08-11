@@ -176,6 +176,10 @@ notifications       id, user_id, type, payload(jsonb), is_read, created_at
   정원 초과·중복·마감을 서버에서 차단하고, 정원 도달 시 `settling` 자동 전환 + 시스템 메시지 + 전원 알림.
   `participations` 에는 INSERT RLS 정책이 없어 클라이언트 직접 삽입이 불가능하다.
 - 자동 생성 트리거: 가입 시 `profiles`+`wallets`, 공구 생성 시 채팅방·주최자 참여·개설 시스템 메시지.
+- 소셜 로그인(Google·Kakao)은 Supabase Auth 가 처리하므로 **테이블 추가가 없다**. 제공자 계정은
+  `auth.identities` 에 쌓이고, 어떤 제공자로 들어왔는지는 JWT 의 `app_metadata.provider` 로 읽는다.
+  가입 트리거가 제공자별 메타데이터 키(`full_name`/`name`/`user_name`, `avatar_url`/`picture`)에서
+  닉네임·아바타를 뽑아 `profiles` 에 채운다.
 - 총 금액 변경은 RLS 로 **주최자 + `status='recruiting'`** 일 때만 허용 (정산 진입 후 서버 거부).
 - 시스템 메시지(`kind='sys'`)는 클라이언트가 삽입할 수 없고 서버 함수만 기록한다.
 - 실시간: `group_buys`, `participations`, `messages`, `notifications` Realtime 구독
