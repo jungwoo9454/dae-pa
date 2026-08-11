@@ -26,13 +26,21 @@ export default function TopBar() {
 
   // 마감 30분 전 알림은 클라이언트에서 주기적으로 확인한다 (Supabase cron 대신).
   // 공구가 새로 생기면 바로 한 번 더 본다 — 마감 30분 안쪽으로 올릴 수 있어서.
+  const uid = me?.id;
   const deals = useStore((s) => s.deals);
+
   useEffect(() => {
+    if (!uid) return;
+    return useStore.getState().initNotis(uid);
+  }, [uid]);
+
+  useEffect(() => {
+    if (!uid) return;
     const { notifyDeadlines } = useStore.getState();
     notifyDeadlines();
     const t = setInterval(notifyDeadlines, 30_000);
     return () => clearInterval(t);
-  }, [deals]);
+  }, [uid, deals]);
 
   return (
     <div className="flex flex-none items-center gap-3 border-b border-[#dde9dc] bg-white px-6 py-3">

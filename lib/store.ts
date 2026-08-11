@@ -13,10 +13,26 @@ const t0 = Date.now();
 /** 마감 몇 분 전에 알림을 넣을지 (#13) */
 const DEADLINE_MS = 30 * 60_000;
 
-/** 같은 공구로 마감 알림을 두 번 넣지 않으려는 표시 */
+/** 같은 공구로 마감 알림을 두 번 넣지 않으려는 표시 — 목록을 불러올 때 지난 것도 채운다 */
 const firedDeadlines = new Set<number>();
 
-let notiSeq = 100;
+/** notifications 행 — 문구·이동할 공구는 payload 에 담는다 */
+interface NotiRow {
+  id: number;
+  type: Noti["type"];
+  payload: { text?: string; dealId?: number } | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+const toNoti = (r: NotiRow): Noti => ({
+  id: r.id,
+  type: r.type,
+  text: r.payload?.text ?? "",
+  dealId: r.payload?.dealId ?? null,
+  isRead: r.is_read,
+  createdAt: Date.parse(r.created_at),
+});
 
 const mk = (
   id: number,
@@ -94,33 +110,6 @@ const seedMsgs: Record<string, Msg[]> = {
   d5: [{ kind: "sys", text: "공구방이 열렸어요 · 목표 2명" }],
 };
 
-const seedNotis: Noti[] = [
-  {
-    id: 3,
-    type: "payment_reminder",
-    text: "치킨 같이 시켜요 · 12,500원 입금을 기다리고 있어요",
-    dealId: 2,
-    isRead: false,
-    createdAt: t0 - 8 * 60_000,
-  },
-  {
-    id: 2,
-    type: "settle_start",
-    text: "치킨 같이 시켜요 · 목표 달성! 정산이 시작됐어요",
-    dealId: 2,
-    isRead: false,
-    createdAt: t0 - 62 * 60_000,
-  },
-  {
-    id: 1,
-    type: "total_changed",
-    text: "제주 감귤 10kg · 총 금액이 45,000원으로 바뀌었어요",
-    dealId: 3,
-    isRead: true,
-    createdAt: t0 - 26 * 60 * 60_000,
-  },
-];
-
 const seedHistory: HistoryItem[] = [
   { emoji: "🍊", title: "제주 감귤 정산 받음", when: "어제", amt: 4500 },
   { emoji: "⚡", title: "충전", when: "8월 7일", amt: 30000 },
@@ -183,6 +172,8 @@ interface StoreState {
   openSettle: (id: number) => void;
   goRoom: (roomId: string) => void;
   toggleProfile: () => void;
+  /** 알림 목록 로드 + Realtime 구독 시작. 정리 함수를 돌려준다 */
+  initNotis: (uid: string) => () => void;
   /** 열 때 미읽음을 전부 읽음 처리한다 */
   toggleNoti: () => void;
   /** 참여한 공구의 마감 30분 전 알림을 넣는다 — 주기 호출 */
@@ -229,7 +220,7 @@ export const useStore = create<StoreState>((set, get) => ({
   filter: "전체",
   profileOpen: false,
   notiOpen: false,
-  notis: seedNotis,
+  notis: [],
   topupOpen: false,
   topupAmt: 10000,
   settleTotalInput: "",
@@ -260,8 +251,11 @@ export const useStore = create<StoreState>((set, get) => ({
     const { data } = sb.auth.onAuthStateChange((_event, session) => {
       const uid = session?.user.id;
       if (!uid) {
+        // 다음 사람이 남의 알림을 보지 않게 목록·중복 표시를 비운다
+        firedDeadlines.clear();
         set((st) => ({
           me: null,
+          notis: [],
           page: "login",
           authMode: "login",
           profileOpen: false,
@@ -355,38 +349,78 @@ export const useStore = create<StoreState>((set, get) => ({
   goRoom: (roomId) => set({ page: "chat", room: roomId, profileOpen: false, notiOpen: false }),
   toggleProfile: () => set((st) => ({ profileOpen: !st.profileOpen, notiOpen: false })),
 
-  toggleNoti: () =>
-    set((st) => ({
-      notiOpen: !st.notiOpen,
-      profileOpen: false,
-      // 여는 순간 미읽음을 다 읽은 것으로 본다
-      notis: st.notiOpen ? st.notis : st.notis.map((n) => (n.isRead ? n : { ...n, isRead: true })),
-    })),
+  initNotis: (uid) => {
+    const sb = createClient();
+    void (async () => {
+      // RLS 가 본인 행만 내주므로 user_id 조건은 따로 걸지 않는다
+      const { data } = await sb
+        .from("notifications")
+        .select("id, type, payload, is_read, created_at")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      const rows = (data ?? []) as NotiRow[];
+      for (const r of rows) {
+        if (r.type === "deadline_soon" && r.payload?.dealId) firedDeadlines.add(r.payload.dealId);
+      }
+      set({ notis: rows.map(toNoti) });
+    })();
 
-  notifyDeadlines: () =>
-    set((st) => {
-      if (!st.n1) return {};
-      const now = Date.now();
-      const due = st.deals.filter(
-        (d) =>
-          d.me &&
-          d.status === "recruiting" &&
-          d.end - now > 0 &&
-          d.end - now <= DEADLINE_MS &&
-          !firedDeadlines.has(d.id),
+    const ch = sb
+      .channel("notis")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` },
+        ({ new: row }) =>
+          set((st) => {
+            const n = toNoti(row as NotiRow);
+            return st.notis.some((x) => x.id === n.id) ? {} : { notis: [n, ...st.notis] };
+          }),
+      )
+      .subscribe();
+    return () => {
+      void sb.removeChannel(ch);
+    };
+  },
+
+  toggleNoti: () => {
+    const opening = !get().notiOpen;
+    set({ notiOpen: opening, profileOpen: false });
+    if (!opening) return;
+    // 여는 순간 미읽음을 다 읽은 것으로 본다
+    const unreadIds = get()
+      .notis.filter((n) => !n.isRead)
+      .map((n) => n.id);
+    if (!unreadIds.length) return;
+    set((st) => ({ notis: st.notis.map((n) => (n.isRead ? n : { ...n, isRead: true })) }));
+    void createClient().from("notifications").update({ is_read: true }).in("id", unreadIds);
+  },
+
+  notifyDeadlines: () => {
+    const { me, n1, deals } = get();
+    if (!me || !n1) return;
+    const now = Date.now();
+    // 공구는 아직 목데이터라 payload.dealId 도 목 id 다 — 공구 연동(#4) 때 같이 실 id 로 바뀐다
+    const due = deals.filter(
+      (d) =>
+        d.me &&
+        d.status === "recruiting" &&
+        d.end - now > 0 &&
+        d.end - now <= DEADLINE_MS &&
+        !firedDeadlines.has(d.id),
+    );
+    if (!due.length) return;
+    due.forEach((d) => firedDeadlines.add(d.id));
+    // 목록에 넣는 건 Realtime INSERT 구독이 한다
+    void createClient()
+      .from("notifications")
+      .insert(
+        due.map((d) => ({
+          user_id: me.id,
+          type: "deadline_soon",
+          payload: { text: `${d.title} · 마감 30분 전이에요`, dealId: d.id },
+        })),
       );
-      if (!due.length) return {};
-      due.forEach((d) => firedDeadlines.add(d.id));
-      const fresh: Noti[] = due.map((d) => ({
-        id: ++notiSeq,
-        type: "deadline_soon",
-        text: `${d.title} · 마감 30분 전이에요`,
-        dealId: d.id,
-        isRead: false,
-        createdAt: now,
-      }));
-      return { notis: [...fresh, ...st.notis] };
-    }),
+  },
   setChatInput: (v) => set({ chatInput: v }),
   setSearch: (v) => set({ search: v }),
   setMySearch: (v) => set({ mySearch: v }),
