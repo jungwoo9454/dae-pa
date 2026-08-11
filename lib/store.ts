@@ -20,8 +20,6 @@ import type {
 /** 동네 인증은 아직 모의 — 위치 기반 판정은 별도 이슈 */
 export const DONG = "역삼동";
 
-const t0 = Date.now();
-
 /** 마감 몇 분 전에 알림을 넣을지 (#13) */
 const DEADLINE_MS = 30 * 60_000;
 
@@ -126,57 +124,6 @@ const toNoti = (r: NotiRow): Noti => ({
   isRead: r.is_read,
   createdAt: Date.parse(r.created_at),
 });
-
-const mk = (
-  id: number,
-  emoji: string,
-  title: string,
-  cat: Deal["cat"],
-  total: number,
-  goal: number,
-  joined: number,
-  endMin: number,
-  place: string,
-  host: string,
-  extra?: Partial<Deal>,
-): Deal => ({
-  id,
-  emoji,
-  title,
-  cat,
-  total,
-  goal,
-  joined,
-  end: t0 + endMin * 60_000,
-  place,
-  host,
-  status: "recruiting",
-  me: false,
-  mine: false,
-  ...extra,
-});
-
-const seedDeals: Deal[] = [
-  mk(1, "🧅", "대파 5단 같이 나눠요", "식료품", 12500, 5, 3, 134, "행복아파트 정문", "파밍맘"),
-  mk(2, "🍗", "치킨 같이 시켜요", "배달음식", 54500, 4, 4, -30, "201동 로비", "준호", {
-    status: "settling",
-    me: true,
-    deliveryFee: 3050,
-    members: recalcMembers(
-      { total: 54500, host: "준호", deliveryFee: 3050 },
-      [
-        { name: "민지", itemAmt: 13000, amt: 0, note: "후라이드+콜라", paid: true },
-        { name: "수현", itemAmt: 11000, amt: 0, note: "순살", paid: true },
-        { name: "준호", itemAmt: 0, amt: 0, note: "양념 · 주최", paid: false },
-        { name: "나", itemAmt: 12500, amt: 0, note: "반반", paid: false },
-      ],
-    ),
-    settlement: { finalTotal: 54500, hasReceipt: true, confirmed: true, votes: {} },
-  }),
-  mk(3, "🍊", "제주 감귤 10kg", "식료품", 45000, 10, 7, 342, "회사 1층 로비", "나", { me: true, mine: true }),
-  mk(4, "☕", "원두 2kg 공구", "식료품", 80000, 10, 9, 41, "3층 탕비실", "커피덕후"),
-  mk(5, "🧻", "화장지 48롤 반씩", "생활용품", 32000, 2, 1, 1580, "경비실 앞", "알뜰킹"),
-];
 
 /**
  * 채팅은 DB(messages)에서 읽어온다 (#7). 아래 시드는 Supabase 가 아직 붙지 않은
@@ -353,7 +300,8 @@ export const useStore = create<StoreState>((set, get) => ({
   n1: true,
   n2: true,
   form: EMPTY_FORM,
-  deals: seedDeals,
+  // 초기값은 빈 배열 — home.tsx 마운트 시 fetchDeals()로 Supabase에서 채운다 (Task 3, #4)
+  deals: [],
   msgs: seedMsgs,
   history: [], // 로그인 시 initAuth 가 실제 wallet_transactions 로 채운다
 
@@ -686,7 +634,6 @@ export const useStore = create<StoreState>((set, get) => ({
     const { me, n1, deals } = get();
     if (!me || !n1) return;
     const now = Date.now();
-    // 공구는 아직 목데이터라 payload.dealId 도 목 id 다 — 공구 연동(#4) 때 같이 실 id 로 바뀐다
     const due = deals.filter(
       (d) =>
         d.me &&
@@ -974,7 +921,7 @@ export const useStore = create<StoreState>((set, get) => ({
       const totalN = parseInt(f.total) || 0;
       const goalN = parseInt(f.goal) || 0;
       if (!f.title || totalN <= 0 || goalN <= 1) return {};
-      const id = Math.max(...st.deals.map((x) => x.id)) + 1;
+      const id = Math.max(0, ...st.deals.map((x) => x.id)) + 1;
       const nd: Deal = {
         id,
         emoji: CAT_EMOJI[f.cat],
