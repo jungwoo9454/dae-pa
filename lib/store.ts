@@ -203,6 +203,8 @@ interface StoreState {
   chatReady: boolean;
   topupOpen: boolean;
   topupAmt: number;
+  /** 토스 결제창에서 돌아온 결과 — 대파페이 화면 상단 띠로만 쓴다 (#14) */
+  topupResult: "ok" | "fail" | null;
   settleTotalInput: string;
   settleReceipt: boolean;
   withdrawOpen: boolean;
@@ -258,6 +260,7 @@ interface StoreState {
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => Promise<void>;
+  setTopupResult: (v: "ok" | "fail" | null) => void;
   setSettleTotalInput: (v: string) => void;
   toggleSettleReceipt: () => void;
   confirmSettlement: (dealId: number) => void;
@@ -295,6 +298,7 @@ export const useStore = create<StoreState>((set, get) => ({
   rooms: [],
   topupOpen: false,
   topupAmt: 10000,
+  topupResult: null,
   settleTotalInput: "",
   settleReceipt: false,
   withdrawOpen: false,
@@ -837,14 +841,41 @@ export const useStore = create<StoreState>((set, get) => ({
 
   toggleTopup: () => set((st) => ({ topupOpen: !st.topupOpen })),
   setTopupAmt: (v) => set({ topupAmt: v }),
+  // 토스페이먼츠 테스트 결제창을 띄운다 (#14). 여기서는 결제 "인증"만 끝나고,
+  // 실제 승인과 topup_wallet 호출은 successUrl 인 /api/payments/confirm 이 한다.
+  // 잔액·내역은 wallets/wallet_transactions Realtime 구독이 알아서 따라온다.
   doTopup: async () => {
     const amt = get().topupAmt;
     if (amt <= 0) return;
+    const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
+    if (!clientKey) {
+      console.error("충전 실패: NEXT_PUBLIC_TOSS_CLIENT_KEY 가 없다");
+      return;
+    }
     set({ topupOpen: false });
-    // 성공하면 wallets/wallet_transactions Realtime 구독이 balance·history 를 갱신한다
-    const { error } = await createClient().rpc("topup_wallet", { p_amount: amt });
-    if (error) console.error("충전 실패:", error.message);
+    try {
+      // 결제창은 충전할 때만 필요하다 — 첫 로딩 번들에 넣지 않으려고 동적 import 한다.
+      const { loadTossPayments, ANONYMOUS } = await import("@tosspayments/tosspayments-sdk");
+      const toss = await loadTossPayments(clientKey);
+      await toss.payment({ customerKey: ANONYMOUS }).requestPayment({
+        method: "CARD",
+        amount: { currency: "KRW", value: amt },
+        // 주문번호는 6~64자 영문·숫자·`-`·`_` 만 허용된다 — UUID 가 그대로 맞는다.
+        // randomUUID 는 secure context 전용이라 http://192.168.x.x:3000 같은 LAN 주소로
+        // 시연할 때는 없다 — 그 경우엔 충돌 확률만 낮으면 되므로 임시 문자열로 대체한다.
+        orderId: crypto.randomUUID?.() ?? `dp-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`,
+        orderName: "대파페이 충전",
+        successUrl: `${window.location.origin}/api/payments/confirm`,
+        failUrl: `${window.location.origin}/?topup=fail`,
+        card: { flowMode: "DEFAULT", useEscrow: false, useCardPoint: false, useAppCardOnly: false },
+      });
+    } catch (e) {
+      // 결제창을 그냥 닫은 것(UserCancelError)도 여기로 온다 — 조용히 넘긴다.
+      console.error("충전 실패:", e);
+    }
   },
+
+  setTopupResult: (v) => set({ topupResult: v }),
 
   setSettleTotalInput: (v) => set({ settleTotalInput: v }),
   toggleSettleReceipt: () => set((st) => ({ settleReceipt: !st.settleReceipt })),
