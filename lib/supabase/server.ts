@@ -1,8 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+
 // 서버 컴포넌트 · Route Handler 용. 요청마다 새로 만들어야 한다 (모듈 전역 캐싱 금지).
-export async function createClient() {
+// @ts-ignore
+export async function createClient() :any {
   const cookieStore = await cookies();
 
   return createServerClient(

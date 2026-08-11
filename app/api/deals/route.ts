@@ -1,5 +1,5 @@
 // app/api/deals/route.ts
-
+import { createClient } from "@/lib/supabase/server"; //SUPERBASE추가후
 import type { Deal } from "@/lib/types";
 
 /**
@@ -47,36 +47,56 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ 3. 새 공구 객체 생성
-    // (지금은 메모리에만 저장, 팀원 D의 Supabase 연동 후 DB에 INSERT)
-    const minN = parseInt(mins) || 60;
-    
-    const newDeal: Deal = {
-      id: Date.now(), // 임시 ID (나중에 Supabase에서 받기)
-      emoji: getCategoryEmoji(cat),
-      title: title.trim(),
-      cat,
-      total: totalN,
-      goal: goalN,
-      joined: 1, // 주최자가 자동으로 1명 참여
-      end: Date.now() + minN * 60_000,
-      place: place || "채팅방에서 협의",
-      host: "나", // 나중에 user_id로 변경
-      status: "recruit" as const,
-      me: true,
-      mine: true,
-    };
+    const supabase = await createClient();
 
-    // ✅ 4. 응답 반환
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return Response.json({ error: "로그인이 필요합니다" }, { status: 401 });
+    }
+    
+    // 임시 수정 (인증 스킵):
+    // const user = {id: "30019992-ef88-40c5-b7a7-5cad74ea6a4e",};
+
+    const minN = parseInt(mins) || 60;
+
+    const { data: newDeal, error } = await supabase
+      .from('group_buys')
+      .insert({
+        host_id: user.id,
+        title: title,
+        description: "",
+        category: cat,
+        total_amount: totalN,
+        delivery_fee: 0,
+        goal: goalN,
+        joined: 1,
+        deadline: new Date(Date.now() + minN * 60_000).toISOString(),
+        store_link: store_link || "",
+        place: place || "채팅방에서 협의",
+        status: 'recruiting',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return Response.json({ error: error.message }, { status: 400 });
+    }
+
+    // ⭐ 이 response만 남김
     return Response.json(newDeal, { status: 201 });
   } catch (error) {
     console.error("[POST /api/deals]", error);
     return Response.json(
-      { error: "공고 생성 중 오류가 발생했습니다" },
+      { error: "공고 생성 중 오류 발생" },
       { status: 500 }
     );
-  }
+   }
 }
+
 
 /**
  * GET /api/deals
