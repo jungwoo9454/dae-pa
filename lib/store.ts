@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { CAT_EMOJI, fmt, joinable, recalcMembers } from "./deal";
+import { sysText } from "./sys-messages";
 import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey, Settlement } from "./types";
 
 const t0 = Date.now();
@@ -240,10 +241,10 @@ export const useStore = create<StoreState>((set) => ({
       const msgs = { ...st.msgs };
       msgs[key] = [
         ...(msgs[key] ?? []),
-        { kind: "sys", text: `파티원님이 참여했어요 (${full.joined}/${full.goal})` },
+        { kind: "sys", text: sysText.joined("파티원", full.joined, full.goal) },
       ];
       if (full.status === "settling") {
-        msgs[key] = [...msgs[key], { kind: "sys", text: "목표 달성! 정산이 시작돼요 🎉" }];
+        msgs[key] = [...msgs[key], { kind: "sys", text: sysText.goalReached() }];
       }
       return { deals, msgs };
     }),
@@ -282,7 +283,7 @@ export const useStore = create<StoreState>((set) => ({
       const msgs = { ...st.msgs };
       msgs[key] = [
         ...(msgs[key] ?? []),
-        { kind: "sys", text: `파티원님이 ${fmt(mine.amt)} 입금 완료 ✓ (대파페이)` },
+        { kind: "sys", text: sysText.paid("파티원", mine.amt) },
       ];
       return {
         deals,
@@ -319,11 +320,8 @@ export const useStore = create<StoreState>((set) => ({
       msgs[key] = [
         ...(msgs[key] ?? []),
         hasReceipt
-          ? { kind: "sys" as const, text: `🧾 영수증 인증 완료 · 총 ${fmt(finalTotal)} · 금액 잠금` }
-          : {
-              kind: "sys" as const,
-              text: `총 ${fmt(finalTotal)}으로 정산 요청 · 영수증 없이 참여자 과반 동의로 확정돼요`,
-            },
+          ? { kind: "sys" as const, text: sysText.settleReceipt(finalTotal) }
+          : { kind: "sys" as const, text: sysText.settleVoteOpen(finalTotal) },
       ];
       return { deals, msgs, settleTotalInput: "", settleReceipt: false };
     }),
@@ -344,7 +342,7 @@ export const useStore = create<StoreState>((set) => ({
       if (confirmed) {
         msgs[key] = [
           ...(msgs[key] ?? []),
-          { kind: "sys", text: `✅ 참여자 과반 동의로 총 ${fmt(settlement.finalTotal)} 확정 · 금액 잠금` },
+          { kind: "sys", text: sysText.settleVoteConfirmed(settlement.finalTotal) },
         ];
       }
       return { deals, msgs };
@@ -389,7 +387,7 @@ export const useStore = create<StoreState>((set) => ({
         mine: true,
       };
       const msgs = { ...st.msgs };
-      msgs["d" + id] = [{ kind: "sys", text: `공구방이 열렸어요 · 목표 ${goalN}명` }];
+      msgs["d" + id] = [{ kind: "sys", text: sysText.roomOpened(goalN) }];
       msgs.lounge = [...(msgs.lounge ?? []), { kind: "card", cardOf: id, who: "나" }];
       return { deals: [nd, ...st.deals], msgs, page: "home", form: EMPTY_FORM };
     }),
