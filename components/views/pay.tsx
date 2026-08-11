@@ -1,5 +1,7 @@
 "use client";
 
+import { Banknote, CreditCard, Coins, ReceiptText, Wallet, Zap } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Toggle } from "@/components/ui";
 import { fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
@@ -9,6 +11,14 @@ const TOPUP_OPTIONS = [
   { value: 10000, label: "+1만" },
   { value: 30000, label: "+3만" },
 ];
+
+/** wallet_transactions.kind → 내역 아이콘 (#65) */
+const TX_ICON: Record<string, LucideIcon> = {
+  charge: Zap,
+  withdraw: Banknote,
+  pay: ReceiptText,
+  receive: Coins,
+};
 
 export default function PayView() {
   const balance = useStore((s) => s.balance);
@@ -54,7 +64,9 @@ export default function PayView() {
             className="rounded-[18px] p-[22px] text-white shadow-[0_10px_24px_rgba(18,70,38,.25)]"
             style={{ background: "linear-gradient(135deg,#14532d,#1f8a4c)" }}
           >
-            <div className="text-[13px] opacity-85">🥬 대파페이 잔액</div>
+            <div className="flex items-center gap-1.5 text-[13px] opacity-85">
+              <Wallet aria-hidden className="h-[15px] w-[15px]" /> 대파페이 잔액
+            </div>
             <div className="font-jua tnum mt-1 text-[34px]">{fmt(balance)}</div>
             <div className="mt-3.5 flex gap-2">
               <div
@@ -161,8 +173,11 @@ export default function PayView() {
           <div className="mt-2.5 flex flex-col">
             {history.map((h, i) => (
               <div key={i} className="flex items-center gap-3 border-b border-[#eef4ec] px-0.5 py-[11px]">
-                <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#e9f6ec] text-[17px]">
-                  {h.emoji}
+                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] bg-[#e9f6ec]">
+                  {(() => {
+                    const Icon = TX_ICON[h.kind] ?? CreditCard;
+                    return <Icon aria-hidden className="h-[18px] w-[18px] text-[#1f8a4c]" />;
+                  })()}
                 </div>
                 <div className="flex-1">
                   <div className="font-bold">{h.title}</div>

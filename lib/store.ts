@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { CAT_EMOJI, emojiForTxKind, joinable, relativeWhen } from "./deal";
+import { CAT_EMOJI, joinable, relativeWhen } from "./deal";
 import { createClient } from "./supabase/client";
 import { sysText } from "./sys-messages";
 import type { GroupBuyRow } from "./db-types";
@@ -374,7 +374,7 @@ export const useStore = create<StoreState>((set, get) => ({
         set({
           balance: w?.balance ?? 0,
           history: (txs ?? []).map((t) => ({
-            emoji: emojiForTxKind(t.kind),
+            kind: t.kind,
             title: t.title,
             when: relativeWhen(t.created_at),
             amt: t.amount,
@@ -396,7 +396,7 @@ export const useStore = create<StoreState>((set, get) => ({
               const t = payload.new as { kind: string; amount: number; title: string; created_at: string };
               set((st) => ({
                 history: [
-                  { emoji: emojiForTxKind(t.kind), title: t.title, when: relativeWhen(t.created_at), amt: t.amount },
+                  { kind: t.kind, title: t.title, when: relativeWhen(t.created_at), amt: t.amount },
                   ...st.history,
                 ],
               }));

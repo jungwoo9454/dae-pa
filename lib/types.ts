@@ -102,7 +102,8 @@ export interface Room {
 }
 
 export interface HistoryItem {
-  emoji: string;
+  /** wallet_transactions.kind — 아이콘 결정은 화면(pay.tsx)이 한다 (#65) */
+  kind: string;
   title: string;
   when: string;
   amt: number;

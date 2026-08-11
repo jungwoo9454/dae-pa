@@ -1,5 +1,6 @@
 "use client";
 
+import { Timer } from "lucide-react";
 import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Deal } from "@/lib/types";
@@ -47,7 +48,7 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
           <span className="text-[#6b8573]">/{deal.goal}명</span>
         </span>
         <span className="tnum font-extrabold" style={{ color: closing ? "#b45309" : "#1f8a4c" }}>
-          ⏱ {remainLabel(deal, now)}
+          <Timer aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> {remainLabel(deal, now)}
         </span>
       </div>
       <div className="flex items-center justify-between">
