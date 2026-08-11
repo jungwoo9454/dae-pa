@@ -151,7 +151,8 @@
 
 ```
 profiles            id(=auth.users.id), nickname, avatar_url, dong, bank_account,
-                    transfer_app, trust_score, created_at
+                    transfer_app, notify_deadline, notify_payment,
+                    trust_score, created_at
 wallets             user_id, balance
 group_buys          id, host_id, title, description, category, store_link,
                     total_amount, delivery_fee, goal, joined, deadline, place,

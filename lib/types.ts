@@ -19,6 +19,10 @@ export interface Me {
   nickname: string;
   avatarUrl: string | null;
   dong: string | null;
+  /** 정산 받을 계좌 (#20) */
+  bankAccount: string | null;
+  /** 기본 송금 앱 (#20) */
+  transferApp: string | null;
 }
 
 /** 인앱 알림 한 건 (#13) — notifications 행에서 만든다 */
