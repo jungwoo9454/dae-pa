@@ -12,18 +12,23 @@
   body { font-family: "Pretendard Variable", Pretendard, system-ui, sans-serif; color: #17301f; }
   .jua { font-family: Jua, "Pretendard Variable", sans-serif; }
 
+  /* 제목 위치 고정: 모든 슬라이드에서 kicker·h2가 같은 y좌표에 오도록
+     상단 정렬 + 헤더 영역 높이 고정, 본문은 남은 공간에서 세로 중앙 */
   .slide {
     display: none; width: 100vw; height: 100vh;
-    padding: 5.5vh 5vw; flex-direction: column; justify-content: center;
+    padding: 6vh 5vw 4.5vh; flex-direction: column; justify-content: flex-start;
     background: #eef4ec; position: relative; overflow: hidden;
   }
   .slide.active { display: flex; }
   .slide.dark { background: #12311e; color: #e9f4ec; }
+  .slide.cover { justify-content: center; }  /* 표지는 예외 — 중앙 정렬 */
+  /* 헤더(kicker+제목) 아래 남은 공간을 본문이 차지하고 그 안에서 세로 중앙 정렬 */
+  .body { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
 
-  .kicker { font-size: 2vh; font-weight: 800; color: #1f8a4c; letter-spacing: .14em; margin-bottom: 1.6vh; }
+  .kicker { font-size: 2vh; font-weight: 800; color: #1f8a4c; letter-spacing: .14em; margin-bottom: 1.6vh; min-height: 2.4vh; }
   .dark .kicker { color: #7fdc95; }
   h1 { font-size: 8.5vh; line-height: 1.15; }
-  h2 { font-size: 4.8vh; line-height: 1.25; margin-bottom: 1.2vh; }
+  h2 { font-size: 4.8vh; line-height: 1.25; margin-bottom: 1.2vh; min-height: 6vh; }
   .lead { font-size: 2.4vh; color: #4d6d58; line-height: 1.55; margin-bottom: 2.8vh; }
   .dark .lead { color: #9fc5aa; }
   .green { color: #1f8a4c; } .dark .green { color: #7fdc95; }
@@ -47,16 +52,23 @@
   .pill { display: inline-block; background: #e9f6ec; color: #166b3a; border-radius: 99px; padding: .7vh 2vh; font-size: 2vh; font-weight: 800; margin-right: .8vh; }
   .dark .pill { background: rgba(127,220,149,.15); color: #7fdc95; }
 
+  /* 협업 방식 (마무리 슬라이드) */
+  .sublabel { margin-top: 2.6vh; font-size: 1.9vh; font-weight: 800; letter-spacing: .1em; color: #7fdc95; }
+  .collab { display: flex; align-items: center; flex-wrap: wrap; gap: .6vh; margin-top: 1.4vh; }
+  .collab .pill { margin-right: 0; }
+  .collab .ar { color: #7fdc95; font-weight: 800; font-size: 2.2vh; margin: 0 .4vh; }
+  .collab code { font-family: ui-monospace, Menlo, monospace; font-size: 1.75vh; }
+
   /* 와이어프레임 워크스루 레이아웃 */
   .wfrow { display: flex; gap: 2.6vw; align-items: flex-start; }
   .wfcol { display: flex; flex-direction: column; gap: 2vh; flex: none; }
   .wfpair { display: flex; gap: 1.5vw; align-items: flex-start; flex: none; }
-  .expl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.4vh; }
-  .expl .pt { background: #fff; border: 1px solid #dbe9da; border-left: .7vh solid #1f8a4c; border-radius: 1.2vh; padding: 1.5vh 2vh; }
-  .expl .pt b { display: block; font-size: 2.1vh; margin-bottom: .4vh; }
-  .expl .pt p { font-size: 1.85vh; color: #4d6d58; line-height: 1.5; }
+  .expl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.5vh; }
+  /* 기능 키워드 카드 — 키워드가 주인공, 보조 설명은 한 줄 이내 */
+  .expl .key { background: #fff; border: 1px solid #dbe9da; border-left: .7vh solid #1f8a4c; border-radius: 1.2vh; padding: 1.6vh 2.2vh; }
+  .expl .key b { display: block; font-size: 2.6vh; line-height: 1.3; }
+  .expl .key span { display: block; font-size: 1.85vh; color: #7a9182; margin-top: .4vh; line-height: 1.4; }
   .cap { font: 700 1.9vh Gaegu, sans-serif; color: #555; }
-  .cap .tid { font: 600 1.6vh ui-monospace, Menlo, monospace; background: #1a1a1a; color: #fff; border-radius: .5vh; padding: .2vh 1vh; margin-right: .8vh; }
 
   /* ── 와이어프레임 원본 스타일 (공구앱 와이어프레임.dc.html에서 그대로) ── */
   .wf { width: 400px; height: 270px; background: #fff; border: 1.5px solid #2b2b2b; border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; font: 11px/1.25 Gaegu, sans-serif; color: #2b2b2b; flex: none; zoom: var(--wfz, 1.45); }
@@ -95,32 +107,35 @@
 <body>
 
 <!-- 1. 타이틀 -->
-<section class="slide dark active">
+<section class="slide dark cover active">
   <div class="jua" style="font-size:15vh;line-height:1;color:#fff">대<span style="color:#7fdc95">파</span></div>
   <h1 class="jua" style="font-size:5.2vh;margin-top:3vh;color:#e9f4ec">와이어프레임으로 보는 기획</h1>
-  <p class="lead" style="margin-top:2vh">공고 → 참여 → 채팅 → 정산까지 한 번에 끝내는 동네 공동구매 플랫폼<br>— 화면 설계 5번의 반복으로 "총무 없는 공구"를 그리다</p>
-  <p class="lead" style="font-size:2vh">2026.08 · 3일 해커톤 · 4인 팀</p>
+  <p class="lead" style="margin-top:2vh">공고 → 참여 → 채팅 → 정산까지 한 번에 끝내는 동네 공동구매 플랫폼<br>— "동네 주민과 나누는 알뜰 생활"을 만듭니다.</p>
+  <p class="lead" style="font-size:2vh">2026.08 · 2주차 팀 프로젝트 · 2팀</p>
 </section>
 
 <!-- 2. 문제 -->
 <section class="slide">
   <div class="kicker">WHY — 기획 배경</div>
-  <h2 class="jua">공구는 하고 싶은데, <span class="green">총무는 하기 싫다</span></h2>
+  <h2 class="jua">혼자라서 못 사고, <span class="green">같이 사면 정산이 문제다</span></h2>
+  <div class="body">
   <div class="cols">
-    <div class="card"><span class="emoji">🛵</span><b class="title">배달비가 아깝다</b>
-      <p>혼자 시키면 배달비 4천 원, 최소 주문 금액도 못 맞춘다</p></div>
-    <div class="card"><span class="emoji">📦</span><b class="title">대용량은 너무 많다</b>
-      <p>화장지 48롤, 대파 5단 — 1인 가구가 사기엔 양이 부담</p></div>
+    <div class="card"><span class="emoji">🛵</span><b class="title">최소 주문금액을 못 맞춘다</b>
+      <p>1인분만 시키면 결제 버튼조차 안 눌린다 — 최소 주문금액 1.5~2만 원은 혼자 채우기 어려운 벽</p></div>
+    <div class="card"><span class="emoji">🏬</span><b class="title">창고형 마트는 1인 가구에 벽</b>
+      <p>트레이더스·코스트코의 대용량 묶음 — 사고 싶어도 다 먹지 못해 결국 발길을 돌린다</p></div>
     <div class="card"><span class="emoji">🧾</span><b class="title">정산이 지옥이다</b>
       <p>단톡방 모집 → 계산기 → 입금 확인 → 독촉까지 전부 총무의 수기 노동</p></div>
   </div>
   <p class="lead" style="margin-top:3vh;margin-bottom:0">기존 도구(단톡방·당근)는 <b>모집</b>만 해결한다 — 돈이 오가는 <b class="green">과정 전체</b>를 맡아주는 서비스가 없다</p>
+  </div>
 </section>
 
 <!-- 3. 기획 원칙 -->
 <section class="slide">
   <div class="kicker">CONCEPT — 기획 원칙</div>
   <h2 class="jua">모집부터 정산까지, <span class="green">한 흐름으로</span></h2>
+  <div class="body">
   <div class="flowline">
     <div class="step"><span class="emoji">📢</span><b>공고</b><small>카드 미리보기<br>채팅방 자동 생성</small></div>
     <div class="arrow">→</div>
@@ -136,16 +151,17 @@
     <span class="pill">③ 정산은 계산기 대신 자동</span>
     <span class="pill">④ 돈 얘기는 전부 투명하게 기록</span>
   </div>
-  <p class="lead" style="margin-top:2.5vh;margin-bottom:0">이 4가지 원칙이 모든 화면 설계의 판단 기준 — 이제 와이어프레임으로 하나씩 보겠습니다</p>
+  </div>
 </section>
 
 <!-- 4. 턴1: 전체 구조 / 홈 -->
 <section class="slide">
   <div class="kicker">WIREFRAME ① — 전체 구조</div>
   <h2 class="jua">채택한 뼈대: <span class="green">사이드바 + 카드 그리드</span></h2>
+  <div class="body">
   <div class="wfrow">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 1 · 1a</span>홈 · 공구 목록</div>
+      <div class="cap">홈 · 공구 목록</div>
       <div class="wf">
         <div style="display:flex;flex:1;min-height:0">
           <div class="side"><b>🛒 같이사요</b><span class="acc">홈</span><span>내 공구</span><span>채팅</span><span>정산</span><span>프로필</span><span>설정</span></div>
@@ -162,11 +178,12 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>사이드바 5메뉴 — 모든 화면이 2클릭 이내</b><p>홈 · 내 공구 · 채팅 · 페이 · 설정. 공구의 생애주기 전체가 한 셸 안에서 돈다</p></div>
-      <div class="pt"><b>카드 한 장 = 판단에 필요한 전부</b><p>상태 배지 · 진행바 · 카운트다운 · 인원 · 금액. "지금 들어가도 되나?"를 목록에서 결정</p></div>
-      <div class="pt"><b>실시간이 기본값</b><p>진행바와 남은 시간이 새로고침 없이 움직인다 — 기획 원칙 ②를 첫 화면부터</p></div>
-      <div class="pt"><b>가칭 '같이사요' → 최종 '대파'</b><p>와이어프레임 단계의 이름. 구조는 그대로 최종 서비스에 채택</p></div>
+      <div class="key"><b>사이드바 5메뉴</b><span>홈 · 내 공구 · 채팅 · 페이 · 설정</span></div>
+      <div class="key"><b>카드 그리드 목록</b><span>카테고리 필터</span></div>
+      <div class="key"><b>실시간 진행바 · 카운트다운</b></div>
+      <div class="key"><b>상태 배지</b><span>모집중 · 마감임박 · 정산중 · 마감</span></div>
     </div>
+  </div>
   </div>
 </section>
 
@@ -174,9 +191,10 @@
 <section class="slide">
   <div class="kicker">WIREFRAME ② — 공고 상세</div>
   <h2 class="jua"><span class="green">버튼 한 번</span>이면 파티원</h2>
+  <div class="body">
   <div class="wfrow">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 1 · 1a</span>공고 상세 · 참여 패널</div>
+      <div class="cap">공고 상세 · 참여 패널</div>
       <div class="wf">
         <div class="topbar"><span>← 목록</span><b style="flex:1">제주 감귤 10kg 같이 사요</b><span class="badge acc">모집중</span></div>
         <div style="display:flex;flex:1;gap:8px;padding:8px;min-height:0">
@@ -197,82 +215,26 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>남은 시간을 화면에서 가장 크게</b><p>긴박감이 참여 전환의 핵심 — 우측 패널 최상단에 실시간 카운트다운</p></div>
-      <div class="pt"><b>1인당 금액을 미리 보여준다</b><p>"얼마 내면 되지?"가 참여 결정의 마지막 질문 — 총액이 아니라 내 부담금으로 환산해 표시</p></div>
-      <div class="pt"><b>참여 = 버튼 한 번, 그리고 선착순</b><p>양식도 승인도 없다. 목표 인원 = 정원, 도달하면 자동 마감 (초과 모집 없음)</p></div>
-      <div class="pt"><b>참여 직후 채팅방으로</b><p>참여와 대화 사이의 단절을 없앤다 — 공구는 결국 사람들의 약속이므로</p></div>
+      <div class="key"><b>남은 시간 카운트다운</b></div>
+      <div class="key"><b>참여 진행바</b><span>목표 인원 대비 실시간</span></div>
+      <div class="key"><b>1인당 금액 자동 계산</b></div>
+      <div class="key"><b>버튼 한 번 참여</b><span>선착순 정원 — 도달 시 자동 마감</span></div>
+      <div class="key"><b>공구 채팅방 바로가기</b></div>
     </div>
+  </div>
   </div>
 </section>
 
-<!-- 6. 턴2: 올리기 + 팝오버 -->
+<!-- 6. 올리기(카테고리) + 프로필 팝오버 -->
 <section class="slide">
   <div class="kicker">WIREFRAME ③ — 공고 올리기 · 프로필</div>
-  <h2 class="jua">쓰는 순간 <span class="green">카드가 되는</span> 공고</h2>
-  <p class="lead">턴 2의 결정: 올리기는 전용 페이지(실시간 미리보기 포함), 프로필은 페이지가 아닌 팝오버로</p>
-  <div class="wfpair">
-    <div class="wfcol">
-      <div class="cap"><span class="tid">턴 2 · 2a</span>올리기 — 실시간 미리보기</div>
-      <div class="wf wf-s" style="width:420px;height:300px">
-        <div style="display:flex;flex:1;min-height:0">
-          <div class="side"><b>🛒 같이사요</b><span>홈</span><span>내 공구</span><span>채팅</span><span>정산</span><span class="acc">올리기</span><span>설정</span></div>
-          <div style="flex:1;display:flex;flex-direction:column;min-height:0">
-            <div class="topbar"><b>새 공구 올리기</b><span style="flex:1"></span><div class="av"></div></div>
-            <div style="flex:1;padding:8px;display:flex;gap:8px;min-height:0">
-              <div style="flex:1.2;display:flex;flex-direction:column;gap:5px">
-                <div class="dsh" style="padding:3px 6px;color:#999">제목 (예: 제주 감귤 10kg)</div>
-                <div class="ph" style="height:34px">상품 사진 첨부</div>
-                <div style="display:flex;gap:4px"><div class="dsh" style="flex:1;padding:3px 6px;color:#999">총 금액</div><div class="dsh" style="flex:1;padding:3px 6px;color:#999">목표 인원</div></div>
-                <div class="dsh" style="padding:3px 6px;color:#999">마감 시간 ⏱</div>
-                <div class="dsh" style="padding:3px 6px;color:#999">수령 장소/방법 📍</div>
-                <div class="accb" style="padding:5px;margin-top:auto">올리기 → 채팅방 자동 생성</div>
-              </div>
-              <div style="flex:1;border-left:1.5px dashed #aaa;padding-left:8px;display:flex;flex-direction:column;gap:5px">
-                <b style="color:#888">미리보기</b>
-                <div class="bx" style="padding:6px;display:flex;flex-direction:column;gap:4px"><div style="display:flex;gap:4px"><span class="badge acc">모집중</span><span class="chip">⏱ 24:00:00</span></div><b>제주 감귤 10kg</b><div class="bar"><i style="width:5%"></i></div><div style="display:flex;justify-content:space-between"><span>0/10명</span><b>1인 4,500원</b></div></div>
-                <div style="color:#888">금액·인원 입력하면 1인당 가격이 자동 계산돼 카드로 보여요</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="wfcol">
-      <div class="cap"><span class="tid">턴 2 · 2b</span>프로필 팝오버</div>
-      <div class="wf wf-s" style="width:420px;height:300px">
-        <div style="display:flex;flex:1;min-height:0">
-          <div class="side"><b>🛒 같이사요</b><span class="acc">홈</span><span>내 공구</span><span>채팅</span><span>정산</span><span>설정</span></div>
-          <div style="flex:1;display:flex;flex-direction:column;min-height:0;position:relative">
-            <div class="topbar"><b>홈</b><span style="flex:1"></span><div class="accb">+ 공구 올리기</div><div class="av" style="border-color:#2a78d6"></div></div>
-            <div style="flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;opacity:.35">
-              <div class="dsh" style="height:60px"></div><div class="dsh" style="height:60px"></div><div class="dsh" style="flex:1;color:#bbb;display:flex;align-items:center;justify-content:center">뒤 화면 (흐림)</div>
-            </div>
-            <div class="bx" style="position:absolute;top:30px;right:8px;width:170px;background:#fff;padding:8px;display:flex;flex-direction:column;gap:5px;box-shadow:2px 3px 0 #2b2b2b">
-              <div style="display:flex;gap:6px;align-items:center"><div class="av" style="width:26px;height:26px"></div><div><b>김공구</b><br><span style="color:#888;font-size:9px">참여 12 · 주최 3</span></div></div>
-              <div class="bx" style="padding:3px 6px;text-align:center">🏅 정산 신뢰도 100%</div>
-              <hr style="border:none;border-top:1.5px dashed #aaa;margin:0">
-              <span>내 참여 내역</span><span>진행중인 내 공구</span><span>계좌/송금 링크</span><span>알림 설정</span><span style="color:#888">로그아웃</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="expl">
-      <div class="pt"><b>작성 = 내 카드를 미리 보는 경험</b><p>입력하는 대로 오른쪽 카드가 갱신 — "내 공고가 어떻게 보일까" 불안 제거, 1인당 금액 자동 계산</p></div>
-      <div class="pt"><b>올리면 채팅방이 따라온다</b><p>공고와 대화는 항상 쌍 — 등록 즉시 공구방 자동 생성</p></div>
-      <div class="pt"><b>프로필은 팝오버로 충분</b><p>신뢰도 배지·참여/주최 횟수만 빠르게. 상세 내역은 "내 공구" 메뉴로 위임 — 페이지 수를 줄인 결정</p></div>
-    </div>
-  </div>
-</section>
-
-<!-- 7. 턴3b: 카테고리 -->
-<section class="slide">
-  <div class="kicker">WIREFRAME ④ — 카테고리</div>
   <h2 class="jua">카테고리가 <span class="green">폼을 바꾼다</span></h2>
+  <div class="body">
   <div class="wfrow">
+   <div class="wfpair">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 3 · 3b</span>배달음식을 고르면 입력폼이 달라진다</div>
-      <div class="wf" style="width:420px;height:300px">
+      <div class="cap">올리기 — 배달음식을 고르면 입력폼이 달라진다</div>
+      <div class="wf wf-s" style="width:420px;height:300px">
         <div style="display:flex;flex:1;min-height:0">
           <div class="side"><b>🛒 같이사요</b><span>홈</span><span>내 공구</span><span>채팅</span><span>정산</span><span class="acc">올리기</span></div>
           <div style="flex:1;padding:8px;display:flex;flex-direction:column;gap:5px">
@@ -299,21 +261,46 @@
         </div>
       </div>
     </div>
-    <div class="expl">
-      <div class="pt"><b>공구는 하나가 아니다</b><p>감귤 10kg(며칠 단위)과 치킨(30분 단위)은 완전히 다른 시나리오 — 카테고리 선택이 폼의 첫 단계</p></div>
-      <div class="pt"><b>배달음식 전용 설계</b><p>가게 링크 · 분 단위 짧은 마감 · 예상 총액. 메뉴 취합은 채팅방에 위임해 폼을 가볍게</p></div>
-      <div class="pt"><b>"예상 총액"이라는 개념의 등장</b><p>배달음식은 주문 전까지 금액이 확정될 수 없다 → 다음 장의 '총액 변경' 설계로 이어진 결정</p></div>
+    <div class="wfcol">
+      <div class="cap">프로필 팝오버</div>
+      <div class="wf wf-s" style="width:420px;height:300px">
+        <div style="display:flex;flex:1;min-height:0">
+          <div class="side"><b>🛒 같이사요</b><span class="acc">홈</span><span>내 공구</span><span>채팅</span><span>정산</span><span>설정</span></div>
+          <div style="flex:1;display:flex;flex-direction:column;min-height:0;position:relative">
+            <div class="topbar"><b>홈</b><span style="flex:1"></span><div class="accb">+ 공구 올리기</div><div class="av" style="border-color:#2a78d6"></div></div>
+            <div style="flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;opacity:.35">
+              <div class="dsh" style="height:60px"></div><div class="dsh" style="height:60px"></div><div class="dsh" style="flex:1;color:#bbb;display:flex;align-items:center;justify-content:center">뒤 화면 (흐림)</div>
+            </div>
+            <div class="bx" style="position:absolute;top:30px;right:8px;width:170px;background:#fff;padding:8px;display:flex;flex-direction:column;gap:5px;box-shadow:2px 3px 0 #2b2b2b">
+              <div style="display:flex;gap:6px;align-items:center"><div class="av" style="width:26px;height:26px"></div><div><b>김공구</b><br><span style="color:#888;font-size:9px">참여 12 · 주최 3</span></div></div>
+              <div class="bx" style="padding:3px 6px;text-align:center">🏅 정산 신뢰도 100%</div>
+              <hr style="border:none;border-top:1.5px dashed #aaa;margin:0">
+              <span>내 참여 내역</span><span>진행중인 내 공구</span><span>계좌/송금 링크</span><span>알림 설정</span><span style="color:#888">로그아웃</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+   </div>
+    <div class="expl">
+      <div class="key"><b>카테고리 5종</b><span>선택 즉시 입력폼 분기</span></div>
+      <div class="key"><b>배달음식 전용 폼</b><span>가게 링크 · 분 단위 마감 · 예상 총액</span></div>
+      <div class="key"><b>카드 실시간 미리보기</b><span>1인당 금액 자동 계산</span></div>
+      <div class="key"><b>올리기 → 채팅방 자동 생성</b></div>
+      <div class="key"><b>프로필 팝오버</b><span>정산 신뢰도 배지 · 내 공구</span></div>
+    </div>
+  </div>
   </div>
 </section>
 
-<!-- 8. 턴3c: 총액 변경 -->
+<!-- 7. 턴3c: 총액 변경 -->
 <section class="slide">
-  <div class="kicker">WIREFRAME ⑤ — 총 금액 변경</div>
+  <div class="kicker">WIREFRAME ④ — 총 금액 변경</div>
   <h2 class="jua">돈 얘기는 <span class="green">전부 기록에 남긴다</span></h2>
+  <div class="body">
   <div class="wfrow">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 3 · 3c</span>주최자 수정 → 전원 알림</div>
+      <div class="cap">주최자 수정 → 전원 알림</div>
       <div class="wf" style="width:420px;height:150px">
         <div class="topbar"><span>←</span><b style="flex:1">🍗 치킨 같이시켜요</b><span class="badge acc">모집중</span></div>
         <div style="display:flex;flex:1;gap:8px;padding:8px;min-height:0">
@@ -331,7 +318,7 @@
           </div>
         </div>
       </div>
-      <div class="cap" style="margin-top:1vh"><span class="tid">턴 3 · 3c</span>채팅 시스템 메시지 + 정산 잠금</div>
+      <div class="cap" style="margin-top:1vh">채팅 시스템 메시지 + 정산 잠금</div>
       <div class="wf" style="width:420px;height:130px">
         <div style="display:flex;flex:1;min-height:0">
           <div style="flex:1;padding:6px;display:flex;flex-direction:column;gap:4px;border-right:1.5px solid #2b2b2b">
@@ -347,20 +334,24 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>총 금액 = 정산 전까지는 '예상 금액'</b><p>주최자가 자유롭게 수정하되, 반드시 사유와 함께</p></div>
-      <div class="pt"><b>변경의 3종 세트</b><p>전원 알림 + 1인당 금액 자동 재계산 + 채팅방 시스템 메시지 — 셋은 항상 함께 발생 (몰래 변경 불가능)</p></div>
-      <div class="pt"><b>정산 시작 = 금액 잠금 🔒</b><p>돈 분쟁의 여지를 구조적으로 차단 — 서비스 신뢰의 핵심 규칙</p></div>
+      <div class="key"><b>주최자만 수정</b><span>모집중 상태에서만</span></div>
+      <div class="key"><b>변경 사유 입력</b></div>
+      <div class="key"><b>전원 알림 + 1인당 재계산</b></div>
+      <div class="key"><b>채팅 시스템 메시지 기록</b></div>
+      <div class="key"><b>정산 시작 = 금액 잠금 🔒</b></div>
     </div>
+  </div>
   </div>
 </section>
 
-<!-- 9. 턴3a: 채팅 -->
+<!-- 8. 턴3a: 채팅 -->
 <section class="slide">
-  <div class="kicker">WIREFRAME ⑥ — 채팅 커뮤니티</div>
+  <div class="kicker">WIREFRAME ⑤ — 채팅 커뮤니티</div>
   <h2 class="jua">모집이 <span class="green">대화 속에서</span> 일어난다</h2>
+  <div class="body">
   <div class="wfrow">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 3 · 3a</span>동네 라운지 + 공구방 (한 화면 전환)</div>
+      <div class="cap">동네 라운지 + 공구방 (한 화면 전환)</div>
       <div class="wf" style="width:420px;height:300px">
         <div style="display:flex;flex:1;min-height:0">
           <div class="side"><b>🛒 같이사요</b><span>홈</span><span>내 공구</span><span class="acc">채팅</span><span>정산</span><span>설정</span></div>
@@ -385,20 +376,24 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>라운지 + 공구방, 한 화면</b><p>동네 자유 수다(라운지)와 공구별 방을 같은 목록에서 전환 — 커뮤니티와 거래가 분리되지 않는다</p></div>
-      <div class="pt"><b>공구 카드가 말풍선이 된다</b><p>대화 중 카드 공유 → 인원·남은 시간이 실시간인 채로 → 탭 한 번에 참여. <b>수다가 곧 모집 채널</b>이 되는 성장 루프</p></div>
-      <div class="pt"><b>시스템 메시지가 방의 상태를 알린다</b><p>참여·마감·금액 변경·정산 이벤트가 자동 기록 — 총무의 공지 노동을 시스템이 대신</p></div>
+      <div class="key"><b>동네 라운지</b><span>이웃 자유 수다</span></div>
+      <div class="key"><b>공구방 자동 생성 · 자동 입장</b></div>
+      <div class="key"><b>공구 카드 말풍선 공유</b><span>대화 중 바로 참여</span></div>
+      <div class="key"><b>시스템 메시지</b><span>참여 · 마감 · 정산 이벤트</span></div>
+      <div class="key"><b>채팅방 검색</b></div>
     </div>
+  </div>
   </div>
 </section>
 
-<!-- 10. 턴4: 정산 -->
+<!-- 9. 턴4: 정산 -->
 <section class="slide">
-  <div class="kicker">WIREFRAME ⑦ — 정산</div>
+  <div class="kicker">WIREFRAME ⑥ — 정산</div>
   <h2 class="jua">영수증이 근거, <span class="green">계산은 자동</span></h2>
+  <div class="body">
   <div class="wfrow">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 4 · 4a</span>정산 시작 — 총액 확정 후 1/N</div>
+      <div class="cap">정산 시작 — 총액 확정 후 1/N</div>
       <div class="wf" style="width:420px;height:150px">
         <div class="topbar"><b>🍗 치킨 정산 시작</b></div>
         <div style="display:flex;flex:1;gap:8px;padding:8px;min-height:0">
@@ -414,7 +409,7 @@
           </div>
         </div>
       </div>
-      <div class="cap" style="margin-top:1vh"><span class="tid">턴 4 · 4b</span>참여자 — 내는 방법 3가지</div>
+      <div class="cap" style="margin-top:1vh">참여자 — 내는 방법 3가지</div>
       <div class="wf" style="width:420px;height:150px">
         <div class="topbar"><b>내가 낼 금액</b><span style="flex:1"></span><b class="acc" style="font-size:14px">13,625원</b><span class="chip">🧾 영수증 보기</span></div>
         <div style="padding:8px;display:flex;flex-direction:column;gap:5px;flex:1">
@@ -426,21 +421,25 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>영수증 사진이 정산의 근거</b><p>방에 공유돼 누구나 확인 — 합계가 총액과 맞아야 확정 버튼이 열린다</p></div>
-      <div class="pt"><b>균등 1/N 기본 + 개별 조정</b><p>치킨처럼 각자 메뉴가 다르면 개별 조정. 단, <b>배달비는 언제나 자동 균등</b> — 조정 불가 규칙</p></div>
-      <div class="pt"><b>내는 방법은 셋, 확인 방식은 다르게</b><p>페이 = 자동 확인 / 계좌·토스 = 셀프 체크 후 주최자 확인. 입금 현황이 체크리스트로 실시간</p></div>
+      <div class="key"><b>영수증 사진 첨부</b><span>정산 근거를 방에 공유</span></div>
+      <div class="key"><b>균등 1/N · 개별 금액 조정</b></div>
+      <div class="key"><b>배달비 자동 균등</b><span>개별 조정 대상 아님</span></div>
+      <div class="key"><b>결제 3종</b><span>대파페이 · 계좌 · 토스</span></div>
+      <div class="key"><b>입금 체크리스트 · 리마인드</b></div>
     </div>
+  </div>
   </div>
 </section>
 
-<!-- 11. 턴5: 지갑 + 예외 -->
+<!-- 10. 턴5: 지갑 + 예외 -->
 <section class="slide">
-  <div class="kicker">WIREFRAME ⑧ — 지갑 · 예외 흐름</div>
+  <div class="kicker">WIREFRAME ⑦ — 지갑 · 예외 흐름</div>
   <h2 class="jua">독촉을 없애는 <span class="green">마지막 조각</span></h2>
+  <div class="body">
   <div class="wfrow">
     <div class="wfpair">
       <div class="wfcol">
-        <div class="cap"><span class="tid">턴 5 · 5a</span>지갑 — 잔액·충전·자동 결제</div>
+        <div class="cap">지갑 — 잔액·충전·자동 결제</div>
         <div class="wf wf-s" style="width:420px;height:300px">
           <div style="display:flex;flex:1;min-height:0">
             <div class="side"><b>🛒 같이사요</b><span>홈</span><span>내 공구</span><span>채팅</span><span class="acc">페이</span><span>설정</span></div>
@@ -466,7 +465,7 @@
         </div>
       </div>
       <div class="wfcol">
-        <div class="cap"><span class="tid">턴 5 · 5b</span>영수증이 없다면 — 동의 투표</div>
+        <div class="cap">영수증이 없다면 — 동의 투표</div>
         <div class="wf wf-s" style="width:420px;height:165px">
           <div style="display:flex;flex:1;min-height:0">
             <div style="flex:1;padding:6px;display:flex;flex-direction:column;gap:4px;border-right:1.5px solid #2b2b2b">
@@ -487,28 +486,40 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>자동 결제 ON = 독촉의 소멸</b><p>정산 요청이 오면 잔액에서 즉시 차감 — "입금해주세요" 메시지가 필요 없어진다</p></div>
-      <div class="pt"><b>내역의 각 줄은 공구방으로 연결</b><p>돈의 기록과 대화의 기록이 항상 이어져 있다</p></div>
-      <div class="pt"><b>영수증이 없어도 정산은 굴러간다</b><p>직접 입력(미인증 표시) + 참여자 과반 동의로 확정. 이의는 채팅으로 해결 — <b>예외 흐름까지 설계해야 '총무 없는 공구'가 완성</b></p></div>
+      <div class="key"><b>잔액 · 충전 · 출금</b></div>
+      <div class="key"><b>정산 요청 자동 결제</b><span>독촉이 사라진다</span></div>
+      <div class="key"><b>이용 내역 → 공구방 연결</b></div>
+      <div class="key"><b>미인증 정산</b><span>직접 입력 + 참여자 과반 동의</span></div>
+      <div class="key"><b>이의는 채팅에서 해결</b></div>
     </div>
+  </div>
   </div>
 </section>
 
-<!-- 12. 마무리 -->
+<!-- 11. 마무리 -->
 <section class="slide dark">
   <div class="kicker">NEXT</div>
-  <h2 class="jua" style="color:#fff">와이어프레임 5턴 → 하이파이 → 구현</h2>
-  <p class="lead">구조(턴1) → 올리기·팝오버(턴2) → 채팅·카테고리·금액 투명성(턴3) → 정산(턴4) → 지갑·예외(턴5).<br>이 결정들이 그대로 하이파이 시안이 되고, 지금 <b class="green">Next.js(React) 프로토타입으로 구현 완료</b> — 3일간 Supabase 실시간 연동으로 완성합니다.</p>
+  <h2 class="jua" style="color:#fff">구현</h2>
+  <div class="body">
+  <p class="lead">구조 → 올리기·팝오버 → 채팅·카테고리·금액 투명성 → 정산 → 지갑·예외<br><b class="green">Next.js(React) 프로토타입으로 구현</b> — Supabase 실시간 연동, 기능 고도화로 완성합니다.</p>
   <table class="team">
-    <tr><td>팀원 A</td><td>공구 도메인</td><td>공고 · 목록 · 선착순 참여 · 금액 변경</td></tr>
-    <tr><td>팀원 B</td><td>채팅 · 발표</td><td>Realtime 채팅 · 카드 공유 · 발표 총괄</td></tr>
-    <tr><td>팀원 C</td><td>정산 · 페이</td><td>1/N 분배 · 입금 체크리스트 · 대파페이</td></tr>
-    <tr><td>팀원 D</td><td>플랫폼</td><td>Supabase · 인증 · 알림 · 오라클 배포</td></tr>
+    <tr><td>김지우</td><td>공구 도메인</td><td>공고 · 목록 · 선착순 참여 · 금액 변경</td></tr>
+    <tr><td>김정우</td><td>채팅 · 발표</td><td>Realtime 채팅 · 카드 공유 · 발표 총괄</td></tr>
+    <tr><td>김시은</td><td>정산 · 페이</td><td>1/N 분배 · 입금 체크리스트 · 대파페이</td></tr>
+    <tr><td>박준호</td><td>플랫폼</td><td>Supabase · 인증 · 알림 · 오라클 배포</td></tr>
   </table>
-  <h2 class="jua" style="margin-top:4vh;color:#7fdc95">같이 사면 이득. 감사합니다 🥬</h2>
+  <div class="sublabel">협업 방식 — Git · GitHub</div>
+  <div class="collab">
+    <span class="pill">이슈 등록</span><span class="ar">›</span>
+    <span class="pill">브랜치 <code>feat/#번호</code></span><span class="ar">›</span>
+    <span class="pill">PR · <code>closes #번호</code></span><span class="ar">›</span>
+    <span class="pill">코드 리뷰 1인 승인</span><span class="ar">›</span>
+    <span class="pill">Squash merge</span>
+  </div>
+  <p class="lead" style="margin:1.3vh 0 0;font-size:1.95vh">main 직접 push 금지 · 이슈 = 브랜치 = PR 1:1 · 리뷰 코멘트 P1 / P2 / nit 규칙 · Projects 칸반으로 진행 관리</p>
+  <h2 class="jua" style="margin-top:3vh;color:#7fdc95">같이 사면 이득. 감사합니다 🥬</h2>
+  </div>
 </section>
-
-<div class="hud">← → 이동 · <span id="page"></span> · 인쇄(Cmd+P)로 PDF 저장</div>
 
 <script>
   const slides = [...document.querySelectorAll(".slide")];

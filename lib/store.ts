@@ -1,8 +1,8 @@
 "use client";
 
 import { create } from "zustand";
-import { CAT_EMOJI, fmt } from "./deal";
-import type { Deal, DealForm, HistoryItem, Msg, PageKey } from "./types";
+import { CAT_EMOJI, fmt, joinable } from "./deal";
+import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey } from "./types";
 
 const t0 = Date.now();
 
@@ -29,7 +29,7 @@ const mk = (
   end: t0 + endMin * 60_000,
   place,
   host,
-  status: "recruit",
+  status: "recruiting",
   me: false,
   mine: false,
   ...extra,
@@ -38,7 +38,7 @@ const mk = (
 const seedDeals: Deal[] = [
   mk(1, "🧅", "대파 5단 같이 나눠요", "식료품", 12500, 5, 3, 134, "행복아파트 정문", "파밍맘"),
   mk(2, "🍗", "치킨 같이 시켜요", "배달음식", 54500, 4, 4, -30, "201동 로비", "준호", {
-    status: "settle",
+    status: "settling",
     me: true,
     members: [
       { name: "민지", amt: 15000, note: "후라이드+콜라", paid: true },
@@ -85,9 +85,18 @@ const seedHistory: HistoryItem[] = [
 
 const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "" };
 
+interface AuthForm {
+  nick: string;
+  email: string;
+  pw: string;
+}
+
 interface StoreState {
   page: PageKey;
   sel: number | null;
+  authMode: AuthMode;
+  auth: AuthForm;
+  dongOk: boolean;
   room: string;
   chatInput: string;
   search: string;
@@ -96,6 +105,8 @@ interface StoreState {
   profileOpen: boolean;
   topupOpen: boolean;
   topupAmt: number;
+  withdrawOpen: boolean;
+  withdrawAmt: number;
   balance: number;
   autoPay: boolean;
   n1: boolean;
@@ -105,6 +116,11 @@ interface StoreState {
   msgs: Record<string, Msg[]>;
   history: HistoryItem[];
 
+  setAuth: (patch: Partial<AuthForm>) => void;
+  switchAuthMode: () => void;
+  verifyDong: () => void;
+  enterApp: () => void;
+  logout: () => void;
   go: (page: PageKey) => void;
   openDeal: (id: number) => void;
   openSettle: (id: number) => void;
@@ -121,6 +137,9 @@ interface StoreState {
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => void;
+  toggleWithdraw: () => void;
+  setWithdrawAmt: (v: number) => void;
+  doWithdraw: () => void;
   toggleAutoPay: () => void;
   toggleN1: () => void;
   toggleN2: () => void;
@@ -128,8 +147,11 @@ interface StoreState {
 }
 
 export const useStore = create<StoreState>((set) => ({
-  page: "home",
+  page: "login",
   sel: null,
+  authMode: "login",
+  auth: { nick: "", email: "", pw: "" },
+  dongOk: false,
   room: "lounge",
   chatInput: "",
   search: "",
@@ -138,6 +160,8 @@ export const useStore = create<StoreState>((set) => ({
   profileOpen: false,
   topupOpen: false,
   topupAmt: 10000,
+  withdrawOpen: false,
+  withdrawAmt: 10000,
   balance: 23500,
   autoPay: true,
   n1: true,
@@ -146,6 +170,13 @@ export const useStore = create<StoreState>((set) => ({
   deals: seedDeals,
   msgs: seedMsgs,
   history: seedHistory,
+
+  setAuth: (patch) => set((st) => ({ auth: { ...st.auth, ...patch } })),
+  switchAuthMode: () => set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup" })),
+  verifyDong: () => set({ dongOk: true }),
+  enterApp: () => set((st) => ({ page: "home", authMode: "login", auth: { ...st.auth, pw: "" } })),
+  logout: () =>
+    set((st) => ({ page: "login", profileOpen: false, authMode: "login", auth: { ...st.auth, pw: "" } })),
 
   go: (page) => set({ page, profileOpen: false }),
   openDeal: (id) => set({ page: "detail", sel: id, profileOpen: false }),
@@ -161,7 +192,7 @@ export const useStore = create<StoreState>((set) => ({
   join: (id) =>
     set((st) => {
       const target = st.deals.find((d) => d.id === id);
-      if (!target || target.me || target.status === "settle" || target.end - Date.now() <= 0) return {};
+      if (!target || !joinable(target, Date.now())) return {};
       const deals = st.deals.map((x) => {
         if (x.id !== id) return x;
         const joined = x.joined + 1;
@@ -170,7 +201,7 @@ export const useStore = create<StoreState>((set) => ({
           ...x,
           joined,
           me: true,
-          status: done ? ("settle" as const) : x.status,
+          status: done ? ("settling" as const) : x.status,
           members: done
             ? Array.from({ length: joined }, (_, i) => ({
                 name: i === joined - 1 ? "나" : "이웃" + (i + 1),
@@ -188,7 +219,7 @@ export const useStore = create<StoreState>((set) => ({
         ...(msgs[key] ?? []),
         { kind: "sys", text: `파티원님이 참여했어요 (${full.joined}/${full.goal})` },
       ];
-      if (full.status === "settle") {
+      if (full.status === "settling") {
         msgs[key] = [...msgs[key], { kind: "sys", text: "목표 달성! 정산이 시작돼요 🎉" }];
       }
       return { deals, msgs };
@@ -236,6 +267,18 @@ export const useStore = create<StoreState>((set) => ({
       history: [{ emoji: "⚡", title: "충전", when: "방금", amt: st.topupAmt }, ...st.history],
     })),
 
+  toggleWithdraw: () => set((st) => ({ withdrawOpen: !st.withdrawOpen })),
+  setWithdrawAmt: (v) => set({ withdrawAmt: v }),
+  doWithdraw: () =>
+    set((st) => {
+      if (st.withdrawAmt <= 0 || st.withdrawAmt > st.balance) return {};
+      return {
+        balance: st.balance - st.withdrawAmt,
+        withdrawOpen: false,
+        history: [{ emoji: "🏧", title: "출금", when: "방금", amt: -st.withdrawAmt }, ...st.history],
+      };
+    }),
+
   toggleAutoPay: () => set((st) => ({ autoPay: !st.autoPay })),
   toggleN1: () => set((st) => ({ n1: !st.n1 })),
   toggleN2: () => set((st) => ({ n2: !st.n2 })),
@@ -258,7 +301,7 @@ export const useStore = create<StoreState>((set) => ({
         end: Date.now() + (parseInt(f.mins) || 60) * 60_000,
         place: f.place || "채팅방에서 협의",
         host: "나",
-        status: "recruit",
+        status: "recruiting",
         me: true,
         mine: true,
       };

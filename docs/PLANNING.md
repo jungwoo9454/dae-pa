@@ -35,6 +35,16 @@
 
 ## 4. 기능 명세
 
+### 4.0 로그인 · 회원가입 (온보딩)
+
+- **로그인**: 이메일 + 비밀번호. 로그인 ↔ 회원가입 모드 전환
+- **회원가입**: 닉네임 + 이메일/비밀번호 + **동네 인증**
+  - 동네 인증은 3일 범위에서 **원클릭 목(mock) 인증**("역삼동 인증 완료 ✓") — 실제 GPS 인증은 범위 제외
+- **소셜 로그인**: 카카오 · 구글 버튼 (프로토타입은 클릭 시 즉시 입장, 실연동은 Supabase OAuth로 추후)
+- 레이아웃: 좌측 브랜드 패널(로고 + 서비스 가치 3줄) + 우측 인증 카드
+- **로그아웃**: 프로필 팝오버에서 → 로그인 화면 복귀
+- 인증 상태는 Supabase Auth 세션 기반으로 구현 (연동 작업: 이슈 #2)
+
 ### 4.1 공구 공고 올리기
 
 - 카테고리 선택: `식료품` `배달음식` `생활용품` `대량구매` `기타`
@@ -125,6 +135,7 @@
 
 | 화면 | 주요 요소 |
 | --- | --- |
+| 로그인/회원가입 | 브랜드 패널, 이메일/비밀번호, 닉네임+동네 인증(가입 시), 카카오/구글 소셜 |
 | 홈 (공구 목록) | 카테고리/상태 필터, 실시간 카드 리스트, 공고 작성 버튼 |
 | 공구 작성 | 카테고리 선택, 폼(배달음식 전용 분기), 실시간 카드 미리보기 |
 | 공구 상세 | 진행바, 카운트다운, 상태 배지, 1인당 금액, 참여 버튼, 채팅방 이동 |
@@ -134,28 +145,47 @@
 | 프로필 | 팝오버(통계·신뢰도 배지), 내 공구 내역 |
 | 설정 | 알림, 계좌, 송금 앱, 계정 관리 |
 
-## 7. 데이터 모델 초안 (Supabase Postgres)
+## 7. 데이터 모델 (Supabase Postgres)
+
+> 실제 DDL은 **[supabase/schema.sql](../supabase/schema.sql)** 이 단일 출처. 아래는 요약이며 스키마 변경 시 함께 갱신한다.
 
 ```
-profiles            id, nickname, avatar_url, bank_account, transfer_app, trust_score
-group_buys          id, host_id, title, description, category, store_link,
-                    total_amount, delivery_fee, target_count, deadline,
-                    status(recruiting|settling|completed|canceled), created_at
-participations      id, group_buy_id, user_id, amount_due, is_paid, paid_at, joined_at
-chat_rooms          id, type(lounge|group_buy), group_buy_id?, name
-messages            id, room_id, user_id?, type(text|system|group_buy_card),
-                    content, payload(jsonb), created_at
-settlements         id, group_buy_id, method(receipt|vote), receipt_url,
-                    recognized_total, status(pending|confirmed), confirmed_at
-settlement_votes    id, settlement_id, user_id, agree(boolean)
+profiles            id(=auth.users.id), nickname, avatar_url, bank_account,
+                    transfer_app, trust_score, created_at
 wallets             user_id, balance
-wallet_transactions id, user_id, type(charge|withdraw|pay|receive), amount,
-                    settlement_id?, created_at
+group_buys          id, host_id, title, description, category, store_link,
+                    total_amount, delivery_fee, goal, joined, deadline, place,
+                    status(recruiting|settling|completed|canceled), created_at
+participations      id, group_buy_id, user_id, note, amount_due, is_paid,
+                    paid_at, joined_at            -- unique(group_buy_id, user_id)
+chat_rooms          id, type(lounge|group_buy), group_buy_id?, name
+messages            id, room_id, user_id?, kind(text|sys|card),
+                    content, payload(jsonb), created_at
+settlements         id, group_buy_id, total_amount, delivery_fee, receipt_url,
+                    status(pending|confirmed), confirmed_at
+settlement_votes    settlement_id, user_id, agree(boolean)
+wallet_transactions id, user_id, kind(charge|withdraw|pay|receive), amount,
+                    group_buy_id?, title, created_at
 notifications       id, user_id, type, payload(jsonb), is_read, created_at
 ```
 
-- 실시간: `group_buys`, `participations`, `messages`는 Supabase Realtime 구독
-- 영수증 이미지: Supabase Storage 버킷 `receipts`
+- 상태값은 `recruiting|settling|completed|canceled`. `lib/types.ts`의 `DealStatus`도 같은 값이라 매핑 레이어가 없다.
+  `마감임박`은 DB 상태가 아니라 `deadline` 1시간 전부터 UI 파생.
+- `goal` = 목표 인원 = 정원, `joined` = 현재 참여 수(주최자 포함, 기본 1).
+- **참여는 `join_group_buy(id)` RPC 로만** 한다. 원자적 `UPDATE ... WHERE joined < goal` 로
+  정원 초과·중복·마감을 서버에서 차단하고, 정원 도달 시 `settling` 자동 전환 + 시스템 메시지 + 전원 알림.
+  `participations` 에는 INSERT RLS 정책이 없어 클라이언트 직접 삽입이 불가능하다. **RPC 구현은 이슈 #5**.
+- 자동 생성 트리거: 가입 시 `profiles`+`wallets` (#2 구현 완료).
+  공구 생성 시 채팅방·주최자 참여·개설 시스템 메시지는 **이슈 #8·#9** 에서 추가한다
+  (`chat_rooms` 에도 INSERT RLS 정책이 없다).
+- 소셜 로그인(Google·Kakao)은 Supabase Auth 가 처리하므로 **테이블 추가가 없다**. 제공자 계정은
+  `auth.identities` 에 쌓이고, 어떤 제공자로 들어왔는지는 JWT 의 `app_metadata.provider` 로 읽는다.
+  가입 트리거가 제공자별 메타데이터 키(`full_name`/`name`/`user_name`, `avatar_url`/`picture`)에서
+  닉네임·아바타를 뽑아 `profiles` 에 채운다.
+- 총 금액 변경은 RLS 로 **주최자 + `status='recruiting'` + 마감 전** 일 때만 허용 (정산 진입·마감 후 서버 거부).
+- 시스템 메시지(`kind='sys'`)는 클라이언트가 삽입할 수 없고 서버 함수만 기록한다.
+- 실시간: `group_buys`, `participations`, `messages`, `notifications` Realtime 구독
+- 영수증 이미지: Supabase Storage 버킷 `receipts` (자동 인식 없음, 참고용 첨부)
 
 ## 8. 기술 스택
 
@@ -184,7 +214,7 @@ notifications       id, user_id, type, payload(jsonb), is_read, created_at
 
 - **영수증 자동 인식** (Claude API 비전) — 보류, 여유 시 후순위
 - 실제 PG 결제 연동 (대파페이는 모의 충전/결제)
-- 위치 기반 동네 인증 (단일 동네 가정)
+- 실제 위치 기반 동네 인증 — 가입 UI는 원클릭 목 인증, 단일 동네('역삼동') 가정
 - 모바일 푸시 알림 (인앱 알림만)
 - 관리자 페이지
 
