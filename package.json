@@ -3,9 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.21.0",
-  "pnpm": {
-    "onlyBuiltDependencies": ["sharp"]
-  },
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
     "dev": "next dev",
