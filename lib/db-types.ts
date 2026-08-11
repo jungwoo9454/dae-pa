@@ -41,3 +41,21 @@ export interface ParticipationRow {
  * 목록/상세 어디서든 host_profile과 동일한 패턴으로 붙일 수 있다.
  */
 export type ParticipationWithProfile = ParticipationRow & { profile: ProfileRow | null };
+
+export interface SettlementRow {
+  id: number; // bigint identity
+  group_buy_id: number;
+  total_amount: number;
+  delivery_fee: number;
+  receipt_url: string | null;
+  status: "pending" | "confirmed";
+  confirmed_at: string | null;
+  created_at: string;
+}
+
+export interface SettlementVoteRow {
+  settlement_id: number;
+  user_id: string; // uuid
+  agree: boolean;
+  created_at: string;
+}

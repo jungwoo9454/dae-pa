@@ -13,8 +13,9 @@
 --   alter table profiles add column if not exists dong text;                                        -- #2 동네
 --   alter table profiles add column if not exists notify_deadline boolean not null default true;    -- #20 알림 토글
 --   alter table profiles add column if not exists notify_payment  boolean not null default true;
+--   alter table profiles add column if not exists auto_pay        boolean not null default true;    -- #14 정산 요청 자동 결제
 --   grant update (nickname, avatar_url, dong, bank_account, transfer_app,
---                 notify_deadline, notify_payment) on profiles to authenticated;
+--                 notify_deadline, notify_payment, auto_pay) on profiles to authenticated;
 create table profiles (
   id            uuid primary key references auth.users(id) on delete cascade,
   nickname      text not null,
@@ -24,6 +25,7 @@ create table profiles (
   transfer_app  text,          -- 기본 송금 앱 (예: '토스')
   notify_deadline boolean not null default true,  -- 마감 임박 알림 수신 (#20)
   notify_payment  boolean not null default true,  -- 입금 요청 알림 수신 (#20)
+  auto_pay        boolean not null default true,  -- 정산 요청 자동 결제 (#14)
   trust_score   int not null default 100,
   created_at    timestamptz not null default now()
 );
@@ -882,7 +884,7 @@ grant update (note, is_paid, paid_at) on participations to authenticated;
 -- trust_score 는 정산 완료 RPC(#17)가 쓴다.
 revoke update on profiles from authenticated;
 grant update (nickname, avatar_url, dong, bank_account, transfer_app,
-              notify_deadline, notify_payment) on profiles to authenticated;
+              notify_deadline, notify_payment, auto_pay) on profiles to authenticated;
 
 -- 트리거 함수는 /rest/v1/rpc/ 로 노출될 이유가 없다. EXECUTE 권한은 CREATE TRIGGER 시점에만
 -- 검사되므로 전부 회수해도 트리거는 정상 동작한다.

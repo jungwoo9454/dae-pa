@@ -2,8 +2,8 @@
 "use client";
 
 import { createClient } from "./client";
-import type { Deal } from "@/lib/types";
-import type { GroupBuyRow, ParticipationWithProfile, ProfileRow } from "@/lib/db-types";
+import type { Deal, Settlement } from "@/lib/types";
+import type { GroupBuyRow, ParticipationWithProfile, ProfileRow, SettlementRow } from "@/lib/db-types";
 import { CAT_EMOJI } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 
@@ -158,6 +158,83 @@ export function subscribeToParticipations(
 
   return () => {
     void sb.removeChannel(channel);
+  };
+}
+
+/**
+ * Settlement + settlement_votes Realtime 구독 (#62).
+ * settlements 는 group_buy_id로, settlement_votes 는 settlement_id를 알아야 걸 수 있어서
+ * 첫 조회 후 settlement.id가 정해지면 그때 votes 채널을 연다.
+ */
+export function subscribeToSettlement(
+  dealId: number,
+  callback: (settlement: Settlement | null) => void,
+): () => void {
+  const sb = createClient();
+  let voteChannel: ReturnType<typeof sb.channel> | null = null;
+  let currentSettlementId: number | null = null;
+
+  const load = async () => {
+    const { data, error } = await sb
+      .from("settlements")
+      .select("*")
+      .eq("group_buy_id", dealId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[subscribeToSettlement]", error.message);
+      callback(null);
+      return;
+    }
+    if (!data) {
+      callback(null);
+      return;
+    }
+
+    const row = data as SettlementRow;
+
+    if (row.id !== currentSettlementId) {
+      currentSettlementId = row.id;
+      voteChannel?.unsubscribe();
+      voteChannel = sb
+        .channel(`settlement_votes:${row.id}`)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "settlement_votes", filter: `settlement_id=eq.${row.id}` },
+          () => void load(),
+        )
+        .subscribe();
+    }
+
+    const { data: voteRows, error: voteErr } = await sb
+      .from("settlement_votes")
+      .select("user_id, agree")
+      .eq("settlement_id", row.id);
+    if (voteErr) console.error("[subscribeToSettlement:votes]", voteErr.message);
+
+    callback({
+      id: row.id,
+      finalTotal: row.total_amount,
+      hasReceipt: !!row.receipt_url,
+      confirmed: row.status === "confirmed",
+      votes: Object.fromEntries((voteRows ?? []).map((v) => [v.user_id as string, v.agree as boolean])),
+    });
+  };
+
+  void load();
+
+  const channel = sb
+    .channel(`settlement:${dealId}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "settlements", filter: `group_buy_id=eq.${dealId}` },
+      () => void load(),
+    )
+    .subscribe();
+
+  return () => {
+    void sb.removeChannel(channel);
+    voteChannel?.unsubscribe();
   };
 }
 

@@ -1,4 +1,5 @@
-import type { Category, Deal, Member } from "./types";
+import type { ParticipationWithProfile } from "./db-types";
+import type { Category, Deal } from "./types";
 
 export const CAT_EMOJI: Record<Category, string> = {
   식료품: "🥬",
@@ -10,12 +11,6 @@ export const CAT_EMOJI: Record<Category, string> = {
 
 export function fmt(n: number) {
   return n.toLocaleString("ko-KR") + "원";
-}
-
-const TX_EMOJI: Record<string, string> = { charge: "⚡", withdraw: "🏧", pay: "🧾", receive: "💰" };
-
-export function emojiForTxKind(kind: string) {
-  return TX_EMOJI[kind] ?? "💳";
 }
 
 /** wallet_transactions.created_at(ISO) → "방금"/"N분 전"/"어제"/"8월 7일" 같은 상대 표기 */
@@ -66,32 +61,6 @@ export function perAmount(d: Deal) {
   return Math.ceil(d.total / Math.max(1, d.joined));
 }
 
-export function splitEven(amount: number, n: number) {
-  const base = Math.floor(amount / n);
-  return { base, remainder: amount - base * n };
-}
-
-/**
- * 개인 부담금 = 개인 항목 금액 + (배달비 ÷ 참여자 수).
- * 배달비는 항상 균등 분배하고, 항목 금액·배달비 나머지는 모두 주최자가 부담해
- * 멤버 amt 합계가 항상 deal.total과 일치하도록 만든다.
- */
-export function recalcMembers(deal: Pick<Deal, "total" | "host" | "deliveryFee">, members: Member[]): Member[] {
-  const n = members.length;
-  if (n === 0) return members;
-  const deliveryFee = deal.deliveryFee ?? 0;
-  const itemTotal = deal.total - deliveryFee;
-  const { base: dBase, remainder: dRem } = splitEven(deliveryFee, n);
-  const othersItemSum = members.filter((m) => m.name !== deal.host).reduce((s, m) => s + m.itemAmt, 0);
-  const hostItemAmt = itemTotal - othersItemSum;
-  return members.map((m) => {
-    const isHost = m.name === deal.host;
-    const itemAmt = isHost ? hostItemAmt : m.itemAmt;
-    const deliveryShare = isHost ? dBase + dRem : dBase;
-    return { ...m, itemAmt, amt: itemAmt + deliveryShare };
-  });
-}
-
 /** 입금 유예 — 마감 후 하루까지는 미납이어도 신뢰도를 깎지 않는다 */
 const PAY_GRACE_MS = 24 * 3_600_000;
 
@@ -100,14 +69,14 @@ const PAY_GRACE_MS = 24 * 3_600_000;
  * 신뢰도 = 기한 내 입금율 — 정산에 들어간 내 공구 중 마감 + 유예까지 안 낸 건만 감점한다.
  * 집계 대상이 없으면 100%.
  */
-export function profileStats(deals: Deal[], now: number) {
+export function profileStats(deals: Deal[], now: number, meId: string | null) {
   const hosted = deals.filter((d) => d.mine).length;
   const joined = deals.filter((d) => d.me && !d.mine).length;
   const dues = deals
     .filter((d) => d.status === "settling" || d.status === "completed")
-    .map((d) => ({ deal: d, mine: d.members?.find((m) => m.name === "나") }))
-    .filter((x): x is { deal: Deal; mine: Member } => !!x.mine);
-  const late = dues.filter((x) => !x.mine.paid && x.deal.end + PAY_GRACE_MS <= now).length;
+    .map((d) => ({ deal: d, mine: d.participations?.find((p) => p.user_id === meId) }))
+    .filter((x): x is { deal: Deal; mine: ParticipationWithProfile } => !!x.mine);
+  const late = dues.filter((x) => !x.mine.is_paid && x.deal.end + PAY_GRACE_MS <= now).length;
   const trust = dues.length === 0 ? 100 : Math.round(((dues.length - late) / dues.length) * 100);
   return { hosted, joined, trust };
 }

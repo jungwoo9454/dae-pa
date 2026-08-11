@@ -40,23 +40,13 @@ export interface Noti {
 
 export type DealStatus = "recruiting" | "settling" | "completed" | "canceled";
 
-export interface Member {
-  name: string;
-  /** 개인 항목 금액 — 배달비 제외, 주최자가 조정 가능 (주최자 본인 몫은 나머지로 자동 계산) */
-  itemAmt: number;
-  /** 최종 부담금 = itemAmt + 배달비 균등 분담분 */
-  amt: number;
-  note: string;
-  paid: boolean;
-  /** 입금 수단 — paid=true 일 때만 의미 있음 */
-  payMethod?: "wallet" | "account" | "toss";
-}
-
 export interface Settlement {
+  /** settlements.id — 투표 insert·finalize_settlement_vote RPC 호출에 필요 */
+  id: number;
   finalTotal: number;
   hasReceipt: boolean;
   confirmed: boolean;
-  /** 참여자 이름 → 동의 여부. 영수증 없을 때 과반 동의로 확정할 때만 사용 */
+  /** 참여자 user_id(uuid) → 동의 여부. 영수증 없을 때 과반 동의로 확정할 때만 사용 */
   votes: Record<string, boolean>;
 }
 
@@ -74,7 +64,6 @@ export interface Deal {
   status: DealStatus;
   me: boolean;
   mine: boolean;
-  members?: Member[];
   /** 배달비 — 있으면 항상 균등 분배, 개별 조정 대상 아님 */
   deliveryFee?: number;
   settlement?: Settlement;
@@ -113,7 +102,8 @@ export interface Room {
 }
 
 export interface HistoryItem {
-  emoji: string;
+  /** wallet_transactions.kind — 아이콘 결정은 화면(pay.tsx)이 한다 (#65) */
+  kind: string;
   title: string;
   when: string;
   amt: number;

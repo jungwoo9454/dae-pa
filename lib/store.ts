@@ -1,22 +1,11 @@
 "use client";
 
 import { create } from "zustand";
-import { CAT_EMOJI, emojiForTxKind, fmt, joinable, recalcMembers, relativeWhen } from "./deal";
+import { CAT_EMOJI, joinable, relativeWhen } from "./deal";
 import { createClient } from "./supabase/client";
 import { sysText } from "./sys-messages";
 import type { GroupBuyRow } from "./db-types";
-import type {
-  AuthMode,
-  Deal,
-  DealForm,
-  HistoryItem,
-  Me,
-  Msg,
-  Noti,
-  PageKey,
-  Room,
-  Settlement,
-} from "./types";
+import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, Noti, PageKey, Room } from "./types";
 
 /** 동네 인증은 아직 모의 — 위치 기반 판정은 별도 이슈 */
 export const DONG = "역삼동";
@@ -154,26 +143,6 @@ const seedMsgs: Record<string, Msg[]> = {
 
 const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "",store_link: "", };
 
-/** 전원 입금 완료 시 공구를 마감 처리하고 시스템 메시지까지 함께 적용한다 (신뢰도는 deals 에서 파생) */
-function completeIfAllPaid(
-  deals: Deal[],
-  msgs: Record<string, Msg[]>,
-  dealId: number,
-): { deals: Deal[]; msgs: Record<string, Msg[]> } {
-  const deal = deals.find((d) => d.id === dealId);
-  const mem = deal?.members ?? [];
-  const allPaid = mem.length > 0 && mem.every((m) => m.paid);
-  if (!deal || !allPaid) return { deals, msgs };
-  const nextDeals = deals.map((d) => (d.id === dealId ? { ...d, status: "completed" as const } : d));
-  const key = "d" + dealId;
-  const nextMsgs = { ...msgs };
-  nextMsgs[key] = [
-    ...(nextMsgs[key] ?? []),
-    { kind: "sys" as const, text: "🎉 전원 입금 완료 — 공구가 마감됐어요! 정산 신뢰도가 올랐어요 ⭐" },
-  ];
-  return { deals: nextDeals, msgs: nextMsgs };
-}
-
 interface AuthForm {
   nick: string;
   email: string;
@@ -250,13 +219,17 @@ interface StoreState {
   /** 공구 참여 (#5) — join_group_buy RPC 호출. 서버가 정원/마감/중복을 원자적으로 거부한다 */
   join: (id: number) => Promise<void>;
   shareDeal: (dealId: number, roomId: string) => void;
-  adjustMemberItem: (dealId: number, name: string, itemAmt: number) => void;
+  /** 주최자 개별 금액 조정 (#16) — adjust_participation_amount RPC. 본인 몫은 나머지로 자동 계산 */
+  adjustParticipationAmount: (participationId: number, newAmount: number) => Promise<void>;
   /** 총 금액 변경 (#12) — change_total_amount RPC 호출. 주최자+모집중일 때만 서버가 허용 */
   changeTotalAmount: (dealId: number, newTotal: number) => Promise<void>;
   sendMsg: () => void;
-  payNow: (dealId: number) => void;
-  confirmSelfPaid: (dealId: number, method: "account" | "toss") => void;
-  remindUnpaid: (dealId: number) => void;
+  /** 대파페이 결제 (#18) — pay_with_wallet RPC. 잔액 검증→차감→입금 처리를 원자적으로 */
+  payNow: (participationId: number) => Promise<void>;
+  /** 계좌·토스 셀프 체크 (#17) — confirm_self_paid RPC */
+  confirmSelfPaid: (participationId: number, method: "account" | "toss") => Promise<void>;
+  /** 미입금자 리마인드 (#17) — remind_unpaid RPC, 주최자만 호출 가능 */
+  remindUnpaid: (dealId: number) => Promise<void>;
   /** 주최자 취소 (#29) — 모집중·정산중이면 canceled 로 보낸다. 실패하면 사유 문구를 돌려준다 */
   cancelDeal: (dealId: number) => Promise<string | null>;
   toggleTopup: () => void;
@@ -265,8 +238,10 @@ interface StoreState {
   setTopupResult: (v: "ok" | "fail" | null) => void;
   setSettleTotalInput: (v: string) => void;
   toggleSettleReceipt: () => void;
-  confirmSettlement: (dealId: number) => void;
-  voteSettlement: (dealId: number, agree: boolean) => void;
+  /** 정산 시작/총액 확정 (#15) — confirm_settlement RPC. 영수증 있으면 즉시 확정, 없으면 과반 동의 대기 */
+  confirmSettlement: (dealId: number) => Promise<void>;
+  /** 영수증 없을 때 동의 투표 (#15) — 본인 투표 insert 후 finalize_settlement_vote RPC 로 과반 판정 */
+  voteSettlement: (dealId: number, agree: boolean) => Promise<void>;
   toggleWithdraw: () => void;
   setWithdrawAmt: (v: number) => void;
   doWithdraw: () => Promise<void>;
@@ -367,7 +342,7 @@ export const useStore = create<StoreState>((set, get) => ({
         const { data: p, error } = await sb
           .from("profiles")
           .select(
-            "nickname, avatar_url, dong, bank_account, transfer_app, notify_deadline, notify_payment",
+            "nickname, avatar_url, dong, bank_account, transfer_app, notify_deadline, notify_payment, auto_pay",
           )
           .eq("id", uid)
           .single();
@@ -388,6 +363,7 @@ export const useStore = create<StoreState>((set, get) => ({
           },
           n1: p?.notify_deadline ?? true,
           n2: p?.notify_payment ?? true,
+          autoPay: p?.auto_pay ?? true,
         });
 
         // 대파페이 잔액·이용 내역 (#14) — 최초 조회 후 Realtime 구독으로 계속 최신 유지
@@ -401,7 +377,7 @@ export const useStore = create<StoreState>((set, get) => ({
         set({
           balance: w?.balance ?? 0,
           history: (txs ?? []).map((t) => ({
-            emoji: emojiForTxKind(t.kind),
+            kind: t.kind,
             title: t.title,
             when: relativeWhen(t.created_at),
             amt: t.amount,
@@ -423,7 +399,7 @@ export const useStore = create<StoreState>((set, get) => ({
               const t = payload.new as { kind: string; amount: number; title: string; created_at: string };
               set((st) => ({
                 history: [
-                  { emoji: emojiForTxKind(t.kind), title: t.title, when: relativeWhen(t.created_at), amt: t.amount },
+                  { kind: t.kind, title: t.title, when: relativeWhen(t.created_at), amt: t.amount },
                   ...st.history,
                 ],
               }));
@@ -707,16 +683,15 @@ export const useStore = create<StoreState>((set, get) => ({
     }));
   },
 
-  adjustMemberItem: (dealId, name, itemAmt) =>
-    set((st) => {
-      const deal = st.deals.find((d) => d.id === dealId);
-      if (!deal || name === deal.host) return {};
-      const safeAmt = Math.max(0, Math.floor(itemAmt) || 0);
-      const members = (deal.members ?? []).map((m) => (m.name === name ? { ...m, itemAmt: safeAmt } : m));
-      const recalced = recalcMembers(deal, members);
-      const deals = st.deals.map((d) => (d.id === dealId ? { ...d, members: recalced } : d));
-      return { deals };
-    }),
+  adjustParticipationAmount: async (participationId, newAmount) => {
+    const safeAmt = Math.max(0, Math.floor(newAmount) || 0);
+    const { error } = await createClient().rpc("adjust_participation_amount", {
+      p_participation_id: participationId,
+      p_new_amount: safeAmt,
+    });
+    if (error) alert(error.message);
+    // useRealtimeParticipations 구독이 참여자별 amount_due 변경을 반영한다
+  },
 
   // 서버가 주최자+모집중 여부를 재확인하고(RLS와 별개로 RPC 안에서 명시 체크), 통과하면
   // "알림 + 시스템 메시지"까지 한 트랜잭션 안에서 같이 처리한다(CLAUDE.md 규칙 3의 3종 세트).
@@ -780,70 +755,26 @@ export const useStore = create<StoreState>((set, get) => ({
     }));
   },
 
-  payNow: (dealId) =>
-    set((st) => {
-      const deal = st.deals.find((d) => d.id === dealId);
-      const mine = deal?.members?.find((m) => m.name === "나");
-      // 잔액 검증 → 차감·입금 처리·내역 기록을 한 번의 set()으로 원자적으로 묶는다
-      if (!deal || !mine || mine.paid || st.balance < mine.amt) return {};
-      const deals = st.deals.map((x) =>
-        x.id !== dealId
-          ? x
-          : {
-              ...x,
-              members: x.members!.map((m) =>
-                m.name === "나" ? { ...m, paid: true, payMethod: "wallet" as const } : m,
-              ),
-            },
-      );
-      const key = "d" + dealId;
-      const msgs = { ...st.msgs };
-      msgs[key] = [
-        ...(msgs[key] ?? []),
-        { kind: "sys", text: sysText.paid("파티원", mine.amt) },
-      ];
-      const after = completeIfAllPaid(deals, msgs, dealId);
-      return {
-        ...after,
-        balance: st.balance - mine.amt,
-        history: [{ emoji: deal.emoji, title: deal.title + " 정산", when: "방금", amt: -mine.amt }, ...st.history],
-      };
-    }),
+  // 잔액 검증 → 차감 → is_paid → wallet_transactions 기록을 pay_with_wallet RPC 가 한
+  // 트랜잭션으로 원자 처리한다. 성공하면 participations/wallets Realtime 구독이 화면을 갱신한다.
+  payNow: async (participationId) => {
+    const { error } = await createClient().rpc("pay_with_wallet", { p_participation_id: participationId });
+    if (error) alert(error.message);
+  },
 
-  confirmSelfPaid: (dealId, method) =>
-    set((st) => {
-      const deal = st.deals.find((d) => d.id === dealId);
-      const mine = deal?.members?.find((m) => m.name === "나");
-      if (!deal || !mine || mine.paid) return {};
-      const deals = st.deals.map((x) =>
-        x.id !== dealId
-          ? x
-          : { ...x, members: x.members!.map((m) => (m.name === "나" ? { ...m, paid: true, payMethod: method } : m)) },
-      );
-      const key = "d" + dealId;
-      const msgs = { ...st.msgs };
-      const label = method === "account" ? "계좌 이체" : "토스 송금";
-      msgs[key] = [
-        ...(msgs[key] ?? []),
-        { kind: "sys", text: `파티원님이 ${fmt(mine.amt)} 입금 완료 ✓ (${label} · 셀프 체크)` },
-      ];
-      return completeIfAllPaid(deals, msgs, dealId);
-    }),
+  // 대파페이가 아니라서 잔액 이동은 없다 — is_paid 만 서버에서 체크한다.
+  confirmSelfPaid: async (participationId, method) => {
+    const { error } = await createClient().rpc("confirm_self_paid", {
+      p_participation_id: participationId,
+      p_method: method,
+    });
+    if (error) alert(error.message);
+  },
 
-  remindUnpaid: (dealId) =>
-    set((st) => {
-      const deal = st.deals.find((d) => d.id === dealId);
-      if (!deal || deal.host !== "나") return {};
-      const unpaid = (deal.members ?? []).filter((m) => !m.paid).map((m) => m.name);
-      if (unpaid.length === 0) return {};
-      const key = "d" + dealId;
-      const msgs = { ...st.msgs };
-      msgs[key] = [
-        ...(msgs[key] ?? []),
-        { kind: "sys", text: `🔔 아직 입금 안 하신 분들 확인해주세요 — ${unpaid.join(", ")}` },
-      ];
-      return { msgs };
-    }),
+  remindUnpaid: async (dealId) => {
+    const { error } = await createClient().rpc("remind_unpaid", { p_group_buy_id: dealId });
+    if (error) alert(error.message);
+  },
 
   // 시스템 메시지·참여자 알림은 서버 RPC 가 넣는다 (채팅은 Realtime 으로 따라온다).
   // 목록은 홈에서 fetchDeals() 로 다시 읽고 useRealtimeDeals 가 group_buys UPDATE 도
@@ -902,48 +833,47 @@ export const useStore = create<StoreState>((set, get) => ({
   setSettleTotalInput: (v) => set({ settleTotalInput: v }),
   toggleSettleReceipt: () => set((st) => ({ settleReceipt: !st.settleReceipt })),
 
-  confirmSettlement: (dealId) =>
-    set((st) => {
-      const deal = st.deals.find((d) => d.id === dealId);
-      if (!deal || deal.settlement) return {};
-      const finalTotal = parseInt(st.settleTotalInput) || deal.total;
-      const hasReceipt = st.settleReceipt;
-      const settlement: Settlement = { finalTotal, hasReceipt, confirmed: hasReceipt, votes: {} };
-      const deals = st.deals.map((d) =>
-        d.id !== dealId ? d : { ...d, settlement, total: hasReceipt ? finalTotal : d.total },
-      );
-      const key = "d" + dealId;
-      const msgs = { ...st.msgs };
-      msgs[key] = [
-        ...(msgs[key] ?? []),
-        hasReceipt
-          ? { kind: "sys" as const, text: sysText.settleReceipt(finalTotal) }
-          : { kind: "sys" as const, text: sysText.settleVoteOpen(finalTotal) },
-      ];
-      return { deals, msgs, settleTotalInput: "", settleReceipt: false };
-    }),
+  // 총액 확정은 confirm_settlement RPC 가 담당한다 — settlements upsert, 영수증 있으면
+  // 즉시 확정 + amount_due 재분배(apply_settlement_split), 시스템 메시지까지 서버에서 처리한다.
+  // useRealtimeSettlement 구독이 결과를 화면에 반영한다.
+  confirmSettlement: async (dealId) => {
+    const st = get();
+    const deal = st.deals.find((d) => d.id === dealId);
+    if (!deal || deal.settlement) return;
+    const total = parseInt(st.settleTotalInput) || 0;
+    if (total <= 0) return;
+    // 영수증 업로드는 범위 밖 — 체크박스는 "첨부함" 여부만 서버에 알린다 (즉시 확정 vs 투표 분기)
+    const receiptUrl = st.settleReceipt ? "manual" : null;
+    set({ settleTotalInput: "", settleReceipt: false });
+    const { error } = await createClient().rpc("confirm_settlement", {
+      p_group_buy_id: dealId,
+      p_total_amount: total,
+      p_delivery_fee: deal.deliveryFee ?? 0,
+      p_receipt_url: receiptUrl,
+    });
+    if (error) alert(error.message);
+  },
 
-  voteSettlement: (dealId, agree) =>
-    set((st) => {
-      const deal = st.deals.find((d) => d.id === dealId);
-      if (!deal?.settlement || deal.settlement.confirmed) return {};
-      const votes = { ...deal.settlement.votes, 나: agree };
-      const mem = deal.members ?? [];
-      const confirmed = Object.values(votes).filter(Boolean).length > mem.length / 2;
-      const settlement: Settlement = { ...deal.settlement, votes, confirmed };
-      const deals = st.deals.map((d) =>
-        d.id !== dealId ? d : { ...d, settlement, total: confirmed ? settlement.finalTotal : d.total },
-      );
-      const key = "d" + dealId;
-      const msgs = { ...st.msgs };
-      if (confirmed) {
-        msgs[key] = [
-          ...(msgs[key] ?? []),
-          { kind: "sys", text: sysText.settleVoteConfirmed(settlement.finalTotal) },
-        ];
-      }
-      return { deals, msgs };
-    }),
+  // 본인 투표는 클라이언트가 settlement_votes_own 정책으로 직접 insert하고,
+  // 과반 판정·확정 처리는 finalize_settlement_vote RPC 가 한다.
+  voteSettlement: async (dealId, agree) => {
+    const st = get();
+    const deal = st.deals.find((d) => d.id === dealId);
+    const settlementId = deal?.settlement?.id;
+    if (!st.me || !settlementId || deal?.settlement?.confirmed) return;
+    const sb = createClient();
+    const { error: voteErr } = await sb
+      .from("settlement_votes")
+      .upsert({ settlement_id: settlementId, user_id: st.me.id, agree });
+    if (voteErr) {
+      alert(voteErr.message);
+      return;
+    }
+    const { error: finalizeErr } = await sb.rpc("finalize_settlement_vote", {
+      p_settlement_id: settlementId,
+    });
+    if (finalizeErr) alert(finalizeErr.message);
+  },
 
   toggleWithdraw: () => set((st) => ({ withdrawOpen: !st.withdrawOpen })),
   setWithdrawAmt: (v) => set({ withdrawAmt: v }),
@@ -955,7 +885,12 @@ export const useStore = create<StoreState>((set, get) => ({
     if (error) console.error("출금 실패:", error.message);
   },
 
-  toggleAutoPay: () => set((st) => ({ autoPay: !st.autoPay })),
+  toggleAutoPay: () => {
+    const autoPay = !get().autoPay;
+    set({ autoPay });
+    const me = get().me;
+    if (me) void patchProfile(me.id, { auto_pay: autoPay });
+  },
   toggleN1: () => {
     const n1 = !get().n1;
     set({ n1 });

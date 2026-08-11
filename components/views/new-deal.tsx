@@ -1,5 +1,6 @@
 "use client";
 
+import { Coins, Timer } from "lucide-react";
 import { CAT_EMOJI, fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Category } from "@/lib/types";
@@ -127,7 +128,7 @@ export default function NewDealView() {
             <input
               value={form.place}
               onChange={(e) => setForm({ place: e.target.value })}
-              placeholder="📍 수령 장소/방법"
+              placeholder="수령 장소/방법"
               className="input-base flex-[1.4]"
             />
           </div>
@@ -149,7 +150,7 @@ export default function NewDealView() {
         </div>
         
           <div className="text-xs text-[#8aa392]">
-            💰 총 금액은 정산 시작 전까지 언제든 수정할 수 있어요 (변경 시 전원 알림)
+            <Coins aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 총 금액은 정산 시작 전까지 언제든 수정할 수 있어요 (변경 시 전원 알림)
           </div>
           <div
             onClick={submitNew}
@@ -188,7 +189,9 @@ export default function NewDealView() {
                 <b>1</b>
                 <span className="text-[#6b8573]">/{goalN || "?"}명</span>
               </span>
-              <span className="font-bold text-[#1f8a4c]">⏱ {parseInt(form.mins) || 60}분</span>
+              <span className="font-bold text-[#1f8a4c]">
+                <Timer aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> {parseInt(form.mins) || 60}분
+              </span>
             </div>
             <div className="text-[13px] text-[#6b8573]">
               1인{" "}
