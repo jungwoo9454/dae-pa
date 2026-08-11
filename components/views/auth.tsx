@@ -27,8 +27,11 @@ export default function AuthView() {
         className="flex w-[44%] min-w-[340px] flex-col justify-center gap-[18px] p-14 text-white"
         style={{ background: "linear-gradient(160deg,#12311e,#1f8a4c)" }}
       >
-        <div className="font-jua text-[64px] leading-none">
-          대<span className="text-[#7fdc95]">파</span>
+        <div className="flex items-center gap-4">
+          <img src="/logo-mark-light.svg" alt="" aria-hidden className="h-[74px] w-auto" />
+          <span className="font-jua text-[64px] leading-none">
+            대<span className="text-[#7fdc95]">파</span>
+          </span>
         </div>
         <div className="font-jua text-[22px] text-[#d7efdc]">대용량 파티원 — 같이 사면 이득</div>
         <div className="mt-2.5 flex flex-col gap-3 text-[14.5px] text-[#bfe3c8]">
