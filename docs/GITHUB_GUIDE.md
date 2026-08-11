@@ -18,9 +18,12 @@ git clone https://github.com/jungwoo9454/dae-pa.git
 cd dae-pa
 
 # 4) 실행해보기
-pnpm install
-pnpm dev   # http://localhost:3000 열리면 성공
+pnpm install   # main 푸시 차단 hook도 이때 자동 설치됩니다
+pnpm dev       # http://localhost:3000 열리면 성공
 ```
+
+> 🛡 `pnpm install`을 하면 `main`에 직접 push하는 것을 막아주는 안전장치가 켜집니다.
+> 실수로 `main`에 push하면 차단되면서 복구 방법이 화면에 안내되니, 당황하지 말고 안내대로 따라 하면 됩니다.
 
 > 로그인 창이 뜨거나 인증 오류가 나면 → `gh auth login` (GitHub CLI) 또는 브라우저 로그인 안내를 따르면 된다.
 

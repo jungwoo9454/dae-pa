@@ -1,8 +1,8 @@
 "use client";
 
 import { create } from "zustand";
-import { CAT_EMOJI, fmt, recalcMembers } from "./deal";
-import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey } from "./types";
+import { CAT_EMOJI, fmt, joinable, recalcMembers } from "./deal";
+import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey, Settlement } from "./types";
 
 const t0 = Date.now();
 
@@ -29,7 +29,7 @@ const mk = (
   end: t0 + endMin * 60_000,
   place,
   host,
-  status: "recruit",
+  status: "recruiting",
   me: false,
   mine: false,
   ...extra,
@@ -38,7 +38,7 @@ const mk = (
 const seedDeals: Deal[] = [
   mk(1, "🧅", "대파 5단 같이 나눠요", "식료품", 12500, 5, 3, 134, "행복아파트 정문", "파밍맘"),
   mk(2, "🍗", "치킨 같이 시켜요", "배달음식", 54500, 4, 4, -30, "201동 로비", "준호", {
-    status: "settle",
+    status: "settling",
     me: true,
     deliveryFee: 3050,
     members: recalcMembers(
@@ -50,6 +50,7 @@ const seedDeals: Deal[] = [
         { name: "나", itemAmt: 12500, amt: 0, note: "반반", paid: false },
       ],
     ),
+    settlement: { finalTotal: 54500, hasReceipt: true, confirmed: true, votes: {} },
   }),
   mk(3, "🍊", "제주 감귤 10kg", "식료품", 45000, 10, 7, 342, "회사 1층 로비", "나", { me: true, mine: true }),
   mk(4, "☕", "원두 2kg 공구", "식료품", 80000, 10, 9, 41, "3층 탕비실", "커피덕후"),
@@ -109,6 +110,10 @@ interface StoreState {
   profileOpen: boolean;
   topupOpen: boolean;
   topupAmt: number;
+  settleTotalInput: string;
+  settleReceipt: boolean;
+  withdrawOpen: boolean;
+  withdrawAmt: number;
   balance: number;
   autoPay: boolean;
   n1: boolean;
@@ -140,6 +145,13 @@ interface StoreState {
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => void;
+  setSettleTotalInput: (v: string) => void;
+  toggleSettleReceipt: () => void;
+  confirmSettlement: (dealId: number) => void;
+  voteSettlement: (dealId: number, agree: boolean) => void;
+  toggleWithdraw: () => void;
+  setWithdrawAmt: (v: number) => void;
+  doWithdraw: () => void;
   toggleAutoPay: () => void;
   toggleN1: () => void;
   toggleN2: () => void;
@@ -160,6 +172,10 @@ export const useStore = create<StoreState>((set) => ({
   profileOpen: false,
   topupOpen: false,
   topupAmt: 10000,
+  settleTotalInput: "",
+  settleReceipt: false,
+  withdrawOpen: false,
+  withdrawAmt: 10000,
   balance: 23500,
   autoPay: true,
   n1: true,
@@ -190,7 +206,7 @@ export const useStore = create<StoreState>((set) => ({
   join: (id) =>
     set((st) => {
       const target = st.deals.find((d) => d.id === id);
-      if (!target || target.me || target.status === "settle" || target.end - Date.now() <= 0) return {};
+      if (!target || !joinable(target, Date.now())) return {};
       const deals = st.deals.map((x) => {
         if (x.id !== id) return x;
         const joined = x.joined + 1;
@@ -215,7 +231,7 @@ export const useStore = create<StoreState>((set) => ({
           ...x,
           joined,
           me: true,
-          status: done ? ("settle" as const) : x.status,
+          status: done ? ("settling" as const) : x.status,
           members: done ? recalcMembers(x, roughMembers!) : x.members,
         };
       });
@@ -226,7 +242,7 @@ export const useStore = create<StoreState>((set) => ({
         ...(msgs[key] ?? []),
         { kind: "sys", text: `파티원님이 참여했어요 (${full.joined}/${full.goal})` },
       ];
-      if (full.status === "settle") {
+      if (full.status === "settling") {
         msgs[key] = [...msgs[key], { kind: "sys", text: "목표 달성! 정산이 시작돼요 🎉" }];
       }
       return { deals, msgs };
@@ -285,6 +301,67 @@ export const useStore = create<StoreState>((set) => ({
       history: [{ emoji: "⚡", title: "충전", when: "방금", amt: st.topupAmt }, ...st.history],
     })),
 
+  setSettleTotalInput: (v) => set({ settleTotalInput: v }),
+  toggleSettleReceipt: () => set((st) => ({ settleReceipt: !st.settleReceipt })),
+
+  confirmSettlement: (dealId) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      if (!deal || deal.settlement) return {};
+      const finalTotal = parseInt(st.settleTotalInput) || deal.total;
+      const hasReceipt = st.settleReceipt;
+      const settlement: Settlement = { finalTotal, hasReceipt, confirmed: hasReceipt, votes: {} };
+      const deals = st.deals.map((d) =>
+        d.id !== dealId ? d : { ...d, settlement, total: hasReceipt ? finalTotal : d.total },
+      );
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      msgs[key] = [
+        ...(msgs[key] ?? []),
+        hasReceipt
+          ? { kind: "sys" as const, text: `🧾 영수증 인증 완료 · 총 ${fmt(finalTotal)} · 금액 잠금` }
+          : {
+              kind: "sys" as const,
+              text: `총 ${fmt(finalTotal)}으로 정산 요청 · 영수증 없이 참여자 과반 동의로 확정돼요`,
+            },
+      ];
+      return { deals, msgs, settleTotalInput: "", settleReceipt: false };
+    }),
+
+  voteSettlement: (dealId, agree) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      if (!deal?.settlement || deal.settlement.confirmed) return {};
+      const votes = { ...deal.settlement.votes, 나: agree };
+      const mem = deal.members ?? [];
+      const confirmed = Object.values(votes).filter(Boolean).length > mem.length / 2;
+      const settlement: Settlement = { ...deal.settlement, votes, confirmed };
+      const deals = st.deals.map((d) =>
+        d.id !== dealId ? d : { ...d, settlement, total: confirmed ? settlement.finalTotal : d.total },
+      );
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      if (confirmed) {
+        msgs[key] = [
+          ...(msgs[key] ?? []),
+          { kind: "sys", text: `✅ 참여자 과반 동의로 총 ${fmt(settlement.finalTotal)} 확정 · 금액 잠금` },
+        ];
+      }
+      return { deals, msgs };
+    }),
+
+  toggleWithdraw: () => set((st) => ({ withdrawOpen: !st.withdrawOpen })),
+  setWithdrawAmt: (v) => set({ withdrawAmt: v }),
+  doWithdraw: () =>
+    set((st) => {
+      if (st.withdrawAmt <= 0 || st.withdrawAmt > st.balance) return {};
+      return {
+        balance: st.balance - st.withdrawAmt,
+        withdrawOpen: false,
+        history: [{ emoji: "🏧", title: "출금", when: "방금", amt: -st.withdrawAmt }, ...st.history],
+      };
+    }),
+
   toggleAutoPay: () => set((st) => ({ autoPay: !st.autoPay })),
   toggleN1: () => set((st) => ({ n1: !st.n1 })),
   toggleN2: () => set((st) => ({ n2: !st.n2 })),
@@ -307,7 +384,7 @@ export const useStore = create<StoreState>((set) => ({
         end: Date.now() + (parseInt(f.mins) || 60) * 60_000,
         place: f.place || "채팅방에서 협의",
         host: "나",
-        status: "recruit",
+        status: "recruiting",
         me: true,
         mine: true,
       };

@@ -13,7 +13,7 @@ export type PageKey =
 
 export type AuthMode = "login" | "signup";
 
-export type DealStatus = "recruit" | "settle";
+export type DealStatus = "recruiting" | "settling" | "completed" | "canceled";
 
 export interface Member {
   name: string;
@@ -23,6 +23,14 @@ export interface Member {
   amt: number;
   note: string;
   paid: boolean;
+}
+
+export interface Settlement {
+  finalTotal: number;
+  hasReceipt: boolean;
+  confirmed: boolean;
+  /** 참여자 이름 → 동의 여부. 영수증 없을 때 과반 동의로 확정할 때만 사용 */
+  votes: Record<string, boolean>;
 }
 
 export interface Deal {
@@ -42,6 +50,7 @@ export interface Deal {
   members?: Member[];
   /** 배달비 — 있으면 항상 균등 분배, 개별 조정 대상 아님 */
   deliveryFee?: number;
+  settlement?: Settlement;
 }
 
 export type Msg =
