@@ -714,6 +714,8 @@ alter publication supabase_realtime add table group_buys;
 alter publication supabase_realtime add table participations;
 alter publication supabase_realtime add table messages;
 alter publication supabase_realtime add table notifications;
+alter publication supabase_realtime add table wallets;
+alter publication supabase_realtime add table wallet_transactions;
 
 -- ─────────────────────────────────────────────
 -- 7. Storage — 영수증 사진 버킷 (#15 증빙 첨부, 자동 인식은 없음)
