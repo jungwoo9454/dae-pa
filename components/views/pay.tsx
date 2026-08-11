@@ -14,12 +14,23 @@ export default function PayView() {
   const balance = useStore((s) => s.balance);
   const topupOpen = useStore((s) => s.topupOpen);
   const topupAmt = useStore((s) => s.topupAmt);
+  const withdrawOpen = useStore((s) => s.withdrawOpen);
+  const withdrawAmt = useStore((s) => s.withdrawAmt);
   const autoPay = useStore((s) => s.autoPay);
   const history = useStore((s) => s.history);
   const toggleTopup = useStore((s) => s.toggleTopup);
   const setTopupAmt = useStore((s) => s.setTopupAmt);
   const doTopup = useStore((s) => s.doTopup);
+  const toggleWithdraw = useStore((s) => s.toggleWithdraw);
+  const setWithdrawAmt = useStore((s) => s.setWithdrawAmt);
+  const doWithdraw = useStore((s) => s.doWithdraw);
   const toggleAutoPay = useStore((s) => s.toggleAutoPay);
+
+  const withdrawOptions = [
+    { value: 10000, label: "1만" },
+    { value: 50000, label: "5만" },
+    { value: 100000, label: "10만" },
+  ];
 
   return (
     <div className="flex-1 overflow-auto px-6 py-5">
@@ -38,7 +49,10 @@ export default function PayView() {
               >
                 + 충전
               </div>
-              <div className="flex-1 cursor-pointer rounded-[10px] border-[1.5px] border-white/50 p-[9px] text-center font-bold hover:border-white">
+              <div
+                onClick={toggleWithdraw}
+                className="flex-1 cursor-pointer rounded-[10px] border-[1.5px] border-white/50 p-[9px] text-center font-bold hover:border-white"
+              >
                 출금
               </div>
             </div>
@@ -69,6 +83,51 @@ export default function PayView() {
                 {fmt(topupAmt)} 충전하기
               </div>
               <div className="text-[11.5px] text-[#8aa392]">충전 수단 · 초록은행 1104-04 (자동이체)</div>
+            </div>
+          )}
+
+          {withdrawOpen && (
+            <div className="flex flex-col gap-2.5 rounded-[14px] border-[1.5px] border-[#9fd4ae] bg-white p-3.5">
+              <b>출금 금액</b>
+              <div className="flex gap-1.5">
+                {withdrawOptions.map((tc) => (
+                  <div
+                    key={tc.label}
+                    onClick={() => setWithdrawAmt(tc.value)}
+                    className={`flex-1 cursor-pointer rounded-[9px] border-[1.5px] px-1 py-2 text-center text-[13px] font-extrabold hover:border-[#1f8a4c] ${
+                      withdrawAmt === tc.value
+                        ? "border-[#1f8a4c] bg-[#e9f6ec] text-[#166b3a]"
+                        : "border-[#d5e6d6] text-[#4d6d58]"
+                    }`}
+                  >
+                    {tc.label}
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 rounded-[9px] border-[1.5px] border-[#d5e6d6] px-2.5 py-1.5 focus-within:border-[#1f8a4c]">
+                <input
+                  type="number"
+                  min={0}
+                  value={withdrawAmt || ""}
+                  onChange={(e) => setWithdrawAmt(parseInt(e.target.value) || 0)}
+                  placeholder="직접 입력"
+                  className="w-full text-[13px] font-extrabold text-[#17301f] outline-none"
+                />
+                <span className="text-[13px] font-bold text-[#8aa392]">원</span>
+              </div>
+              {withdrawAmt > balance ? (
+                <div className="rounded-[10px] bg-[#fdf0dc] p-2.5 text-center text-[13px] font-bold text-[#b45309]">
+                  잔액이 부족해요
+                </div>
+              ) : (
+                <div
+                  onClick={doWithdraw}
+                  className="cursor-pointer rounded-[10px] bg-[#1f8a4c] p-2.5 text-center font-extrabold text-white hover:bg-[#187741]"
+                >
+                  {fmt(withdrawAmt)} 출금하기
+                </div>
+              )}
+              <div className="text-[11.5px] text-[#8aa392]">출금 계좌 · 초록은행 1104-04</div>
             </div>
           )}
 
