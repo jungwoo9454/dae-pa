@@ -115,10 +115,10 @@ export default function AuthView() {
           </div>
 
           <div
-            onClick={() => signInWithOAuth("kakao")}
-            className="cursor-pointer rounded-[11px] bg-[#fee500] p-[11px] text-center font-extrabold text-[#191919] hover:brightness-[.97]"
+            onClick={() => signInWithOAuth("github")}
+            className="cursor-pointer rounded-[11px] bg-[#24292f] p-[11px] text-center font-extrabold text-white hover:brightness-125"
           >
-            💬 카카오로 3초 만에 시작
+            깃허브로 3초 만에 시작
           </div>
           <div
             onClick={() => signInWithOAuth("google")}

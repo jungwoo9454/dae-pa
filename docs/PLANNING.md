@@ -40,7 +40,7 @@
 - **로그인**: 이메일 + 비밀번호. 로그인 ↔ 회원가입 모드 전환
 - **회원가입**: 닉네임 + 이메일/비밀번호 + **동네 인증**
   - 동네 인증은 3일 범위에서 **원클릭 목(mock) 인증**("역삼동 인증 완료 ✓") — 실제 GPS 인증은 범위 제외
-- **소셜 로그인**: 카카오 · 구글 버튼 (프로토타입은 클릭 시 즉시 입장, 실연동은 Supabase OAuth로 추후)
+- **소셜 로그인**: 깃허브 · 구글 버튼 (프로토타입은 클릭 시 즉시 입장, 실연동은 Supabase OAuth로 추후)
 - 레이아웃: 좌측 브랜드 패널(로고 + 서비스 가치 3줄) + 우측 인증 카드
 - **로그아웃**: 프로필 팝오버에서 → 로그인 화면 복귀
 - 인증 상태는 Supabase Auth 세션 기반으로 구현 (연동 작업: 이슈 #2)
@@ -145,7 +145,7 @@ RPC 는 주최자 본인 + `status in (recruiting, settling)` 을 확인하고, 
 
 | 화면 | 주요 요소 |
 | --- | --- |
-| 로그인/회원가입 | 브랜드 패널, 이메일/비밀번호, 닉네임+동네 인증(가입 시), 카카오/구글 소셜 |
+| 로그인/회원가입 | 브랜드 패널, 이메일/비밀번호, 닉네임+동네 인증(가입 시), 깃허브/구글 소셜 |
 | 홈 (공구 목록) | 카테고리/상태 필터, 실시간 카드 리스트, 공고 작성 버튼 |
 | 공구 작성 | 카테고리 선택, 폼(배달음식 전용 분기), 실시간 카드 미리보기 |
 | 공구 상세 | 진행바, 카운트다운, 상태 배지, 1인당 금액, 참여 버튼, 채팅방 이동 |
@@ -195,7 +195,7 @@ notifications       id, user_id, type, payload(jsonb), is_read, created_at
   트랜잭션으로 원자 처리)·`confirm_self_paid`(계좌·토스 셀프 체크)·`complete_group_buy_if_all_paid`(전원
   입금 시 `completed` 전환 + `trust_score` +1, 내부 전용)·`remind_unpaid`(주최자 전용 리마인드).
   시스템 메시지는 #9의 `post_system_message` RPC 를 호출해 기록한다 (문구는 `lib/sys-messages.ts`의 `sysText`와 일치).
-- 소셜 로그인(Google·Kakao)은 Supabase Auth 가 처리하므로 **테이블 추가가 없다**. 제공자 계정은
+- 소셜 로그인(Google·GitHub)은 Supabase Auth 가 처리하므로 **테이블 추가가 없다**. 제공자 계정은
   `auth.identities` 에 쌓이고, 어떤 제공자로 들어왔는지는 JWT 의 `app_metadata.provider` 로 읽는다.
   가입 트리거가 제공자별 메타데이터 키(`full_name`/`name`/`user_name`, `avatar_url`/`picture`)에서
   닉네임·아바타를 뽑아 `profiles` 에 채운다. 이메일 회원가입의 동네 인증 결과는 `dong` 에 저장된다
