@@ -56,10 +56,11 @@
   .wfrow { display: flex; gap: 2.6vw; align-items: flex-start; }
   .wfcol { display: flex; flex-direction: column; gap: 2vh; flex: none; }
   .wfpair { display: flex; gap: 1.5vw; align-items: flex-start; flex: none; }
-  .expl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.4vh; }
-  .expl .pt { background: #fff; border: 1px solid #dbe9da; border-left: .7vh solid #1f8a4c; border-radius: 1.2vh; padding: 1.5vh 2vh; }
-  .expl .pt b { display: block; font-size: 2.1vh; margin-bottom: .4vh; }
-  .expl .pt p { font-size: 1.85vh; color: #4d6d58; line-height: 1.5; }
+  .expl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.5vh; }
+  /* 기능 키워드 카드 — 키워드가 주인공, 보조 설명은 한 줄 이내 */
+  .expl .key { background: #fff; border: 1px solid #dbe9da; border-left: .7vh solid #1f8a4c; border-radius: 1.2vh; padding: 1.6vh 2.2vh; }
+  .expl .key b { display: block; font-size: 2.6vh; line-height: 1.3; }
+  .expl .key span { display: block; font-size: 1.85vh; color: #7a9182; margin-top: .4vh; line-height: 1.4; }
   .cap { font: 700 1.9vh Gaegu, sans-serif; color: #555; }
 
   /* ── 와이어프레임 원본 스타일 (공구앱 와이어프레임.dc.html에서 그대로) ── */
@@ -170,9 +171,10 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>사이드바 5메뉴 — 모든 화면이 2클릭 이내</b><p>홈 · 내 공구 · 채팅 · 페이 · 설정. 공구의 생애주기 전체가 한 셸 안에서 돈다</p></div>
-      <div class="pt"><b>카드 한 장 = 판단에 필요한 전부</b><p>상태 배지 · 진행바 · 카운트다운 · 인원 · 금액을 확인/p></div>
-      <div class="pt"><b>실시간이 기본값</b><p>진행바와 남은 시간이 새로고침 없이 동작</p></div>
+      <div class="key"><b>사이드바 5메뉴</b><span>홈 · 내 공구 · 채팅 · 페이 · 설정</span></div>
+      <div class="key"><b>카드 그리드 목록</b><span>카테고리 필터</span></div>
+      <div class="key"><b>실시간 진행바 · 카운트다운</b></div>
+      <div class="key"><b>상태 배지</b><span>모집중 · 마감임박 · 정산중 · 마감</span></div>
     </div>
   </div>
   </div>
@@ -206,9 +208,11 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>1인당 금액을 미리 보여준다</b><p>총액이 아니라 내 부담금으로 환산해 표시</p></div>
-      <div class="pt"><b>원클릭 참여</b><p>양식도 승인도 없이 목표 인원 = 정원에 도달하면 자동 마감</p></div>
-      <div class="pt"><b>참여 직후 채팅방으로</b><p>참여와 대화 사이의 단절을 없앤다./p></div>
+      <div class="key"><b>남은 시간 카운트다운</b></div>
+      <div class="key"><b>참여 진행바</b><span>목표 인원 대비 실시간</span></div>
+      <div class="key"><b>1인당 금액 자동 계산</b></div>
+      <div class="key"><b>버튼 한 번 참여</b><span>선착순 정원 — 도달 시 자동 마감</span></div>
+      <div class="key"><b>공구 채팅방 바로가기</b></div>
     </div>
   </div>
   </div>
@@ -272,10 +276,11 @@
     </div>
    </div>
     <div class="expl">
-      <div class="pt"><b>공구는 하나가 아니다</b><p>감귤 10kg(며칠 단위)과 치킨(30분 단위)은 완전히 다른 시나리오 — 카테고리 선택이 폼의 첫 단계</p></div>
-      <div class="pt"><b>배달음식 전용 설계</b><p>가게 링크 · 분 단위 짧은 마감 · 배달비 자동 1/N. 메뉴 취합은 채팅방에 위임해 폼을 가볍게</p></div>
-      <div class="pt"><b>"예상 총액"의 등장</b><p>주문 전까지 금액이 확정될 수 없다 → 입력하면 1인당 금액이 자동 계산돼 카드로, 올리면 채팅방까지 자동 생성. 다음 장 '총액 변경' 설계로 이어진 결정</p></div>
-      <div class="pt"><b>프로필은 팝오버로 충분</b><p>신뢰도 배지·참여/주최 횟수만 빠르게. 상세 내역은 "내 공구" 메뉴로 위임 — 페이지 수를 줄인 결정</p></div>
+      <div class="key"><b>카테고리 5종</b><span>선택 즉시 입력폼 분기</span></div>
+      <div class="key"><b>배달음식 전용 폼</b><span>가게 링크 · 분 단위 마감 · 예상 총액</span></div>
+      <div class="key"><b>카드 실시간 미리보기</b><span>1인당 금액 자동 계산</span></div>
+      <div class="key"><b>올리기 → 채팅방 자동 생성</b></div>
+      <div class="key"><b>프로필 팝오버</b><span>정산 신뢰도 배지 · 내 공구</span></div>
     </div>
   </div>
   </div>
@@ -322,9 +327,11 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>총 금액 = 정산 전까지는 '예상 금액'</b><p>주최자가 자유롭게 수정하되, 반드시 사유와 함께</p></div>
-      <div class="pt"><b>변경의 3종 세트</b><p>전원 알림 + 1인당 금액 자동 재계산 + 채팅방 시스템 메시지 — 셋은 항상 함께 발생 (몰래 변경 불가능)</p></div>
-      <div class="pt"><b>정산 시작 = 금액 잠금 🔒</b><p>돈 분쟁의 여지를 구조적으로 차단 — 서비스 신뢰의 핵심 규칙</p></div>
+      <div class="key"><b>주최자만 수정</b><span>모집중 상태에서만</span></div>
+      <div class="key"><b>변경 사유 입력</b></div>
+      <div class="key"><b>전원 알림 + 1인당 재계산</b></div>
+      <div class="key"><b>채팅 시스템 메시지 기록</b></div>
+      <div class="key"><b>정산 시작 = 금액 잠금 🔒</b></div>
     </div>
   </div>
   </div>
@@ -362,9 +369,11 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>라운지 + 공구방, 한 화면</b><p>동네 자유 수다(라운지)와 공구별 방을 같은 목록에서 전환 — 커뮤니티와 거래가 분리되지 않는다</p></div>
-      <div class="pt"><b>공구 카드가 말풍선이 된다</b><p>대화 중 카드 공유 → 인원·남은 시간이 실시간인 채로 → 탭 한 번에 참여. <b>수다가 곧 모집 채널</b>이 되는 성장 루프</p></div>
-      <div class="pt"><b>시스템 메시지가 방의 상태를 알린다</b><p>참여·마감·금액 변경·정산 이벤트가 자동 기록 — 총무의 공지 노동을 시스템이 대신</p></div>
+      <div class="key"><b>동네 라운지</b><span>이웃 자유 수다</span></div>
+      <div class="key"><b>공구방 자동 생성 · 자동 입장</b></div>
+      <div class="key"><b>공구 카드 말풍선 공유</b><span>대화 중 바로 참여</span></div>
+      <div class="key"><b>시스템 메시지</b><span>참여 · 마감 · 정산 이벤트</span></div>
+      <div class="key"><b>채팅방 검색</b></div>
     </div>
   </div>
   </div>
@@ -405,9 +414,11 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>영수증 사진이 정산의 근거</b><p>방에 공유돼 누구나 확인 — 합계가 총액과 맞아야 확정 버튼이 열린다</p></div>
-      <div class="pt"><b>균등 1/N 기본 + 개별 조정</b><p>치킨처럼 각자 메뉴가 다르면 개별 조정. 단, <b>배달비는 언제나 자동 균등</b> — 조정 불가 규칙</p></div>
-      <div class="pt"><b>내는 방법은 셋, 확인 방식은 다르게</b><p>페이 = 자동 확인 / 계좌·토스 = 셀프 체크 후 주최자 확인. 입금 현황이 체크리스트로 실시간</p></div>
+      <div class="key"><b>영수증 사진 첨부</b><span>정산 근거를 방에 공유</span></div>
+      <div class="key"><b>균등 1/N · 개별 금액 조정</b></div>
+      <div class="key"><b>배달비 자동 균등</b><span>개별 조정 대상 아님</span></div>
+      <div class="key"><b>결제 3종</b><span>대파페이 · 계좌 · 토스</span></div>
+      <div class="key"><b>입금 체크리스트 · 리마인드</b></div>
     </div>
   </div>
   </div>
@@ -468,9 +479,11 @@
       </div>
     </div>
     <div class="expl">
-      <div class="pt"><b>자동 결제 ON = 독촉의 소멸</b><p>정산 요청이 오면 잔액에서 즉시 차감 — "입금해주세요" 메시지가 필요 없어진다</p></div>
-      <div class="pt"><b>내역의 각 줄은 공구방으로 연결</b><p>돈의 기록과 대화의 기록이 항상 이어져 있다</p></div>
-      <div class="pt"><b>영수증이 없어도 정산은 굴러간다</b><p>직접 입력(미인증 표시) + 참여자 과반 동의로 확정. 이의는 채팅으로 해결 — <b>예외 흐름까지 설계해야 '동네 주민과 나누는 알뜰 생활'이 완성</b></p></div>
+      <div class="key"><b>잔액 · 충전 · 출금</b></div>
+      <div class="key"><b>정산 요청 자동 결제</b><span>독촉이 사라진다</span></div>
+      <div class="key"><b>이용 내역 → 공구방 연결</b></div>
+      <div class="key"><b>미인증 정산</b><span>직접 입력 + 참여자 과반 동의</span></div>
+      <div class="key"><b>이의는 채팅에서 해결</b></div>
     </div>
   </div>
   </div>
@@ -479,14 +492,14 @@
 <!-- 11. 마무리 -->
 <section class="slide dark">
   <div class="kicker">NEXT</div>
-  <h2 class="jua" style="color:#fff">와이어프레임 5턴 → 하이파이 → 구현</h2>
+  <h2 class="jua" style="color:#fff">구현</h2>
   <div class="body">
-  <p class="lead">구조(턴1) → 올리기·팝오버(턴2) → 채팅·카테고리·금액 투명성(턴3) → 정산(턴4) → 지갑·예외(턴5).<br>이 결정들이 그대로 하이파이 시안이 되고, 지금 <b class="green">Next.js(React) 프로토타입으로 구현 완료</b> — 3일간 Supabase 실시간 연동으로 완성합니다.</p>
+  <p class="lead">구조 → 올리기·팝오버 → 채팅·카테고리·금액 투명성 → 정산 → 지갑·예외<br><b class="green">Next.js(React) 프로토타입으로 구현</b> — Supabase 실시간 연동, 기능 고도화로 완성합니다.</p>
   <table class="team">
-    <tr><td>팀원 A</td><td>공구 도메인</td><td>공고 · 목록 · 선착순 참여 · 금액 변경</td></tr>
-    <tr><td>팀원 B</td><td>채팅 · 발표</td><td>Realtime 채팅 · 카드 공유 · 발표 총괄</td></tr>
-    <tr><td>팀원 C</td><td>정산 · 페이</td><td>1/N 분배 · 입금 체크리스트 · 대파페이</td></tr>
-    <tr><td>팀원 D</td><td>플랫폼</td><td>Supabase · 인증 · 알림 · 오라클 배포</td></tr>
+    <tr><td>김지우</td><td>공구 도메인</td><td>공고 · 목록 · 선착순 참여 · 금액 변경</td></tr>
+    <tr><td>김정우</td><td>채팅 · 발표</td><td>Realtime 채팅 · 카드 공유 · 발표 총괄</td></tr>
+    <tr><td>김시은</td><td>정산 · 페이</td><td>1/N 분배 · 입금 체크리스트 · 대파페이</td></tr>
+    <tr><td>박준호</td><td>플랫폼</td><td>Supabase · 인증 · 알림 · 오라클 배포</td></tr>
   </table>
   <h2 class="jua" style="margin-top:4vh;color:#7fdc95">같이 사면 이득. 감사합니다 🥬</h2>
   </div>
