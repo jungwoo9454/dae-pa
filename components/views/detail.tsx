@@ -86,12 +86,15 @@ export default function DetailView() {
             자동 1/N로 진행됩니다.
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <div className="rounded-[10px] border border-[#dbe9da] bg-white px-3 py-2 text-[13px]">
-              <MapPin aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 수령 · <b>{deal.place}</b>
+            <div className="flex items-center gap-1.5 rounded-[10px] border border-[#dbe9da] bg-white px-3 py-2 text-[13px]">
+              <MapPin aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 수령 · <b>{deal.place}</b>
             </div>
-            <div className="rounded-[10px] border border-[#dbe9da] bg-white px-3 py-2 text-[13px]">
-              <Coins aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 총액 · <b>{fmt(deal.total)}</b>{" "}
-              <span className="text-[11.5px] text-[#8aa392]">정산 전까지 변경 가능</span>
+            <div className="flex items-center gap-1.5 rounded-[10px] border border-[#dbe9da] bg-white px-3 py-2 text-[13px]">
+              <Coins aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+              <span>
+                총액 · <b>{fmt(deal.total)}</b>{" "}
+                <span className="text-[11.5px] text-[#8aa392]">정산 전까지 변경 가능</span>
+              </span>
             </div>
           </div>
         </div>
@@ -134,16 +137,16 @@ export default function DetailView() {
           </div>
           <div
             onClick={() => goRoom("d" + deal.id)}
-            className="cursor-pointer rounded-xl border-[1.5px] border-[#1f8a4c] p-2.5 text-center font-extrabold text-[#1f8a4c] hover:bg-[#e9f6ec]"
+            className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#1f8a4c] p-2.5 font-extrabold text-[#1f8a4c] hover:bg-[#e9f6ec]"
           >
-            <MessageCircle aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 공구 채팅방
+            <MessageCircle aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 공구 채팅방
           </div>
           {/* 라운지에 카드 말풍선으로 공유 → 대화 중 바로 참여로 이어진다 (#10) */}
           <div
             onClick={() => shareDeal(deal.id, "lounge")}
-            className="cursor-pointer rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-center text-[13.5px] font-bold text-[#4d6d58] hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
+            className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-[13.5px] font-bold text-[#4d6d58] hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
           >
-            <Share2 aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 동네 라운지에 공유
+            <Share2 aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 동네 라운지에 공유
           </div>
           {/* 주최자 취소 (#29) — 어느 단계에서든 주최자는 공구를 취소할 수 있다 */}
           {cancelable &&
@@ -187,9 +190,9 @@ export default function DetailView() {
             ) : (
               <div
                 onClick={() => setAskCancel(true)}
-                className="cursor-pointer rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-center text-[13.5px] font-bold text-[#4d6d58] hover:border-[#b3261e] hover:text-[#b3261e]"
+                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-[13.5px] font-bold text-[#4d6d58] hover:border-[#b3261e] hover:text-[#b3261e]"
               >
-                <Ban aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 공구 취소
+                <Ban aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 공구 취소
               </div>
             ))}
         </div>

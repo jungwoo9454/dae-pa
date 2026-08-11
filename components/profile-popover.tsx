@@ -30,8 +30,8 @@ export default function ProfilePopover() {
           </div>
         </div>
       </div>
-      <div className="rounded-lg bg-[#e9f6ec] px-2.5 py-1.5 text-[12.5px] font-bold text-[#166b3a]">
-        <ShieldCheck aria-hidden className="inline-block h-[1em] w-[1em] shrink-0 translate-y-[.09em]" /> 정산 신뢰도 {trust}%
+      <div className="flex items-center gap-1.5 rounded-lg bg-[#e9f6ec] px-2.5 py-1.5 text-[12.5px] font-bold text-[#166b3a]">
+        <ShieldCheck aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 정산 신뢰도 {trust}%
       </div>
       <div className="h-px bg-[#e2eee2]" />
       <div onClick={() => go("my")} className="cursor-pointer px-0.5 py-1 hover:text-[#1f8a4c]">
