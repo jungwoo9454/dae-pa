@@ -175,9 +175,9 @@ interface StoreState {
   /** 알림 목록 로드 + Realtime 구독 시작. 정리 함수를 돌려준다 */
   initNotis: (uid: string) => () => void;
   /** 열 때 미읽음을 전부 읽음 처리한다 */
-  toggleNoti: () => void;
+  toggleNoti: () => Promise<void>;
   /** 참여한 공구의 마감 30분 전 알림을 넣는다 — 주기 호출 */
-  notifyDeadlines: () => void;
+  notifyDeadlines: () => Promise<void>;
   setChatInput: (v: string) => void;
   setSearch: (v: string) => void;
   setMySearch: (v: string) => void;
@@ -382,7 +382,8 @@ export const useStore = create<StoreState>((set, get) => ({
     };
   },
 
-  toggleNoti: () => {
+  // supabase-js 쿼리 빌더는 await 해야 요청이 나간다 — 결과를 안 봐도 async 로 둔다
+  toggleNoti: async () => {
     const opening = !get().notiOpen;
     set({ notiOpen: opening, profileOpen: false });
     if (!opening) return;
@@ -392,10 +393,10 @@ export const useStore = create<StoreState>((set, get) => ({
       .map((n) => n.id);
     if (!unreadIds.length) return;
     set((st) => ({ notis: st.notis.map((n) => (n.isRead ? n : { ...n, isRead: true })) }));
-    void createClient().from("notifications").update({ is_read: true }).in("id", unreadIds);
+    await createClient().from("notifications").update({ is_read: true }).in("id", unreadIds);
   },
 
-  notifyDeadlines: () => {
+  notifyDeadlines: async () => {
     const { me, n1, deals } = get();
     if (!me || !n1) return;
     const now = Date.now();
@@ -411,7 +412,7 @@ export const useStore = create<StoreState>((set, get) => ({
     if (!due.length) return;
     due.forEach((d) => firedDeadlines.add(d.id));
     // 목록에 넣는 건 Realtime INSERT 구독이 한다
-    void createClient()
+    await createClient()
       .from("notifications")
       .insert(
         due.map((d) => ({
