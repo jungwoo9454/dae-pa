@@ -360,8 +360,12 @@ export const useStore = create<StoreState>((set, get) => ({
     const { data, error } = await createClient().auth.signUp({
       email,
       password: pw,
-      // 닉네임·동네는 raw_user_meta_data 로 들어가 handle_new_user 트리거가 profiles 에 넣는다
-      options: { data: { nickname: nick, dong: get().dongOk ? DONG : null } },
+      options: {
+        // 닉네임·동네는 raw_user_meta_data 로 들어가 handle_new_user 트리거가 profiles 에 넣는다
+        data: { nickname: nick, dong: get().dongOk ? DONG : null },
+        // 없으면 확인 링크가 항상 Site URL(프로덕션)로 가서 로컬 테스트가 막힌다
+        emailRedirectTo: `${location.origin}/auth/callback`,
+      },
     });
     if (error) {
       set({ authBusy: false, authError: error.message });
