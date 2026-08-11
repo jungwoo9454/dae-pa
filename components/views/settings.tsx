@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Toggle } from "@/components/ui";
+import { isSubmitEnter } from "@/lib/keys";
 import { useStore } from "@/lib/store";
 
 const TRANSFER_APPS = ["토스", "카카오페이", "네이버페이", "은행 앱"];
@@ -103,7 +104,7 @@ export default function SettingsView() {
               <input
                 value={bank}
                 onChange={(e) => setBank(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && saveBank()}
+                onKeyDown={(e) => isSubmitEnter(e) && saveBank()}
                 placeholder="초록은행 1104-04"
                 className={INPUT}
                 autoFocus
@@ -158,7 +159,7 @@ export default function SettingsView() {
                 <input
                   value={nick}
                   onChange={(e) => setNick(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && saveNick()}
+                  onKeyDown={(e) => isSubmitEnter(e) && saveNick()}
                   placeholder="닉네임"
                   className={INPUT}
                   autoFocus

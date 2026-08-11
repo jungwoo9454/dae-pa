@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import { Avatar } from "@/components/ui";
 import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { isSubmitEnter } from "@/lib/keys";
 import { RECENT_LIMIT, useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
 
@@ -220,7 +221,7 @@ export default function ChatView() {
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") sendMsg();
+              if (isSubmitEnter(e)) sendMsg();
             }}
             placeholder="메시지 입력…"
             className="flex-1 rounded-xl border-[1.5px] border-[#d5e6d6] px-3.5 py-2.5 text-sm outline-none"
