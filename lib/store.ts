@@ -2,8 +2,12 @@
 
 import { create } from "zustand";
 import { CAT_EMOJI, fmt, joinable, recalcMembers } from "./deal";
+import { createClient } from "./supabase/client";
 import { sysText } from "./sys-messages";
-import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey, Settlement } from "./types";
+import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, PageKey, Settlement } from "./types";
+
+/** 동네 인증은 아직 모의 — 위치 기반 판정은 별도 이슈 */
+export const DONG = "역삼동";
 
 const t0 = Date.now();
 
@@ -102,6 +106,11 @@ interface StoreState {
   sel: number | null;
   authMode: AuthMode;
   auth: AuthForm;
+  me: Me | null;
+  /** 최초 세션 복원이 끝났는지 — 끝나기 전엔 로그인 화면이 깜빡이지 않게 아무것도 안 그린다 */
+  authReady: boolean;
+  authBusy: boolean;
+  authError: string;
   dongOk: boolean;
   room: string;
   chatInput: string;
@@ -127,8 +136,12 @@ interface StoreState {
   setAuth: (patch: Partial<AuthForm>) => void;
   switchAuthMode: () => void;
   verifyDong: () => void;
-  enterApp: () => void;
-  logout: () => void;
+  /** 세션 구독 시작. 정리 함수를 돌려준다 */
+  initAuth: () => () => void;
+  signIn: () => Promise<void>;
+  signUp: () => Promise<void>;
+  signInWithOAuth: (provider: "google" | "kakao") => Promise<void>;
+  logout: () => Promise<void>;
   go: (page: PageKey) => void;
   openDeal: (id: number) => void;
   openSettle: (id: number) => void;
@@ -159,11 +172,15 @@ interface StoreState {
   submitNew: () => void;
 }
 
-export const useStore = create<StoreState>((set) => ({
+export const useStore = create<StoreState>((set, get) => ({
   page: "login",
   sel: null,
   authMode: "login",
   auth: { nick: "", email: "", pw: "" },
+  me: null,
+  authReady: false,
+  authBusy: false,
+  authError: "",
   dongOk: false,
   room: "lounge",
   chatInput: "",
@@ -186,12 +203,108 @@ export const useStore = create<StoreState>((set) => ({
   msgs: seedMsgs,
   history: seedHistory,
 
-  setAuth: (patch) => set((st) => ({ auth: { ...st.auth, ...patch } })),
-  switchAuthMode: () => set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup" })),
+  setAuth: (patch) => set((st) => ({ auth: { ...st.auth, ...patch }, authError: "" })),
+  switchAuthMode: () =>
+    set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup", authError: "" })),
   verifyDong: () => set({ dongOk: true }),
-  enterApp: () => set((st) => ({ page: "home", authMode: "login", auth: { ...st.auth, pw: "" } })),
-  logout: () =>
-    set((st) => ({ page: "login", profileOpen: false, authMode: "login", auth: { ...st.auth, pw: "" } })),
+
+  initAuth: () => {
+    const sb = createClient();
+    // 소셜 로그인 콜백이 실패하면 /?auth_error=1 로 돌아온다
+    if (new URLSearchParams(window.location.search).has("auth_error")) {
+      set({ authError: "소셜 로그인에 실패했어요. 다시 시도해주세요" });
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    const { data } = sb.auth.onAuthStateChange((_event, session) => {
+      const uid = session?.user.id;
+      if (!uid) {
+        set((st) => ({
+          me: null,
+          page: "login",
+          authMode: "login",
+          profileOpen: false,
+          authReady: true,
+          auth: { ...st.auth, pw: "" },
+        }));
+        return;
+      }
+      set((st) => ({
+        page: st.page === "login" ? "home" : st.page,
+        authReady: true,
+        authBusy: false,
+        authError: "",
+        auth: { ...st.auth, pw: "" },
+      }));
+      // 이 콜백 안에서 supabase 를 다시 호출하면 교착에 빠진다 (supabase-js 알려진 제약) — 다음 틱으로 미룬다
+      setTimeout(async () => {
+        const { data: p } = await sb
+          .from("profiles")
+          .select("nickname, avatar_url, dong")
+          .eq("id", uid)
+          .single();
+        set({
+          me: {
+            id: uid,
+            nickname: p?.nickname ?? "파티원",
+            avatarUrl: p?.avatar_url ?? null,
+            dong: p?.dong ?? null,
+          },
+        });
+      }, 0);
+    });
+    return () => data.subscription.unsubscribe();
+  },
+
+  signIn: async () => {
+    const { email, pw } = get().auth;
+    if (!email || !pw || get().authBusy) return;
+    set({ authBusy: true, authError: "" });
+    const { error } = await createClient().auth.signInWithPassword({ email, password: pw });
+    // 성공하면 onAuthStateChange 가 화면을 넘긴다
+    if (error) {
+      set({
+        authBusy: false,
+        authError: error.message.includes("Invalid login")
+          ? "이메일 또는 비밀번호를 확인해주세요"
+          : error.message,
+      });
+    }
+  },
+
+  signUp: async () => {
+    const { nick, email, pw } = get().auth;
+    if (!nick || !email || !pw || get().authBusy) return;
+    set({ authBusy: true, authError: "" });
+    const { data, error } = await createClient().auth.signUp({
+      email,
+      password: pw,
+      // 닉네임·동네는 raw_user_meta_data 로 들어가 handle_new_user 트리거가 profiles 에 넣는다
+      options: { data: { nickname: nick, dong: get().dongOk ? DONG : null } },
+    });
+    if (error) {
+      set({ authBusy: false, authError: error.message });
+      return;
+    }
+    // 대시보드에서 Confirm email 이 켜져 있으면 세션 없이 끝난다
+    if (!data.session) {
+      set({ authBusy: false, authError: "메일로 보낸 인증 링크를 확인한 뒤 로그인해주세요" });
+    }
+  },
+
+  signInWithOAuth: async (provider) => {
+    if (get().authBusy) return;
+    set({ authBusy: true, authError: "" });
+    const { error } = await createClient().auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) set({ authBusy: false, authError: error.message });
+  },
+
+  logout: async () => {
+    await createClient().auth.signOut();
+    // 화면 정리는 onAuthStateChange 가 한다
+  },
 
   go: (page) => set({ page, profileOpen: false }),
   openDeal: (id) => set({ page: "detail", sel: id, profileOpen: false }),

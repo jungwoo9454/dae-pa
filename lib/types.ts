@@ -13,6 +13,14 @@ export type PageKey =
 
 export type AuthMode = "login" | "signup";
 
+/** 로그인한 본인 — profiles 행에서 읽어온다 */
+export interface Me {
+  id: string;
+  nickname: string;
+  avatarUrl: string | null;
+  dong: string | null;
+}
+
 export type DealStatus = "recruiting" | "settling" | "completed" | "canceled";
 
 export interface Member {
