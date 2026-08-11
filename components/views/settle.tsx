@@ -228,7 +228,10 @@ export default function SettleView() {
                   🥬 대파페이로 바로 내기
                 </div>
               )}
-              <div className="cursor-pointer rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-center text-[13.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]">
+              <div
+                onClick={() => confirmSelfPaid(sd.id, "account")}
+                className="cursor-pointer rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-center text-[13.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
+              >
                 🏦 계좌로 보내기 · 초록은행 1104-04{" "}
                 <span className="rounded-md bg-[#e9f6ec] px-[7px] py-px text-[11px] text-[#166b3a]">
                   복사
