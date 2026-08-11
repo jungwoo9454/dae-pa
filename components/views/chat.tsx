@@ -197,7 +197,7 @@ export default function ChatView() {
               return (
                 <div key={i} className="flex max-w-[72%] gap-2 self-start">
                   <Avatar ch={mg.who[0] ?? "?"} />
-                  <div>
+                  <div className="min-w-0">
                     <div className="mb-[3px] ml-1 text-[11.5px] text-[#8aa392]">{mg.who}</div>
                     <div className="whitespace-pre-wrap break-words rounded-[4px_16px_16px_16px] border border-[#e2eee2] bg-white px-[13px] py-[9px] leading-normal">
                       {mg.text}
