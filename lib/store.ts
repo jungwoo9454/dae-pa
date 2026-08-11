@@ -85,6 +85,27 @@ const seedHistory: HistoryItem[] = [
 
 const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "" };
 
+/** 전원 입금 완료 시 공구를 마감 처리하고 시스템 메시지 + 신뢰도 반영까지 함께 적용한다 */
+function completeIfAllPaid(
+  deals: Deal[],
+  msgs: Record<string, Msg[]>,
+  dealId: number,
+  trustScore: number,
+): { deals: Deal[]; msgs: Record<string, Msg[]>; trustScore: number } {
+  const deal = deals.find((d) => d.id === dealId);
+  const mem = deal?.members ?? [];
+  const allPaid = mem.length > 0 && mem.every((m) => m.paid);
+  if (!deal || !allPaid) return { deals, msgs, trustScore };
+  const nextDeals = deals.map((d) => (d.id === dealId ? { ...d, status: "completed" as const } : d));
+  const key = "d" + dealId;
+  const nextMsgs = { ...msgs };
+  nextMsgs[key] = [
+    ...(nextMsgs[key] ?? []),
+    { kind: "sys" as const, text: "🎉 전원 입금 완료 — 공구가 마감됐어요! 정산 신뢰도가 올랐어요 ⭐" },
+  ];
+  return { deals: nextDeals, msgs: nextMsgs, trustScore: trustScore + 1 };
+}
+
 interface AuthForm {
   nick: string;
   email: string;
@@ -108,6 +129,7 @@ interface StoreState {
   withdrawOpen: boolean;
   withdrawAmt: number;
   balance: number;
+  trustScore: number;
   autoPay: boolean;
   n1: boolean;
   n2: boolean;
@@ -134,6 +156,8 @@ interface StoreState {
   join: (id: number) => void;
   sendMsg: () => void;
   payNow: (dealId: number) => void;
+  confirmSelfPaid: (dealId: number, method: "account" | "toss") => void;
+  remindUnpaid: (dealId: number) => void;
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => void;
@@ -163,6 +187,7 @@ export const useStore = create<StoreState>((set) => ({
   withdrawOpen: false,
   withdrawAmt: 10000,
   balance: 23500,
+  trustScore: 100,
   autoPay: true,
   n1: true,
   n2: true,
@@ -242,7 +267,12 @@ export const useStore = create<StoreState>((set) => ({
       const deals = st.deals.map((x) =>
         x.id !== dealId
           ? x
-          : { ...x, members: x.members!.map((m) => (m.name === "나" ? { ...m, paid: true } : m)) },
+          : {
+              ...x,
+              members: x.members!.map((m) =>
+                m.name === "나" ? { ...m, paid: true, payMethod: "wallet" as const } : m,
+              ),
+            },
       );
       const key = "d" + dealId;
       const msgs = { ...st.msgs };
@@ -250,12 +280,47 @@ export const useStore = create<StoreState>((set) => ({
         ...(msgs[key] ?? []),
         { kind: "sys", text: `파티원님이 ${fmt(mine.amt)} 입금 완료 ✓ (대파페이)` },
       ];
+      const after = completeIfAllPaid(deals, msgs, dealId, st.trustScore);
       return {
-        deals,
-        msgs,
+        ...after,
         balance: st.balance - mine.amt,
         history: [{ emoji: deal.emoji, title: deal.title + " 정산", when: "방금", amt: -mine.amt }, ...st.history],
       };
+    }),
+
+  confirmSelfPaid: (dealId, method) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      const mine = deal?.members?.find((m) => m.name === "나");
+      if (!deal || !mine || mine.paid) return {};
+      const deals = st.deals.map((x) =>
+        x.id !== dealId
+          ? x
+          : { ...x, members: x.members!.map((m) => (m.name === "나" ? { ...m, paid: true, payMethod: method } : m)) },
+      );
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      const label = method === "account" ? "계좌 이체" : "토스 송금";
+      msgs[key] = [
+        ...(msgs[key] ?? []),
+        { kind: "sys", text: `파티원님이 ${fmt(mine.amt)} 입금 완료 ✓ (${label} · 셀프 체크)` },
+      ];
+      return completeIfAllPaid(deals, msgs, dealId, st.trustScore);
+    }),
+
+  remindUnpaid: (dealId) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      if (!deal || deal.host !== "나") return {};
+      const unpaid = (deal.members ?? []).filter((m) => !m.paid).map((m) => m.name);
+      if (unpaid.length === 0) return {};
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      msgs[key] = [
+        ...(msgs[key] ?? []),
+        { kind: "sys", text: `🔔 아직 입금 안 하신 분들 확인해주세요 — ${unpaid.join(", ")}` },
+      ];
+      return { msgs };
     }),
 
   toggleTopup: () => set((st) => ({ topupOpen: !st.topupOpen })),

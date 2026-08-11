@@ -20,6 +20,8 @@ export interface Member {
   amt: number;
   note: string;
   paid: boolean;
+  /** 입금 수단 — paid=true 일 때만 의미 있음 */
+  payMethod?: "wallet" | "account" | "toss";
 }
 
 export interface Deal {
