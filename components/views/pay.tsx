@@ -27,9 +27,9 @@ export default function PayView() {
   const toggleAutoPay = useStore((s) => s.toggleAutoPay);
 
   const withdrawOptions = [
+    { value: 5000, label: "5천" },
     { value: 10000, label: "1만" },
-    { value: 50000, label: "5만" },
-    { value: 100000, label: "10만" },
+    { value: 30000, label: "3만" },
   ];
 
   return (
