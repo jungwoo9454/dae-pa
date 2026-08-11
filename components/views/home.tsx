@@ -4,6 +4,7 @@ import DealCard from "@/components/deal-card";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
 import { fetchDeals } from "@/lib/supabase/queries";
+import { useRealtimeDeals } from "@/lib/use-realtime-deals";
 import type { Category } from "@/lib/types";
 
 const CATS = ["전체", "식료품", "배달음식", "생활용품"];
@@ -13,6 +14,10 @@ export default function HomeView() {
   const deals = useStore((s) => s.deals);
   const filter = useStore((s) => s.filter);
   const setFilter = useStore((s) => s.setFilter);
+
+  // 목록 카드의 참여자 수/총액/상태 등을 실시간 반영 — 다른 세션 참여, 총액 변경, 정원
+  // 도달로 인한 settling 전환이 필터를 유지한 채로 카드에 바로 보인다
+  useRealtimeDeals(filter);
 
   // filter 초기값이 "전체"이므로 이 effect 하나로 최초 로드 + 필터 변경 조회를 모두 처리한다
   // (마운트 시 별도 effect를 두면 동일한 무필터 조회가 중복 발생한다)

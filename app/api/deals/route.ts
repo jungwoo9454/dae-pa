@@ -121,7 +121,10 @@ export async function POST(req: Request) {
 
 /**
  * GET /api/deals
- * 공고 목록을 조회합니다 (나중에 구현)
+ * ⚠️ 사용 안 함 — home.tsx는 lib/supabase/queries.ts의 fetchDeals()를 직접 호출한다
+ * (Task 3, #4). 이 핸들러를 고쳐도 화면엔 반영되지 않는다 — 로직을 바꿔야 하면
+ * fetchDeals() 쪽을 고치는 게 맞다. 삭제하지 않고 남겨둔 이유는 POST가 같은 파일에
+ * 있어서(app/api/deals/route.ts) — POST /api/deals(공고 생성, new-deal.tsx가 씀)는 계속 쓴다.
  */
 export async function GET() {
   try {
@@ -140,6 +143,12 @@ export async function GET() {
       return Response.json({ error: error.message }, { status: 400 });
     }
 
+    const hostIds = Array.from(new Set((data ?? []).map((row: any) => row.host_id).filter(Boolean)));
+    const { data: profiles } = hostIds.length
+      ? await supabase.from("profiles").select("id, nickname").in("id", hostIds)
+      : { data: [] };
+    const hostsById = new Map((profiles ?? []).map((profile: any) => [profile.id, profile.nickname]));
+
     const deals = (data ?? []).map((row:any) => ({
       id: Number(row.id),
       emoji: getCategoryEmoji(row.category),
@@ -150,7 +159,7 @@ export async function GET() {
       joined: row.joined,
       end: new Date(row.deadline).getTime(),
       place: row.place,
-      host: row.host_id,
+      host: hostsById.get(row.host_id) ?? "주최자",
       status: row.status,
       me: row.host_id === user?.id,
       mine: row.host_id === user?.id,
@@ -181,4 +190,3 @@ function getCategoryEmoji(cat: string): string {
   };
   return emojiMap[cat] || "🧅";
 }
-

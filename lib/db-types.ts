@@ -17,6 +17,13 @@ export interface GroupBuyRow {
   created_at: string;
 }
 
+/** 닉네임 표시용 — group_buys.host_id 조회 시 profiles를 embed해서 함께 받는다 */
+export interface ProfileRow {
+  id: string;
+  nickname: string;
+  avatar_url: string | null;
+}
+
 export interface ParticipationRow {
   id: number; // bigint identity
   group_buy_id: number;
@@ -27,3 +34,10 @@ export interface ParticipationRow {
   paid_at: string | null;
   joined_at: string;
 }
+
+/**
+ * 참여자 아바타 표시용 — participations.user_id → profiles.id FK를 PostgREST embed로
+ * 함께 받아온다. RLS(profiles_read: using (true))상 다른 사람 프로필도 읽을 수 있어서
+ * 목록/상세 어디서든 host_profile과 동일한 패턴으로 붙일 수 있다.
+ */
+export type ParticipationWithProfile = ParticipationRow & { profile: ProfileRow | null };

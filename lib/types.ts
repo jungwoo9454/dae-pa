@@ -1,4 +1,4 @@
-import type { ParticipationRow } from "./db-types";
+import type { ParticipationWithProfile } from "./db-types";
 
 export type Category = "식료품" | "배달음식" | "생활용품" | "대량구매" | "기타";
 
@@ -88,8 +88,8 @@ export interface Deal {
   /** ISO 8601 timestamp (생성 시간) */
   created_at?: string;
 
-  /** Realtime 데이터 (participations 테이블 행들) */
-  participations?: ParticipationRow[];
+  /** Realtime 데이터 (participations 테이블 행들 — user_id의 profile을 embed로 함께 받는다) */
+  participations?: ParticipationWithProfile[];
 }
 
 export type Msg =

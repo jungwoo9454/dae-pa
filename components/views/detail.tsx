@@ -37,10 +37,11 @@ export default function DetailView() {
   const pct = Math.min(100, Math.round((deal.joined / deal.goal) * 100));
   const closing = st.key === "closing";
   const active = joinable(deal, now);
-  // 참여자 아바타 — 실제 참여자 목록에서 추출한다 (임시: user_id 첫 글자, 추후 profiles 조인으로 닉네임 표시)
+  // 참여자 아바타 — participations.user_id → profiles.id embed로 받은 닉네임 첫 글자를 쓴다.
+  // profile을 못 찾은 경우(고아 user_id 등)에만 user_id로 폴백한다.
   const participantAvatars = (deal.participations ?? []).slice(0, 4).map((p) => ({
     userId: p.user_id,
-    initials: p.user_id.slice(0, 1).toUpperCase(),
+    initials: (p.profile?.nickname ?? p.user_id).slice(0, 1).toUpperCase(),
   }));
 
   const onJoin = () => {
