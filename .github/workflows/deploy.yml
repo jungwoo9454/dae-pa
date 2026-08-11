@@ -32,7 +32,7 @@ jobs:
       - name: 헬스체크
         run: |
           for i in $(seq 1 20); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://64.110.116.62:3000/ || true)
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://64.110.116.62/ || true)
             [ "$code" = "200" ] && echo "OK" && exit 0
             sleep 5
           done
