@@ -56,7 +56,6 @@
   .expl .pt b { display: block; font-size: 2.1vh; margin-bottom: .4vh; }
   .expl .pt p { font-size: 1.85vh; color: #4d6d58; line-height: 1.5; }
   .cap { font: 700 1.9vh Gaegu, sans-serif; color: #555; }
-  .cap .tid { font: 600 1.6vh ui-monospace, Menlo, monospace; background: #1a1a1a; color: #fff; border-radius: .5vh; padding: .2vh 1vh; margin-right: .8vh; }
 
   /* ── 와이어프레임 원본 스타일 (공구앱 와이어프레임.dc.html에서 그대로) ── */
   .wf { width: 400px; height: 270px; background: #fff; border: 1.5px solid #2b2b2b; border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; font: 11px/1.25 Gaegu, sans-serif; color: #2b2b2b; flex: none; zoom: var(--wfz, 1.45); }
@@ -98,19 +97,19 @@
 <section class="slide dark active">
   <div class="jua" style="font-size:15vh;line-height:1;color:#fff">대<span style="color:#7fdc95">파</span></div>
   <h1 class="jua" style="font-size:5.2vh;margin-top:3vh;color:#e9f4ec">와이어프레임으로 보는 기획</h1>
-  <p class="lead" style="margin-top:2vh">공고 → 참여 → 채팅 → 정산까지 한 번에 끝내는 동네 공동구매 플랫폼<br>— 화면 설계 5번의 반복으로 "총무 없는 공구"를 그리다</p>
-  <p class="lead" style="font-size:2vh">2026.08 · 3일 해커톤 · 4인 팀</p>
+  <p class="lead" style="margin-top:2vh">공고 → 참여 → 채팅 → 정산까지 한 번에 끝내는 동네 공동구매 플랫폼<br>— 화면 설계 5번의 반복으로 "동네 주민과 나누는 알뜰 생활"을 그리다</p>
+  <p class="lead" style="font-size:2vh">2026.08 · 2주차 팀 프로젝트 · 2팀</p>
 </section>
 
 <!-- 2. 문제 -->
 <section class="slide">
   <div class="kicker">WHY — 기획 배경</div>
-  <h2 class="jua">공구는 하고 싶은데, <span class="green">총무는 하기 싫다</span></h2>
+  <h2 class="jua">혼자라서 못 사고, <span class="green">같이 사면 정산이 문제다</span></h2>
   <div class="cols">
-    <div class="card"><span class="emoji">🛵</span><b class="title">배달비가 아깝다</b>
-      <p>혼자 시키면 배달비 4천 원, 최소 주문 금액도 못 맞춘다</p></div>
-    <div class="card"><span class="emoji">📦</span><b class="title">대용량은 너무 많다</b>
-      <p>화장지 48롤, 대파 5단 — 1인 가구가 사기엔 양이 부담</p></div>
+    <div class="card"><span class="emoji">🛵</span><b class="title">최소 주문금액을 못 맞춘다</b>
+      <p>1인분만 시키면 결제 버튼조차 안 눌린다 — 최소 주문금액 1.5~2만 원은 혼자 채우기 어려운 벽</p></div>
+    <div class="card"><span class="emoji">🏬</span><b class="title">창고형 마트는 1인 가구에 벽</b>
+      <p>트레이더스·코스트코의 대용량 묶음 — 사고 싶어도 다 먹지 못해 결국 발길을 돌린다</p></div>
     <div class="card"><span class="emoji">🧾</span><b class="title">정산이 지옥이다</b>
       <p>단톡방 모집 → 계산기 → 입금 확인 → 독촉까지 전부 총무의 수기 노동</p></div>
   </div>
@@ -145,7 +144,7 @@
   <h2 class="jua">채택한 뼈대: <span class="green">사이드바 + 카드 그리드</span></h2>
   <div class="wfrow">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 1 · 1a</span>홈 · 공구 목록</div>
+      <div class="cap">홈 · 공구 목록</div>
       <div class="wf">
         <div style="display:flex;flex:1;min-height:0">
           <div class="side"><b>🛒 같이사요</b><span class="acc">홈</span><span>내 공구</span><span>채팅</span><span>정산</span><span>프로필</span><span>설정</span></div>
@@ -176,7 +175,7 @@
   <h2 class="jua"><span class="green">버튼 한 번</span>이면 파티원</h2>
   <div class="wfrow">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 1 · 1a</span>공고 상세 · 참여 패널</div>
+      <div class="cap">공고 상세 · 참여 패널</div>
       <div class="wf">
         <div class="topbar"><span>← 목록</span><b style="flex:1">제주 감귤 10kg 같이 사요</b><span class="badge acc">모집중</span></div>
         <div style="display:flex;flex:1;gap:8px;padding:8px;min-height:0">
@@ -212,7 +211,7 @@
   <p class="lead">턴 2의 결정: 올리기는 전용 페이지(실시간 미리보기 포함), 프로필은 페이지가 아닌 팝오버로</p>
   <div class="wfpair">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 2 · 2a</span>올리기 — 실시간 미리보기</div>
+      <div class="cap">올리기 — 실시간 미리보기</div>
       <div class="wf wf-s" style="width:420px;height:300px">
         <div style="display:flex;flex:1;min-height:0">
           <div class="side"><b>🛒 같이사요</b><span>홈</span><span>내 공구</span><span>채팅</span><span>정산</span><span class="acc">올리기</span><span>설정</span></div>
@@ -238,7 +237,7 @@
       </div>
     </div>
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 2 · 2b</span>프로필 팝오버</div>
+      <div class="cap">프로필 팝오버</div>
       <div class="wf wf-s" style="width:420px;height:300px">
         <div style="display:flex;flex:1;min-height:0">
           <div class="side"><b>🛒 같이사요</b><span class="acc">홈</span><span>내 공구</span><span>채팅</span><span>정산</span><span>설정</span></div>
@@ -271,7 +270,7 @@
   <h2 class="jua">카테고리가 <span class="green">폼을 바꾼다</span></h2>
   <div class="wfrow">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 3 · 3b</span>배달음식을 고르면 입력폼이 달라진다</div>
+      <div class="cap">배달음식을 고르면 입력폼이 달라진다</div>
       <div class="wf" style="width:420px;height:300px">
         <div style="display:flex;flex:1;min-height:0">
           <div class="side"><b>🛒 같이사요</b><span>홈</span><span>내 공구</span><span>채팅</span><span>정산</span><span class="acc">올리기</span></div>
@@ -313,7 +312,7 @@
   <h2 class="jua">돈 얘기는 <span class="green">전부 기록에 남긴다</span></h2>
   <div class="wfrow">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 3 · 3c</span>주최자 수정 → 전원 알림</div>
+      <div class="cap">주최자 수정 → 전원 알림</div>
       <div class="wf" style="width:420px;height:150px">
         <div class="topbar"><span>←</span><b style="flex:1">🍗 치킨 같이시켜요</b><span class="badge acc">모집중</span></div>
         <div style="display:flex;flex:1;gap:8px;padding:8px;min-height:0">
@@ -331,7 +330,7 @@
           </div>
         </div>
       </div>
-      <div class="cap" style="margin-top:1vh"><span class="tid">턴 3 · 3c</span>채팅 시스템 메시지 + 정산 잠금</div>
+      <div class="cap" style="margin-top:1vh">채팅 시스템 메시지 + 정산 잠금</div>
       <div class="wf" style="width:420px;height:130px">
         <div style="display:flex;flex:1;min-height:0">
           <div style="flex:1;padding:6px;display:flex;flex-direction:column;gap:4px;border-right:1.5px solid #2b2b2b">
@@ -360,7 +359,7 @@
   <h2 class="jua">모집이 <span class="green">대화 속에서</span> 일어난다</h2>
   <div class="wfrow">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 3 · 3a</span>동네 라운지 + 공구방 (한 화면 전환)</div>
+      <div class="cap">동네 라운지 + 공구방 (한 화면 전환)</div>
       <div class="wf" style="width:420px;height:300px">
         <div style="display:flex;flex:1;min-height:0">
           <div class="side"><b>🛒 같이사요</b><span>홈</span><span>내 공구</span><span class="acc">채팅</span><span>정산</span><span>설정</span></div>
@@ -398,7 +397,7 @@
   <h2 class="jua">영수증이 근거, <span class="green">계산은 자동</span></h2>
   <div class="wfrow">
     <div class="wfcol">
-      <div class="cap"><span class="tid">턴 4 · 4a</span>정산 시작 — 총액 확정 후 1/N</div>
+      <div class="cap">정산 시작 — 총액 확정 후 1/N</div>
       <div class="wf" style="width:420px;height:150px">
         <div class="topbar"><b>🍗 치킨 정산 시작</b></div>
         <div style="display:flex;flex:1;gap:8px;padding:8px;min-height:0">
@@ -414,7 +413,7 @@
           </div>
         </div>
       </div>
-      <div class="cap" style="margin-top:1vh"><span class="tid">턴 4 · 4b</span>참여자 — 내는 방법 3가지</div>
+      <div class="cap" style="margin-top:1vh">참여자 — 내는 방법 3가지</div>
       <div class="wf" style="width:420px;height:150px">
         <div class="topbar"><b>내가 낼 금액</b><span style="flex:1"></span><b class="acc" style="font-size:14px">13,625원</b><span class="chip">🧾 영수증 보기</span></div>
         <div style="padding:8px;display:flex;flex-direction:column;gap:5px;flex:1">
@@ -440,7 +439,7 @@
   <div class="wfrow">
     <div class="wfpair">
       <div class="wfcol">
-        <div class="cap"><span class="tid">턴 5 · 5a</span>지갑 — 잔액·충전·자동 결제</div>
+        <div class="cap">지갑 — 잔액·충전·자동 결제</div>
         <div class="wf wf-s" style="width:420px;height:300px">
           <div style="display:flex;flex:1;min-height:0">
             <div class="side"><b>🛒 같이사요</b><span>홈</span><span>내 공구</span><span>채팅</span><span class="acc">페이</span><span>설정</span></div>
@@ -466,7 +465,7 @@
         </div>
       </div>
       <div class="wfcol">
-        <div class="cap"><span class="tid">턴 5 · 5b</span>영수증이 없다면 — 동의 투표</div>
+        <div class="cap">영수증이 없다면 — 동의 투표</div>
         <div class="wf wf-s" style="width:420px;height:165px">
           <div style="display:flex;flex:1;min-height:0">
             <div style="flex:1;padding:6px;display:flex;flex-direction:column;gap:4px;border-right:1.5px solid #2b2b2b">
@@ -489,7 +488,7 @@
     <div class="expl">
       <div class="pt"><b>자동 결제 ON = 독촉의 소멸</b><p>정산 요청이 오면 잔액에서 즉시 차감 — "입금해주세요" 메시지가 필요 없어진다</p></div>
       <div class="pt"><b>내역의 각 줄은 공구방으로 연결</b><p>돈의 기록과 대화의 기록이 항상 이어져 있다</p></div>
-      <div class="pt"><b>영수증이 없어도 정산은 굴러간다</b><p>직접 입력(미인증 표시) + 참여자 과반 동의로 확정. 이의는 채팅으로 해결 — <b>예외 흐름까지 설계해야 '총무 없는 공구'가 완성</b></p></div>
+      <div class="pt"><b>영수증이 없어도 정산은 굴러간다</b><p>직접 입력(미인증 표시) + 참여자 과반 동의로 확정. 이의는 채팅으로 해결 — <b>예외 흐름까지 설계해야 '동네 주민과 나누는 알뜰 생활'이 완성</b></p></div>
     </div>
   </div>
 </section>
