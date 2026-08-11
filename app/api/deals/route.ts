@@ -144,12 +144,6 @@ export async function GET() {
       return Response.json({ error: error.message }, { status: 400 });
     }
 
-    const hostIds = Array.from(new Set((data ?? []).map((row: any) => row.host_id).filter(Boolean)));
-    const { data: profiles } = hostIds.length
-      ? await supabase.from("profiles").select("id, nickname").in("id", hostIds)
-      : { data: [] };
-    const hostsById = new Map((profiles ?? []).map((profile: any) => [profile.id, profile.nickname]));
-
     const deals = (data ?? []).map((row:any) => ({
       id: Number(row.id),
       emoji: getCategoryEmoji(row.category),
@@ -160,7 +154,7 @@ export async function GET() {
       joined: row.joined,
       end: new Date(row.deadline).getTime(),
       place: row.place,
-      host: hostsById.get(row.host_id) ?? "주최자",
+      host: row.host_id === user?.id ? "나" : (row.profiles?.nickname ?? "주최자"),
       status: row.status,
       me: row.host_id === user?.id,
       mine: row.host_id === user?.id,

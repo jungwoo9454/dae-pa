@@ -2,7 +2,7 @@
 "use client";
 
 import { createClient } from "./client";
-import type { Deal, Category } from "@/lib/types";
+import type { Deal } from "@/lib/types";
 import type { GroupBuyRow, ParticipationWithProfile, ProfileRow } from "@/lib/db-types";
 import { CAT_EMOJI } from "@/lib/deal";
 import { useStore } from "@/lib/store";
@@ -14,23 +14,19 @@ type GroupBuyWithHost = GroupBuyRow & { host_profile: ProfileRow | null };
 const PARTICIPATION_WITH_PROFILE_SELECT = "*, profile:profiles!user_id(id, nickname, avatar_url)";
 
 /**
- * 공구 목록 조회 (카테고리 필터 옵션)
- * Supabase: group_buys 테이블에서 최신순 조회
+ * 공구 목록 조회 — 최신순 전체.
+ * 카테고리로 걸러 받지 않는 이유는 home.tsx / use-realtime-deals.ts 주석 참고.
  */
-export async function fetchDeals(category?: Category | "전체"): Promise<Deal[]> {
+export async function fetchDeals(): Promise<Deal[]> {
   const sb = createClient();
 
   // 목록 카드는 참여자 수(deal.joined)만 필요 — group_buys.joined 컬럼이 이미
   // join_group_buy RPC로 원자적으로 유지되는 값이라 participations 조인은 불필요하다.
   // host_profile은 host_id → profiles.id FK를 이용한 embed — 별도 쿼리 없이 닉네임을 함께 받는다.
-  let query = sb
+  const query = sb
     .from("group_buys")
     .select("*, host_profile:profiles!host_id(id, nickname, avatar_url)")
     .order("created_at", { ascending: false });
-
-  if (category && category !== "전체") {
-    query = query.eq("category", category);
-  }
 
   const uid = await getUserId(sb);
   const [{ data, error }, myDealIds] = await Promise.all([query, fetchMyParticipatingDealIds(sb, uid)]);
@@ -79,7 +75,7 @@ export async function fetchDeal(dealId: number): Promise<Deal | null> {
       .select(
         `
       *,
-      participations!inner (${PARTICIPATION_WITH_PROFILE_SELECT}),
+      participations (${PARTICIPATION_WITH_PROFILE_SELECT}),
       host_profile:profiles!host_id (id, nickname, avatar_url)
     `,
       )
