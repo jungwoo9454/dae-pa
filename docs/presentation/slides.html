@@ -52,6 +52,13 @@
   .pill { display: inline-block; background: #e9f6ec; color: #166b3a; border-radius: 99px; padding: .7vh 2vh; font-size: 2vh; font-weight: 800; margin-right: .8vh; }
   .dark .pill { background: rgba(127,220,149,.15); color: #7fdc95; }
 
+  /* 협업 방식 (마무리 슬라이드) */
+  .sublabel { margin-top: 2.6vh; font-size: 1.9vh; font-weight: 800; letter-spacing: .1em; color: #7fdc95; }
+  .collab { display: flex; align-items: center; flex-wrap: wrap; gap: .6vh; margin-top: 1.4vh; }
+  .collab .pill { margin-right: 0; }
+  .collab .ar { color: #7fdc95; font-weight: 800; font-size: 2.2vh; margin: 0 .4vh; }
+  .collab code { font-family: ui-monospace, Menlo, monospace; font-size: 1.75vh; }
+
   /* 와이어프레임 워크스루 레이아웃 */
   .wfrow { display: flex; gap: 2.6vw; align-items: flex-start; }
   .wfcol { display: flex; flex-direction: column; gap: 2vh; flex: none; }
@@ -501,7 +508,16 @@
     <tr><td>김시은</td><td>정산 · 페이</td><td>1/N 분배 · 입금 체크리스트 · 대파페이</td></tr>
     <tr><td>박준호</td><td>플랫폼</td><td>Supabase · 인증 · 알림 · 오라클 배포</td></tr>
   </table>
-  <h2 class="jua" style="margin-top:4vh;color:#7fdc95">같이 사면 이득. 감사합니다 🥬</h2>
+  <div class="sublabel">협업 방식 — Git · GitHub</div>
+  <div class="collab">
+    <span class="pill">이슈 등록</span><span class="ar">›</span>
+    <span class="pill">브랜치 <code>feat/#번호</code></span><span class="ar">›</span>
+    <span class="pill">PR · <code>closes #번호</code></span><span class="ar">›</span>
+    <span class="pill">코드 리뷰 1인 승인</span><span class="ar">›</span>
+    <span class="pill">Squash merge</span>
+  </div>
+  <p class="lead" style="margin:1.3vh 0 0;font-size:1.95vh">main 직접 push 금지 · 이슈 = 브랜치 = PR 1:1 · 리뷰 코멘트 P1 / P2 / nit 규칙 · Projects 칸반으로 진행 관리</p>
+  <h2 class="jua" style="margin-top:3vh;color:#7fdc95">같이 사면 이득. 감사합니다 🥬</h2>
   </div>
 </section>
 
