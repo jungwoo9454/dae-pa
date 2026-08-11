@@ -17,7 +17,7 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
 
   const onJoin = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (deal.status === "settle") openSettle(deal.id);
+    if (deal.status === "settling") openSettle(deal.id);
     else join(deal.id);
   };
 
@@ -57,7 +57,7 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
         <div
           onClick={onJoin}
           className={`cursor-pointer rounded-[10px] px-4 py-2 text-[13.5px] font-extrabold hover:brightness-105 ${
-            active || deal.status === "settle"
+            active || deal.status === "settling"
               ? "bg-[#1f8a4c] text-white"
               : "bg-[#e6efe4] text-[#6b8573]"
           }`}
