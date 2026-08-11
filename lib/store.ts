@@ -4,7 +4,18 @@ import { create } from "zustand";
 import { CAT_EMOJI, fmt, joinable, recalcMembers } from "./deal";
 import { createClient } from "./supabase/client";
 import { sysText } from "./sys-messages";
-import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, Noti, PageKey, Settlement } from "./types";
+import type {
+  AuthMode,
+  Deal,
+  DealForm,
+  HistoryItem,
+  Me,
+  Msg,
+  Noti,
+  PageKey,
+  Room,
+  Settlement,
+} from "./types";
 
 /** 동네 인증은 아직 모의 — 위치 기반 판정은 별도 이슈 */
 export const DONG = "역삼동";
@@ -24,6 +35,76 @@ interface NotiRow {
   payload: { text?: string; dealId?: number } | null;
   is_read: boolean;
   created_at: string;
+}
+
+/** 방에 들어갈 때 불러오는 최근 메시지 수 (#7) */
+export const RECENT_LIMIT = 100;
+
+/** chat_rooms 행 */
+interface RoomRow {
+  id: number;
+  type: "lounge" | "group_buy";
+  group_buy_id: number | null;
+  name: string;
+}
+
+/** 방 → msgs 키. 화면·시드가 쓰던 "lounge" / "d{공구id}" 를 그대로 유지한다 */
+const roomKey = (r: Room) => (r.type === "lounge" ? "lounge" : "d" + r.dealId);
+
+/**
+ * user_id → 닉네임. Realtime INSERT 페이로드에는 조인 결과가 없어서
+ * 처음 보는 사람만 한 번 조회하고 여기에 담아 둔다.
+ */
+const nickCache = new Map<string, string>();
+
+/** messages 행 — 카드 말풍선은 payload.group_buy_id 로 어떤 공구인지 담는다 (#7) */
+interface MsgRow {
+  id: number;
+  room_id: number;
+  user_id: string | null;
+  kind: "text" | "sys" | "card";
+  content: string | null;
+  payload: { group_buy_id?: number } | null;
+  profiles?: { nickname: string | null } | null;
+}
+
+/** messages 행 → 화면용 Msg. 내 메시지면 mine, 남이면 other, user_id 가 null 이면 시스템 */
+const toMsg = (r: MsgRow, myId: string | null): Msg => {
+  if (r.kind === "sys") return { kind: "sys", text: r.content ?? "", id: r.id };
+  if (r.user_id && r.profiles?.nickname) nickCache.set(r.user_id, r.profiles.nickname);
+  const who = r.profiles?.nickname ?? "이웃";
+  if (r.kind === "card") {
+    return { kind: "card", cardOf: Number(r.payload?.group_buy_id ?? 0), who, id: r.id };
+  }
+  if (r.user_id && r.user_id === myId) return { kind: "mine", text: r.content ?? "", id: r.id };
+  return { kind: "other", who, text: r.content ?? "", id: r.id };
+};
+
+/**
+ * 내 말풍선을 messages 에 넣고, 돌아온 id 로 화면에 바로 붙인다 (#7).
+ * 같은 행이 Realtime 으로 한 번 더 오지만 id 가 같아 중복되지 않는다.
+ */
+async function insertOwnMsg(
+  roomId: number,
+  key: string,
+  userId: string,
+  row: { kind: "text" | "card"; content?: string; payload?: { group_buy_id: number } },
+  render: (id: number) => Msg,
+) {
+  const { data, error } = await createClient()
+    .from("messages")
+    .insert({ room_id: roomId, user_id: userId, ...row })
+    .select("id")
+    .single();
+  if (error || !data) {
+    console.error("[messages insert]", error);
+    return;
+  }
+  useStore.setState((st) => {
+    const list = st.msgs[key] ?? [];
+    if (list.some((m) => m.id === data.id)) return {};
+    return { msgs: { ...st.msgs, [key]: [...list, render(data.id)] } };
+  });
 }
 
 /** profiles 본인 행 갱신 (#20) — RLS·컬럼 GRANT 가 본인 행의 허용 컬럼만 열어준다 */
@@ -97,13 +178,14 @@ const seedDeals: Deal[] = [
   mk(5, "🧻", "화장지 48롤 반씩", "생활용품", 32000, 2, 1, 1580, "경비실 앞", "알뜰킹"),
 ];
 
+/**
+ * 채팅은 DB(messages)에서 읽어온다 (#7). 아래 시드는 Supabase 가 아직 붙지 않은
+ * 로컬 개발용 폴백이며, 로그인하면 initChat 이 실제 방/메시지로 덮어쓴다.
+ */
 const seedMsgs: Record<string, Msg[]> = {
   lounge: [
-    { kind: "sys", text: "🏘 역삼동 이웃 128명이 함께하고 있어요" },
+    { kind: "sys", text: "🏘 역삼동 이웃들이 함께하고 있어요" },
     { kind: "other", who: "민지", text: "치킨 같이 시키실 분? 배달비 아까워요 😂" },
-    { kind: "card", cardOf: 2, who: "준호" },
-    { kind: "mine", text: "저요저요!!" },
-    { kind: "card", cardOf: 1, who: "파밍맘" },
   ],
   d1: [
     { kind: "sys", text: "공구방이 열렸어요 · 목표 5명" },
@@ -175,6 +257,8 @@ interface StoreState {
   profileOpen: boolean;
   notiOpen: boolean;
   notis: Noti[];
+  /** 로그인 후 채팅이 DB에 붙었는지 — 붙기 전엔 시드가 보인다 */
+  chatReady: boolean;
   topupOpen: boolean;
   topupAmt: number;
   settleTotalInput: string;
@@ -205,6 +289,10 @@ interface StoreState {
   goRoom: (roomId: string) => void;
   toggleProfile: () => void;
   /** 알림 목록 로드 + Realtime 구독 시작. 정리 함수를 돌려준다 */
+  /** 내가 볼 수 있는 채팅방 (라운지 + 참여 중인 공구방) — DB에서 로드 (#7) */
+  rooms: Room[];
+  /** 방 목록 로드 + messages Realtime 구독 시작. 정리 함수를 돌려준다 */
+  initChat: (uid: string) => () => void;
   initNotis: (uid: string) => () => void;
   /** 열 때 미읽음을 전부 읽음 처리한다 */
   toggleNoti: () => Promise<void>;
@@ -258,6 +346,8 @@ export const useStore = create<StoreState>((set, get) => ({
   profileOpen: false,
   notiOpen: false,
   notis: [],
+  chatReady: false,
+  rooms: [],
   topupOpen: false,
   topupAmt: 10000,
   settleTotalInput: "",
@@ -288,11 +378,15 @@ export const useStore = create<StoreState>((set, get) => ({
     const { data } = sb.auth.onAuthStateChange((_event, session) => {
       const uid = session?.user.id;
       if (!uid) {
-        // 다음 사람이 남의 알림·설정을 보지 않게 목록·중복 표시·토글을 비운다
+        // 다음 사람이 남의 알림·대화·설정을 보지 않게 목록·중복 표시·토글을 비운다
         firedDeadlines.clear();
+        nickCache.clear();
         set((st) => ({
           me: null,
           notis: [],
+          rooms: [],
+          chatReady: false,
+          msgs: seedMsgs,
           n1: true,
           n2: true,
           page: "login",
@@ -397,6 +491,95 @@ export const useStore = create<StoreState>((set, get) => ({
   openSettle: (id) => set({ page: "settle", sel: id, profileOpen: false, notiOpen: false }),
   goRoom: (roomId) => set({ page: "chat", room: roomId, profileOpen: false, notiOpen: false }),
   toggleProfile: () => set((st) => ({ profileOpen: !st.profileOpen, notiOpen: false })),
+
+  initChat: (uid) => {
+    const sb = createClient();
+    // 정리된 뒤 늦게 도착한 응답이 화면을 되돌리지 않게 막는다
+    let alive = true;
+
+    /** 내가 속한 방(라운지 + 참여 중인 공구방)과 각 방의 최근 메시지를 다시 읽는다 */
+    const loadRooms = async () => {
+      const [{ data: parts }, { data: roomRows }] = await Promise.all([
+        sb.from("participations").select("group_buy_id").eq("user_id", uid),
+        sb.from("chat_rooms").select("id, type, group_buy_id, name").order("id"),
+      ]);
+      const joined = new Set((parts ?? []).map((p) => Number(p.group_buy_id)));
+      const rooms: Room[] = ((roomRows ?? []) as RoomRow[])
+        .filter((r) => r.type === "lounge" || (r.group_buy_id !== null && joined.has(r.group_buy_id)))
+        .map((r) => ({ id: r.id, type: r.type, name: r.name, dealId: r.group_buy_id }));
+      if (!alive || !rooms.length) return;
+
+      // 방마다 최근 RECENT_LIMIT 개씩 — 한 번에 몰아 받으면 대화가 많은 방이 나머지를 굶긴다
+      const lists = await Promise.all(
+        rooms.map(async (r) => {
+          const { data } = await sb
+            .from("messages")
+            .select("id, room_id, user_id, kind, content, payload, profiles(nickname)")
+            .eq("room_id", r.id)
+            .order("id", { ascending: false })
+            .limit(RECENT_LIMIT);
+          return ((data ?? []) as unknown as MsgRow[]).reverse();
+        }),
+      );
+      if (!alive) return;
+
+      const loaded: Record<string, Msg[]> = {};
+      rooms.forEach((r, i) => {
+        loaded[roomKey(r)] = lists[i].map((m) => toMsg(m, uid));
+      });
+      set((st) => {
+        // 불러오는 동안 Realtime 으로 먼저 들어온 메시지는 살린다 (시드는 id 가 없어 여기서 사라진다)
+        const msgs: Record<string, Msg[]> = { ...loaded };
+        for (const [key, list] of Object.entries(msgs)) {
+          const seen = new Set(list.map((m) => m.id));
+          const late = (st.msgs[key] ?? []).filter((m) => m.id != null && !seen.has(m.id));
+          if (late.length) msgs[key] = [...list, ...late];
+        }
+        return { rooms, chatReady: true, msgs };
+      });
+    };
+
+    /** Realtime 으로 들어온 메시지 한 건을 해당 방에 붙인다 */
+    const onMsg = async (row: MsgRow) => {
+      if (!get().rooms.some((r) => r.id === row.room_id)) return; // 내 방이 아니면 무시
+      if (row.user_id && row.user_id !== uid && !nickCache.has(row.user_id)) {
+        const { data } = await sb.from("profiles").select("nickname").eq("id", row.user_id).single();
+        if (data?.nickname) nickCache.set(row.user_id, data.nickname);
+      }
+      const target = get().rooms.find((r) => r.id === row.room_id);
+      if (!alive || !target) return;
+      const key = roomKey(target);
+      const nickname = row.user_id ? (nickCache.get(row.user_id) ?? null) : null;
+      const msg = toMsg({ ...row, profiles: { nickname } }, uid);
+      set((st) => {
+        const list = st.msgs[key] ?? [];
+        if (list.some((m) => m.id === row.id)) return {}; // 내가 보낸 뒤 바로 붙인 것과 중복
+        return { msgs: { ...st.msgs, [key]: [...list, msg] } };
+      });
+    };
+
+    void loadRooms();
+
+    const ch = sb
+      .channel("chat")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, ({ new: row }) => {
+        void onMsg(row as MsgRow);
+      })
+      // 공구를 만들거나 참여하면 방이 하나 늘어난다 — 목록을 다시 읽는다
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "participations", filter: `user_id=eq.${uid}` },
+        () => {
+          void loadRooms();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      alive = false;
+      void sb.removeChannel(ch);
+    };
+  },
 
   initNotis: (uid) => {
     const sb = createClient();
@@ -539,22 +722,46 @@ export const useStore = create<StoreState>((set, get) => ({
     }),
 
   /** 공구 카드를 채팅방에 말풍선으로 공유하고 그 방으로 이동 (#10) */
-  shareDeal: (dealId, roomId) =>
-    set((st) => {
-      if (!st.deals.some((d) => d.id === dealId)) return {};
-      const msgs = { ...st.msgs };
-      msgs[roomId] = [...(msgs[roomId] ?? []), { kind: "card", cardOf: dealId, who: "나" }];
-      return { msgs, page: "chat", room: roomId, profileOpen: false };
-    }),
+  shareDeal: (dealId, roomId) => {
+    const st = get();
+    if (!st.deals.some((d) => d.id === dealId)) return;
+    set({ page: "chat", room: roomId, profileOpen: false });
 
-  sendMsg: () =>
-    set((st) => {
-      const text = st.chatInput.trim();
-      if (!text) return {};
-      const msgs = { ...st.msgs };
-      msgs[st.room] = [...(msgs[st.room] ?? []), { kind: "mine", text }];
-      return { msgs, chatInput: "" };
-    }),
+    const target = st.rooms.find((r) => roomKey(r) === roomId);
+    const nick = st.me?.nickname ?? "나";
+    if (!target || !st.me) {
+      // DB 연동 전(로컬 시드)에는 화면에만 남긴다
+      set((s) => ({
+        msgs: { ...s.msgs, [roomId]: [...(s.msgs[roomId] ?? []), { kind: "card", cardOf: dealId, who: nick }] },
+      }));
+      return;
+    }
+    void insertOwnMsg(
+      target.id,
+      roomId,
+      st.me.id,
+      { kind: "card", payload: { group_buy_id: dealId } },
+      (id) => ({ kind: "card", cardOf: dealId, who: nick, id }),
+    );
+  },
+
+  sendMsg: () => {
+    const st = get();
+    const text = st.chatInput.trim();
+    if (!text) return;
+    set({ chatInput: "" });
+
+    const target = st.rooms.find((r) => roomKey(r) === st.room);
+    if (!target || !st.me) {
+      set((s) => ({ msgs: { ...s.msgs, [st.room]: [...(s.msgs[st.room] ?? []), { kind: "mine", text }] } }));
+      return;
+    }
+    void insertOwnMsg(target.id, st.room, st.me.id, { kind: "text", content: text }, (id) => ({
+      kind: "mine",
+      text,
+      id,
+    }));
+  },
 
   payNow: (dealId) =>
     set((st) => {
