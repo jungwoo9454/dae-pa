@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import DealCard from "@/components/deal-card";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
+import { fetchDeals } from "@/lib/supabase/queries";
+import type { Category } from "@/lib/types";
 
 const CATS = ["전체", "식료품", "배달음식", "생활용품"];
 
@@ -13,17 +15,21 @@ export default function HomeView() {
   const setFilter = useStore((s) => s.setFilter);
 
   useEffect(() => {
-  fetch("/api/deals")
-    .then((res) => res.json())
-    .then((deals) => {
+    (async () => {
+      const deals = await fetchDeals();
       useStore.setState({ deals });
-    })
-    .catch((error) => {
-      console.error("[GET /api/deals]", error);
-    });
-}, []);
+    })();
+  }, []);
 
-  const cards = deals.filter((d) => filter === "전체" || d.cat === filter);
+  useEffect(() => {
+    (async () => {
+      const cat = filter === "전체" ? undefined : (filter as Category);
+      const deals = await fetchDeals(cat);
+      useStore.setState({ deals });
+    })();
+  }, [filter]);
+
+  const cards = deals;
   return (
     <div className="flex-1 overflow-auto px-6 py-5">
       <div className="mb-4 flex flex-wrap gap-2">
