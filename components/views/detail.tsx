@@ -4,8 +4,7 @@ import { ProgressBar, StatusBadge } from "@/components/ui";
 import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
-
-const FACES = ["김", "이", "박", "최", "정"];
+import { useRealtimeParticipations } from "@/lib/use-realtime-participations";
 
 export default function DetailView() {
   const now = useNow();
@@ -17,6 +16,9 @@ export default function DetailView() {
   const join = useStore((s) => s.join);
   const openSettle = useStore((s) => s.openSettle);
 
+  // 선택된 공구의 participations 실시간 갱신 — store.deals의 joined/participations이 자동 반영된다
+  useRealtimeParticipations(sel);
+
   const deal = deals.find((d) => d.id === sel) ?? deals[0];
   if (!deal) return null;
 
@@ -24,7 +26,11 @@ export default function DetailView() {
   const pct = Math.min(100, Math.round((deal.joined / deal.goal) * 100));
   const closing = st.key === "closing";
   const active = joinable(deal, now);
-  const faces = FACES.slice(0, Math.min(4, deal.joined));
+  // 참여자 아바타 — 실제 참여자 목록에서 추출한다 (임시: user_id 첫 글자, 추후 profiles 조인으로 닉네임 표시)
+  const participantAvatars = (deal.participations ?? []).slice(0, 4).map((p) => ({
+    userId: p.user_id,
+    initials: p.user_id.slice(0, 1).toUpperCase(),
+  }));
 
   const onJoin = () => {
     if (deal.status === "settling") openSettle(deal.id);
@@ -85,12 +91,12 @@ export default function DetailView() {
             </span>
           </div>
           <div className="flex">
-            {faces.map((ch, i) => (
+            {participantAvatars.map((avatar) => (
               <div
-                key={i}
+                key={avatar.userId}
                 className="-mr-[7px] flex h-[30px] w-[30px] items-center justify-center rounded-full border-2 border-white bg-[#dceede] text-xs font-extrabold text-[#2f6d45]"
               >
-                {ch}
+                {avatar.initials}
               </div>
             ))}
             <span className="ml-3.5 self-center text-[12.5px] text-[#6b8573]">
