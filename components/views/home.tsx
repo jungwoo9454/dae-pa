@@ -23,7 +23,10 @@ export default function HomeView() {
     });
 }, []);
 
-  const cards = deals.filter((d) => filter === "전체" || d.cat === filter);
+  // 취소된 공구는 모집 목록에서 뺀다 — 내 공구·채팅방에는 기록으로 남는다 (#29)
+  const cards = deals.filter(
+    (d) => d.status !== "canceled" && (filter === "전체" || d.cat === filter),
+  );
   return (
     <div className="flex-1 overflow-auto px-6 py-5">
       <div className="mb-4 flex flex-wrap gap-2">

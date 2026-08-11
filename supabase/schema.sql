@@ -569,6 +569,7 @@ declare
   v_host_id uuid;
   v_status  text;
   v_title   text;
+  v_refund  record;
 begin
   select host_id, status, title into v_host_id, v_status, v_title
   from public.group_buys where id = p_group_buy_id for update;
@@ -588,12 +589,42 @@ begin
   -- 문구는 lib/sys-messages.ts 의 sysText.canceled() 와 맞춘다.
   perform public.post_system_message(p_group_buy_id, '🚫 주최자가 공구를 취소했어요');
 
-  -- 주최자 본인은 뺀다 (본인이 누른 행동이라 알림이 의미 없다)
+  -- 대파페이로 이미 낸 참여자 환불. pay_with_wallet 이 잔액만 깎았으니 그대로 되돌린다
+  -- (계좌·토스로 낸 사람은 앱 밖 송금이라 주최자가 직접 돌려줘야 한다 — 아래 안내 메시지).
+  for v_refund in
+    select user_id, -amount as amt from public.wallet_transactions
+    where group_buy_id = p_group_buy_id and kind = 'pay'
+  loop
+    update public.wallets set balance = balance + v_refund.amt where user_id = v_refund.user_id;
+    insert into public.wallet_transactions (user_id, kind, amount, group_buy_id, title)
+    values (v_refund.user_id, 'receive', v_refund.amt, p_group_buy_id, v_title || ' 취소 환불');
+
+    insert into public.notifications (user_id, type, payload)
+    values (v_refund.user_id, 'cancel',
+            jsonb_build_object('text', v_title || ' 취소 · 대파페이 '
+              || to_char(v_refund.amt, 'FM999,999,999') || '원 환불됐어요', 'dealId', p_group_buy_id));
+  end loop;
+
+  -- 앱 밖(계좌·토스)으로 낸 사람이 있으면 채팅방에 환불 안내를 남긴다
+  if exists (
+    select 1 from public.participations pt
+    where pt.group_buy_id = p_group_buy_id and pt.is_paid
+      and not exists (select 1 from public.wallet_transactions w
+                      where w.group_buy_id = p_group_buy_id and w.kind = 'pay' and w.user_id = pt.user_id)
+  ) then
+    perform public.post_system_message(p_group_buy_id,
+      '💸 계좌·토스로 입금한 분은 주최자가 직접 환불해 주세요');
+  end if;
+
+  -- 주최자 본인은 뺀다 (본인이 누른 행동이라 알림이 의미 없다).
+  -- 환불 알림을 이미 받은 사람도 뺀다 — 같은 사실을 두 번 알리지 않는다.
   insert into public.notifications (user_id, type, payload)
   select pt.user_id, 'cancel',
          jsonb_build_object('text', v_title || ' 공구가 취소됐어요', 'dealId', p_group_buy_id)
   from public.participations pt
-  where pt.group_buy_id = p_group_buy_id and pt.user_id <> v_host_id;
+  where pt.group_buy_id = p_group_buy_id and pt.user_id <> v_host_id
+    and not exists (select 1 from public.wallet_transactions w
+                    where w.group_buy_id = p_group_buy_id and w.kind = 'pay' and w.user_id = pt.user_id);
 end $$;
 
 -- ─────────────────────────────────────────────

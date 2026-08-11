@@ -20,6 +20,8 @@ export default function DetailView() {
   const openSettle = useStore((s) => s.openSettle);
   const cancelDeal = useStore((s) => s.cancelDeal);
   const [askCancel, setAskCancel] = useState(false);
+  const [cancelErr, setCancelErr] = useState<string | null>(null);
+  const [canceling, setCanceling] = useState(false);
 
   const deal = deals.find((d) => d.id === sel) ?? deals[0];
   if (!deal) return null;
@@ -134,18 +136,31 @@ export default function DetailView() {
                 <div className="text-[12px] text-[#8a6a6a]">
                   참여자 전원에게 알림이 가고 되돌릴 수 없어요.
                 </div>
+                {cancelErr && (
+                  <div className="rounded-[8px] bg-white px-2.5 py-1.5 text-[12px] font-bold text-[#b3261e]">
+                    {cancelErr}
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <div
-                    onClick={() => {
-                      setAskCancel(false);
-                      cancelDeal(deal.id);
+                    onClick={async () => {
+                      if (canceling) return;
+                      setCanceling(true);
+                      setCancelErr(null);
+                      const err = await cancelDeal(deal.id);
+                      setCanceling(false);
+                      if (err) setCancelErr(err);
+                      else setAskCancel(false);
                     }}
                     className="flex-1 cursor-pointer rounded-[10px] bg-[#b3261e] p-2 text-center text-[13px] font-extrabold text-white hover:brightness-110"
                   >
-                    취소하기
+                    {canceling ? "취소 중…" : "취소하기"}
                   </div>
                   <div
-                    onClick={() => setAskCancel(false)}
+                    onClick={() => {
+                      setAskCancel(false);
+                      setCancelErr(null);
+                    }}
                     className="flex-1 cursor-pointer rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white p-2 text-center text-[13px] font-bold text-[#4d6d58] hover:border-[#1f8a4c]"
                   >
                     그만두기
