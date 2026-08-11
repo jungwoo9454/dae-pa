@@ -105,6 +105,8 @@ interface StoreState {
   profileOpen: boolean;
   topupOpen: boolean;
   topupAmt: number;
+  withdrawOpen: boolean;
+  withdrawAmt: number;
   balance: number;
   autoPay: boolean;
   n1: boolean;
@@ -135,6 +137,9 @@ interface StoreState {
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => void;
+  toggleWithdraw: () => void;
+  setWithdrawAmt: (v: number) => void;
+  doWithdraw: () => void;
   toggleAutoPay: () => void;
   toggleN1: () => void;
   toggleN2: () => void;
@@ -155,6 +160,8 @@ export const useStore = create<StoreState>((set) => ({
   profileOpen: false,
   topupOpen: false,
   topupAmt: 10000,
+  withdrawOpen: false,
+  withdrawAmt: 10000,
   balance: 23500,
   autoPay: true,
   n1: true,
@@ -259,6 +266,18 @@ export const useStore = create<StoreState>((set) => ({
       topupOpen: false,
       history: [{ emoji: "⚡", title: "충전", when: "방금", amt: st.topupAmt }, ...st.history],
     })),
+
+  toggleWithdraw: () => set((st) => ({ withdrawOpen: !st.withdrawOpen })),
+  setWithdrawAmt: (v) => set({ withdrawAmt: v }),
+  doWithdraw: () =>
+    set((st) => {
+      if (st.withdrawAmt <= 0 || st.withdrawAmt > st.balance) return {};
+      return {
+        balance: st.balance - st.withdrawAmt,
+        withdrawOpen: false,
+        history: [{ emoji: "🏧", title: "출금", when: "방금", amt: -st.withdrawAmt }, ...st.history],
+      };
+    }),
 
   toggleAutoPay: () => set((st) => ({ autoPay: !st.autoPay })),
   toggleN1: () => set((st) => ({ n1: !st.n1 })),
