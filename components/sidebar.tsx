@@ -19,8 +19,12 @@ export default function Sidebar() {
   return (
     <div className="flex w-48 flex-none flex-col gap-0.5 bg-[#12311e] px-2.5 py-4 text-[#e9f4ec]">
       <div className="px-3 pb-5 pt-2">
-        <div className="font-jua text-[32px] leading-none text-white">
-          대<span className="text-[#7fdc95]">파</span>
+        {/* 심볼만 이미지, 글자는 Jua 텍스트 그대로 — 스크린리더·검색에서 "대파"로 읽힌다 (#64) */}
+        <div className="flex items-center gap-2">
+          <img src="/logo-mark-light.svg" alt="" aria-hidden className="h-9 w-auto" />
+          <span className="font-jua text-[32px] leading-none text-white">
+            대<span className="text-[#7fdc95]">파</span>
+          </span>
         </div>
         <div className="mt-[5px] text-[11.5px] tracking-[.5px] text-[#8fbf9a]">
           대용량 파티원 · 같이 사면 이득
