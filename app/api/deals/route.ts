@@ -121,7 +121,10 @@ export async function POST(req: Request) {
 
 /**
  * GET /api/deals
- * 공고 목록을 조회합니다 (나중에 구현)
+ * ⚠️ 사용 안 함 — home.tsx는 lib/supabase/queries.ts의 fetchDeals()를 직접 호출한다
+ * (Task 3, #4). 이 핸들러를 고쳐도 화면엔 반영되지 않는다 — 로직을 바꿔야 하면
+ * fetchDeals() 쪽을 고치는 게 맞다. 삭제하지 않고 남겨둔 이유는 POST가 같은 파일에
+ * 있어서(app/api/deals/route.ts) — POST /api/deals(공고 생성, new-deal.tsx가 씀)는 계속 쓴다.
  */
 export async function GET() {
   try {
@@ -151,7 +154,7 @@ export async function GET() {
       joined: row.joined,
       end: new Date(row.deadline).getTime(),
       place: row.place,
-      host: row.host_id === user?.id ? "나" : (row.profiles?.nickname ?? "이웃"),
+      host: row.host_id === user?.id ? "나" : (row.profiles?.nickname ?? "주최자"),
       status: row.status,
       me: row.host_id === user?.id,
       mine: row.host_id === user?.id,
@@ -182,4 +185,3 @@ function getCategoryEmoji(cat: string): string {
   };
   return emojiMap[cat] || "🧅";
 }
-
