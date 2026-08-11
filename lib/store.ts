@@ -407,13 +407,19 @@ export const useStore = create<StoreState>((set, get) => ({
       }));
       // 이 콜백 안에서 supabase 를 다시 호출하면 교착에 빠진다 (supabase-js 알려진 제약) — 다음 틱으로 미룬다
       setTimeout(async () => {
-        const { data: p } = await sb
+        const { data: p, error } = await sb
           .from("profiles")
           .select(
             "nickname, avatar_url, dong, bank_account, transfer_app, notify_deadline, notify_payment",
           )
           .eq("id", uid)
           .single();
+        // 행이 없다(PGRST116) = 삭제된 사용자의 죽은 세션 — 로그인 화면으로 내린다 (#35).
+        // 네트워크·서버 오류는 일시적일 수 있어 폴백으로 넘어간다
+        if (error?.code === "PGRST116") {
+          await sb.auth.signOut();
+          return;
+        }
         set({
           me: {
             id: uid,
