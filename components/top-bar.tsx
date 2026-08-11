@@ -4,6 +4,7 @@ import { useStore } from "@/lib/store";
 import type { PageKey } from "@/lib/types";
 
 const TITLES: Record<PageKey, string> = {
+  login: "로그인",
   home: "홈",
   detail: "공고 상세",
   my: "내 공구",

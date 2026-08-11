@@ -1,6 +1,7 @@
 export type Category = "식료품" | "배달음식" | "생활용품" | "대량구매" | "기타";
 
 export type PageKey =
+  | "login"
   | "home"
   | "detail"
   | "my"
@@ -9,6 +10,8 @@ export type PageKey =
   | "new"
   | "set"
   | "settle";
+
+export type AuthMode = "login" | "signup";
 
 export type DealStatus = "recruit" | "settle";
 
