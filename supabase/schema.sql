@@ -258,8 +258,9 @@ create policy group_buys_read on group_buys for select to authenticated using (t
 create policy group_buys_host_insert on group_buys for insert to authenticated
   with check (host_id = auth.uid() and joined = 1 and status = 'recruiting');
 -- 총 금액 변경은 주최자 + 모집중일 때만. 정산 진입 후 서버에서 거부된다.
+-- deadline 이 지나면 DB status 는 그대로 recruiting 이지만 UI 상 '마감'이라 수정도 막는다.
 create policy group_buys_host_update on group_buys for update to authenticated
-  using (host_id = auth.uid() and status = 'recruiting')
+  using (host_id = auth.uid() and status = 'recruiting' and deadline > now())
   with check (host_id = auth.uid());
 
 create policy participations_read on participations for select to authenticated using (true);
@@ -313,9 +314,15 @@ grant update (note, is_paid, paid_at) on participations to authenticated;
 revoke update on profiles from authenticated;
 grant update (nickname, avatar_url, bank_account, transfer_app) on profiles to authenticated;
 
--- security definer 함수는 기본적으로 PUBLIC 에 EXECUTE 가 열린다 → 로그인 사용자로 제한
-revoke execute on function public.join_group_buy(bigint) from public;
+-- security definer 함수는 PUBLIC 에 EXECUTE 가 열리고, Supabase 기본 default privileges 가
+-- anon 에게도 따로 EXECUTE 를 준다 → PUBLIC 회수만으로는 anon 이 안 막힌다. 둘 다 회수해야 함.
+revoke execute on function public.join_group_buy(bigint) from public, anon;
 grant execute on function public.join_group_buy(bigint) to authenticated;
+
+-- 트리거 함수는 /rest/v1/rpc/ 로 노출될 이유가 없다. EXECUTE 권한은 CREATE TRIGGER 시점에만
+-- 검사되므로 전부 회수해도 트리거는 정상 동작한다.
+revoke execute on function public.handle_new_user()      from public, anon, authenticated;
+revoke execute on function public.on_group_buy_created() from public, anon, authenticated;
 
 -- ─────────────────────────────────────────────
 -- 6. Realtime 구독 대상

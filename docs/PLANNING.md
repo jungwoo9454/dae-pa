@@ -180,7 +180,7 @@ notifications       id, user_id, type, payload(jsonb), is_read, created_at
   `auth.identities` 에 쌓이고, 어떤 제공자로 들어왔는지는 JWT 의 `app_metadata.provider` 로 읽는다.
   가입 트리거가 제공자별 메타데이터 키(`full_name`/`name`/`user_name`, `avatar_url`/`picture`)에서
   닉네임·아바타를 뽑아 `profiles` 에 채운다.
-- 총 금액 변경은 RLS 로 **주최자 + `status='recruiting'`** 일 때만 허용 (정산 진입 후 서버 거부).
+- 총 금액 변경은 RLS 로 **주최자 + `status='recruiting'` + 마감 전** 일 때만 허용 (정산 진입·마감 후 서버 거부).
 - 시스템 메시지(`kind='sys'`)는 클라이언트가 삽입할 수 없고 서버 함수만 기록한다.
 - 실시간: `group_buys`, `participations`, `messages`, `notifications` Realtime 구독
 - 영수증 이미지: Supabase Storage 버킷 `receipts` (자동 인식 없음, 참고용 첨부)
