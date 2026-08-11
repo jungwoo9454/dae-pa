@@ -362,7 +362,12 @@ export const useStore = create<StoreState>((set, get) => ({
       for (const r of rows) {
         if (r.type === "deadline_soon" && r.payload?.dealId) firedDeadlines.add(r.payload.dealId);
       }
-      set({ notis: rows.map(toNoti) });
+      // 응답을 기다리는 동안 Realtime 으로 먼저 들어온 알림이 있을 수 있다 — 덮지 말고 합친다
+      set((st) => {
+        const loaded = rows.map(toNoti);
+        const ids = new Set(loaded.map((n) => n.id));
+        return { notis: [...st.notis.filter((n) => !ids.has(n.id)), ...loaded] };
+      });
     })();
 
     const ch = sb
