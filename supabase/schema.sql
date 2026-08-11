@@ -127,8 +127,9 @@ create index on wallet_transactions (user_id, created_at desc);
 -- 하나라도 못 찾으면 기존처럼 '이웃abcd' 로 떨어진다.
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
-declare m jsonb := coalesce(new.raw_user_meta_data, '{}'::jsonb);
+declare m jsonb;
 begin
+  m := new.raw_user_meta_data;   -- null 이어도 아래 ->> 가 전부 null 로 떨어져 기본값으로 감
   insert into public.profiles (id, nickname, avatar_url)
   values (
     new.id,
