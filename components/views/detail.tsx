@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { ProgressBar, StatusBadge } from "@/components/ui";
 import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
 import { useRealtimeParticipations } from "@/lib/use-realtime-participations";
+import { ensureDealLoaded } from "@/lib/supabase/queries";
 
 export default function DetailView() {
   const now = useNow();
@@ -19,7 +21,16 @@ export default function DetailView() {
   // 선택된 공구의 participations 실시간 갱신 — store.deals의 joined/participations이 자동 반영된다
   useRealtimeParticipations(sel);
 
-  const deal = deals.find((d) => d.id === sel) ?? deals[0];
+  // 홈에서 카테고리 필터를 바꾸면 deals 배열 전체가 교체되므로, 필터에 안 걸리는
+  // 공구를 상세로 보고 있던 경우 store에서 사라질 수 있다 — 그런 경우 단건으로 보강 조회한다.
+  // (deals[0]로 조용히 폴백하면 엉뚱한 공구를 보여주게 된다.)
+  useEffect(() => {
+    if (sel == null) return;
+    if (deals.some((d) => d.id === sel)) return;
+    void ensureDealLoaded(sel);
+  }, [sel, deals]);
+
+  const deal = deals.find((d) => d.id === sel);
   if (!deal) return null;
 
   const st = statusOf(deal, now);

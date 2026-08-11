@@ -14,13 +14,8 @@ export default function HomeView() {
   const filter = useStore((s) => s.filter);
   const setFilter = useStore((s) => s.setFilter);
 
-  useEffect(() => {
-    (async () => {
-      const deals = await fetchDeals();
-      useStore.setState({ deals });
-    })();
-  }, []);
-
+  // filter 초기값이 "전체"이므로 이 effect 하나로 최초 로드 + 필터 변경 조회를 모두 처리한다
+  // (마운트 시 별도 effect를 두면 동일한 무필터 조회가 중복 발생한다)
   useEffect(() => {
     (async () => {
       const cat = filter === "전체" ? undefined : (filter as Category);
