@@ -72,8 +72,10 @@ export default function DetailView() {
     setEditingTotal(true);
   };
   const saveTotal = () => {
-    const n = parseInt(totalInput, 10);
-    if (!n || n <= 0) return;
+    // parseInt 는 number 입력이 허용하는 "1e5"(=100000)를 1 로 잘라먹는다 → Number 로 파싱하고
+    // 원 단위 정수(CLAUDE.md 규칙 5)가 아니면 저장하지 않는다.
+    const n = Number(totalInput);
+    if (!Number.isInteger(n) || n <= 0) return;
     setEditingTotal(false);
     if (n !== deal.total) void changeTotalAmount(deal.id, n);
   };

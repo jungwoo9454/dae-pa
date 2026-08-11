@@ -872,9 +872,10 @@ grant usage on schema public to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 
 -- 상태 머신·인원 카운터는 컬럼 단위로 UPDATE 권한을 뺀다 → security definer RPC 로만 변경 가능
+-- total_amount 도 뺀다 — 알림·시스템 메시지와 한 트랜잭션이어야 해서 change_total_amount RPC 전용 (#12)
 revoke update on group_buys from authenticated;
 grant update (title, description, category, store_link,
-              total_amount, delivery_fee, deadline, place)
+              delivery_fee, deadline, place)
   on group_buys to authenticated;
 
 -- amount_due 는 정산 RPC(#16)가 쓴다. 클라이언트는 본인 메모·입금 체크만.
