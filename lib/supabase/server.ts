@@ -18,7 +18,7 @@ export async function createClient() :any {
             cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
           } catch {
             // 서버 컴포넌트에서는 쿠키를 쓸 수 없다.
-            // 세션 갱신은 middleware.ts 가 맡아야 한다 — 인증 연동 시 함께 추가할 것 (아직 없음).
+            // 세션 갱신은 middleware.ts 가 맡는다 (#2).
           }
         },
       },

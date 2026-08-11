@@ -1,6 +1,12 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      # 값은 같은 디렉터리 .env 에서 자동으로 읽힌다 (compose 변수 치환)
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     ports:
       - "3000:3000"
     restart: unless-stopped

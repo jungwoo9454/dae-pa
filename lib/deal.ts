@@ -1,4 +1,4 @@
-import type { Category, Deal } from "./types";
+import type { Category, Deal, Member } from "./types";
 
 export const CAT_EMOJI: Record<Category, string> = {
   식료품: "🥬",
@@ -44,6 +44,32 @@ export function remainLabel(d: Deal, now: number) {
 
 export function perAmount(d: Deal) {
   return Math.ceil(d.total / d.goal);
+}
+
+export function splitEven(amount: number, n: number) {
+  const base = Math.floor(amount / n);
+  return { base, remainder: amount - base * n };
+}
+
+/**
+ * 개인 부담금 = 개인 항목 금액 + (배달비 ÷ 참여자 수).
+ * 배달비는 항상 균등 분배하고, 항목 금액·배달비 나머지는 모두 주최자가 부담해
+ * 멤버 amt 합계가 항상 deal.total과 일치하도록 만든다.
+ */
+export function recalcMembers(deal: Pick<Deal, "total" | "host" | "deliveryFee">, members: Member[]): Member[] {
+  const n = members.length;
+  if (n === 0) return members;
+  const deliveryFee = deal.deliveryFee ?? 0;
+  const itemTotal = deal.total - deliveryFee;
+  const { base: dBase, remainder: dRem } = splitEven(deliveryFee, n);
+  const othersItemSum = members.filter((m) => m.name !== deal.host).reduce((s, m) => s + m.itemAmt, 0);
+  const hostItemAmt = itemTotal - othersItemSum;
+  return members.map((m) => {
+    const isHost = m.name === deal.host;
+    const itemAmt = isHost ? hostItemAmt : m.itemAmt;
+    const deliveryShare = isHost ? dBase + dRem : dBase;
+    return { ...m, itemAmt, amt: itemAmt + deliveryShare };
+  });
 }
 
 export function joinable(d: Deal, now: number) {

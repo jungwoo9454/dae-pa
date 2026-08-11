@@ -18,6 +18,7 @@ const TITLES: Record<PageKey, string> = {
 export default function TopBar() {
   const page = useStore((s) => s.page);
   const go = useStore((s) => s.go);
+  const me = useStore((s) => s.me);
   const toggleProfile = useStore((s) => s.toggleProfile);
   return (
     <div className="flex flex-none items-center gap-3 border-b border-[#dde9dc] bg-white px-6 py-3">
@@ -31,9 +32,15 @@ export default function TopBar() {
       </div>
       <div
         onClick={toggleProfile}
-        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-[#9fd4ae] bg-[#cde8d2] font-extrabold text-[#14532d]"
+        title={me?.nickname}
+        className="flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-[#9fd4ae] bg-[#cde8d2] font-extrabold text-[#14532d]"
       >
-        파
+        {me?.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- 소셜 아바타는 외부 도메인이라 next/image 설정 없이 쓴다
+          <img src={me.avatarUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          (me?.nickname[0] ?? "파")
+        )}
       </div>
     </div>
   );

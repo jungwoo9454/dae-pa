@@ -1,8 +1,12 @@
 "use client";
 
 import { create } from "zustand";
-import { CAT_EMOJI, fmt, joinable } from "./deal";
-import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey } from "./types";
+import { CAT_EMOJI, fmt, joinable, recalcMembers } from "./deal";
+import { createClient } from "./supabase/client";
+import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, PageKey, Settlement } from "./types";
+
+/** 동네 인증은 아직 모의 — 위치 기반 판정은 별도 이슈 */
+export const DONG = "역삼동";
 
 const t0 = Date.now();
 
@@ -40,12 +44,17 @@ const seedDeals: Deal[] = [
   mk(2, "🍗", "치킨 같이 시켜요", "배달음식", 54500, 4, 4, -30, "201동 로비", "준호", {
     status: "settling",
     me: true,
-    members: [
-      { name: "민지", amt: 15000, note: "후라이드+콜라", paid: true },
-      { name: "수현", amt: 12500, note: "순살", paid: true },
-      { name: "준호", amt: 13375, note: "양념 · 주최", paid: false },
-      { name: "나", amt: 13625, note: "반반", paid: false },
-    ],
+    deliveryFee: 3050,
+    members: recalcMembers(
+      { total: 54500, host: "준호", deliveryFee: 3050 },
+      [
+        { name: "민지", itemAmt: 13000, amt: 0, note: "후라이드+콜라", paid: true },
+        { name: "수현", itemAmt: 11000, amt: 0, note: "순살", paid: true },
+        { name: "준호", itemAmt: 0, amt: 0, note: "양념 · 주최", paid: false },
+        { name: "나", itemAmt: 12500, amt: 0, note: "반반", paid: false },
+      ],
+    ),
+    settlement: { finalTotal: 54500, hasReceipt: true, confirmed: true, votes: {} },
   }),
   mk(3, "🍊", "제주 감귤 10kg", "식료품", 45000, 10, 7, 342, "회사 1층 로비", "나", { me: true, mine: true }),
   mk(4, "☕", "원두 2kg 공구", "식료품", 80000, 10, 9, 41, "3층 탕비실", "커피덕후"),
@@ -96,6 +105,11 @@ interface StoreState {
   sel: number | null;
   authMode: AuthMode;
   auth: AuthForm;
+  me: Me | null;
+  /** 최초 세션 복원이 끝났는지 — 끝나기 전엔 로그인 화면이 깜빡이지 않게 아무것도 안 그린다 */
+  authReady: boolean;
+  authBusy: boolean;
+  authError: string;
   dongOk: boolean;
   room: string;
   chatInput: string;
@@ -105,6 +119,8 @@ interface StoreState {
   profileOpen: boolean;
   topupOpen: boolean;
   topupAmt: number;
+  settleTotalInput: string;
+  settleReceipt: boolean;
   withdrawOpen: boolean;
   withdrawAmt: number;
   balance: number;
@@ -119,8 +135,12 @@ interface StoreState {
   setAuth: (patch: Partial<AuthForm>) => void;
   switchAuthMode: () => void;
   verifyDong: () => void;
-  enterApp: () => void;
-  logout: () => void;
+  /** 세션 구독 시작. 정리 함수를 돌려준다 */
+  initAuth: () => () => void;
+  signIn: () => Promise<void>;
+  signUp: () => Promise<void>;
+  signInWithOAuth: (provider: "google" | "kakao") => Promise<void>;
+  logout: () => Promise<void>;
   go: (page: PageKey) => void;
   openDeal: (id: number) => void;
   openSettle: (id: number) => void;
@@ -132,11 +152,16 @@ interface StoreState {
   setFilter: (v: string) => void;
   setForm: (patch: Partial<DealForm>) => void;
   join: (id: number) => void;
+  adjustMemberItem: (dealId: number, name: string, itemAmt: number) => void;
   sendMsg: () => void;
   payNow: (dealId: number) => void;
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => void;
+  setSettleTotalInput: (v: string) => void;
+  toggleSettleReceipt: () => void;
+  confirmSettlement: (dealId: number) => void;
+  voteSettlement: (dealId: number, agree: boolean) => void;
   toggleWithdraw: () => void;
   setWithdrawAmt: (v: number) => void;
   doWithdraw: () => void;
@@ -146,11 +171,15 @@ interface StoreState {
   submitNew: () => void;
 }
 
-export const useStore = create<StoreState>((set) => ({
+export const useStore = create<StoreState>((set, get) => ({
   page: "login",
   sel: null,
   authMode: "login",
   auth: { nick: "", email: "", pw: "" },
+  me: null,
+  authReady: false,
+  authBusy: false,
+  authError: "",
   dongOk: false,
   room: "lounge",
   chatInput: "",
@@ -160,6 +189,8 @@ export const useStore = create<StoreState>((set) => ({
   profileOpen: false,
   topupOpen: false,
   topupAmt: 10000,
+  settleTotalInput: "",
+  settleReceipt: false,
   withdrawOpen: false,
   withdrawAmt: 10000,
   balance: 23500,
@@ -171,12 +202,108 @@ export const useStore = create<StoreState>((set) => ({
   msgs: seedMsgs,
   history: seedHistory,
 
-  setAuth: (patch) => set((st) => ({ auth: { ...st.auth, ...patch } })),
-  switchAuthMode: () => set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup" })),
+  setAuth: (patch) => set((st) => ({ auth: { ...st.auth, ...patch }, authError: "" })),
+  switchAuthMode: () =>
+    set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup", authError: "" })),
   verifyDong: () => set({ dongOk: true }),
-  enterApp: () => set((st) => ({ page: "home", authMode: "login", auth: { ...st.auth, pw: "" } })),
-  logout: () =>
-    set((st) => ({ page: "login", profileOpen: false, authMode: "login", auth: { ...st.auth, pw: "" } })),
+
+  initAuth: () => {
+    const sb = createClient();
+    // 소셜 로그인 콜백이 실패하면 /?auth_error=1 로 돌아온다
+    if (new URLSearchParams(window.location.search).has("auth_error")) {
+      set({ authError: "소셜 로그인에 실패했어요. 다시 시도해주세요" });
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    const { data } = sb.auth.onAuthStateChange((_event, session) => {
+      const uid = session?.user.id;
+      if (!uid) {
+        set((st) => ({
+          me: null,
+          page: "login",
+          authMode: "login",
+          profileOpen: false,
+          authReady: true,
+          auth: { ...st.auth, pw: "" },
+        }));
+        return;
+      }
+      set((st) => ({
+        page: st.page === "login" ? "home" : st.page,
+        authReady: true,
+        authBusy: false,
+        authError: "",
+        auth: { ...st.auth, pw: "" },
+      }));
+      // 이 콜백 안에서 supabase 를 다시 호출하면 교착에 빠진다 (supabase-js 알려진 제약) — 다음 틱으로 미룬다
+      setTimeout(async () => {
+        const { data: p } = await sb
+          .from("profiles")
+          .select("nickname, avatar_url, dong")
+          .eq("id", uid)
+          .single();
+        set({
+          me: {
+            id: uid,
+            nickname: p?.nickname ?? "파티원",
+            avatarUrl: p?.avatar_url ?? null,
+            dong: p?.dong ?? null,
+          },
+        });
+      }, 0);
+    });
+    return () => data.subscription.unsubscribe();
+  },
+
+  signIn: async () => {
+    const { email, pw } = get().auth;
+    if (!email || !pw || get().authBusy) return;
+    set({ authBusy: true, authError: "" });
+    const { error } = await createClient().auth.signInWithPassword({ email, password: pw });
+    // 성공하면 onAuthStateChange 가 화면을 넘긴다
+    if (error) {
+      set({
+        authBusy: false,
+        authError: error.message.includes("Invalid login")
+          ? "이메일 또는 비밀번호를 확인해주세요"
+          : error.message,
+      });
+    }
+  },
+
+  signUp: async () => {
+    const { nick, email, pw } = get().auth;
+    if (!nick || !email || !pw || get().authBusy) return;
+    set({ authBusy: true, authError: "" });
+    const { data, error } = await createClient().auth.signUp({
+      email,
+      password: pw,
+      // 닉네임·동네는 raw_user_meta_data 로 들어가 handle_new_user 트리거가 profiles 에 넣는다
+      options: { data: { nickname: nick, dong: get().dongOk ? DONG : null } },
+    });
+    if (error) {
+      set({ authBusy: false, authError: error.message });
+      return;
+    }
+    // 대시보드에서 Confirm email 이 켜져 있으면 세션 없이 끝난다
+    if (!data.session) {
+      set({ authBusy: false, authError: "메일로 보낸 인증 링크를 확인한 뒤 로그인해주세요" });
+    }
+  },
+
+  signInWithOAuth: async (provider) => {
+    if (get().authBusy) return;
+    set({ authBusy: true, authError: "" });
+    const { error } = await createClient().auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) set({ authBusy: false, authError: error.message });
+  },
+
+  logout: async () => {
+    await createClient().auth.signOut();
+    // 화면 정리는 onAuthStateChange 가 한다
+  },
 
   go: (page) => set({ page, profileOpen: false }),
   openDeal: (id) => set({ page: "detail", sel: id, profileOpen: false }),
@@ -197,19 +324,28 @@ export const useStore = create<StoreState>((set) => ({
         if (x.id !== id) return x;
         const joined = x.joined + 1;
         const done = joined >= x.goal;
+        const deliveryFee = x.deliveryFee ?? 0;
+        const itemShare = Math.floor((x.total - deliveryFee) / joined);
+        const roughMembers = done
+          ? Array.from({ length: joined }, (_, i) => {
+              const isLast = i === joined - 1;
+              const isHostSlot = i === 0;
+              const name = isLast ? "나" : isHostSlot ? x.host : "이웃" + i;
+              return {
+                name,
+                itemAmt: itemShare,
+                amt: 0,
+                note: isHostSlot && !isLast ? "균등 1/N · 주최" : "균등 1/N",
+                paid: i < joined - 2,
+              };
+            })
+          : x.members;
         return {
           ...x,
           joined,
           me: true,
           status: done ? ("settling" as const) : x.status,
-          members: done
-            ? Array.from({ length: joined }, (_, i) => ({
-                name: i === joined - 1 ? "나" : "이웃" + (i + 1),
-                amt: Math.ceil(x.total / joined),
-                note: "균등 1/N",
-                paid: i < joined - 2,
-              }))
-            : x.members,
+          members: done ? recalcMembers(x, roughMembers!) : x.members,
         };
       });
       const full = deals.find((x) => x.id === id)!;
@@ -223,6 +359,17 @@ export const useStore = create<StoreState>((set) => ({
         msgs[key] = [...msgs[key], { kind: "sys", text: "목표 달성! 정산이 시작돼요 🎉" }];
       }
       return { deals, msgs };
+    }),
+
+  adjustMemberItem: (dealId, name, itemAmt) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      if (!deal || name === deal.host) return {};
+      const safeAmt = Math.max(0, Math.floor(itemAmt) || 0);
+      const members = (deal.members ?? []).map((m) => (m.name === name ? { ...m, itemAmt: safeAmt } : m));
+      const recalced = recalcMembers(deal, members);
+      const deals = st.deals.map((d) => (d.id === dealId ? { ...d, members: recalced } : d));
+      return { deals };
     }),
 
   sendMsg: () =>
@@ -266,6 +413,55 @@ export const useStore = create<StoreState>((set) => ({
       topupOpen: false,
       history: [{ emoji: "⚡", title: "충전", when: "방금", amt: st.topupAmt }, ...st.history],
     })),
+
+  setSettleTotalInput: (v) => set({ settleTotalInput: v }),
+  toggleSettleReceipt: () => set((st) => ({ settleReceipt: !st.settleReceipt })),
+
+  confirmSettlement: (dealId) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      if (!deal || deal.settlement) return {};
+      const finalTotal = parseInt(st.settleTotalInput) || deal.total;
+      const hasReceipt = st.settleReceipt;
+      const settlement: Settlement = { finalTotal, hasReceipt, confirmed: hasReceipt, votes: {} };
+      const deals = st.deals.map((d) =>
+        d.id !== dealId ? d : { ...d, settlement, total: hasReceipt ? finalTotal : d.total },
+      );
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      msgs[key] = [
+        ...(msgs[key] ?? []),
+        hasReceipt
+          ? { kind: "sys" as const, text: `🧾 영수증 인증 완료 · 총 ${fmt(finalTotal)} · 금액 잠금` }
+          : {
+              kind: "sys" as const,
+              text: `총 ${fmt(finalTotal)}으로 정산 요청 · 영수증 없이 참여자 과반 동의로 확정돼요`,
+            },
+      ];
+      return { deals, msgs, settleTotalInput: "", settleReceipt: false };
+    }),
+
+  voteSettlement: (dealId, agree) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      if (!deal?.settlement || deal.settlement.confirmed) return {};
+      const votes = { ...deal.settlement.votes, 나: agree };
+      const mem = deal.members ?? [];
+      const confirmed = Object.values(votes).filter(Boolean).length > mem.length / 2;
+      const settlement: Settlement = { ...deal.settlement, votes, confirmed };
+      const deals = st.deals.map((d) =>
+        d.id !== dealId ? d : { ...d, settlement, total: confirmed ? settlement.finalTotal : d.total },
+      );
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      if (confirmed) {
+        msgs[key] = [
+          ...(msgs[key] ?? []),
+          { kind: "sys", text: `✅ 참여자 과반 동의로 총 ${fmt(settlement.finalTotal)} 확정 · 금액 잠금` },
+        ];
+      }
+      return { deals, msgs };
+    }),
 
   toggleWithdraw: () => set((st) => ({ withdrawOpen: !st.withdrawOpen })),
   setWithdrawAmt: (v) => set({ withdrawAmt: v }),

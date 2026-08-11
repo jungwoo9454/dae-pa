@@ -4,16 +4,24 @@ import { useStore } from "@/lib/store";
 
 export default function ProfilePopover() {
   const go = useStore((s) => s.go);
+  const me = useStore((s) => s.me);
   const logout = useStore((s) => s.logout);
   return (
     <div className="absolute right-5 top-[58px] z-50 flex w-[230px] flex-col gap-[9px] rounded-[14px] border border-[#d5e6d6] bg-white p-3.5 shadow-[0_12px_32px_rgba(18,49,30,.18)]">
       <div className="flex items-center gap-2.5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#cde8d2] font-extrabold text-[#14532d]">
-          파
+        <div className="flex h-10 w-10 flex-none items-center justify-center overflow-hidden rounded-full bg-[#cde8d2] font-extrabold text-[#14532d]">
+          {me?.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- 소셜 아바타는 외부 도메인이라 next/image 설정 없이 쓴다
+            <img src={me.avatarUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            (me?.nickname[0] ?? "파")
+          )}
         </div>
-        <div>
-          <div className="font-extrabold">파티원</div>
-          <div className="text-xs text-[#6b8573]">참여 12 · 주최 3</div>
+        <div className="min-w-0">
+          <div className="truncate font-extrabold">{me?.nickname ?? "파티원"}</div>
+          <div className="text-xs text-[#6b8573]">
+            {me?.dong ? `📍 ${me.dong} · ` : ""}참여 12 · 주최 3
+          </div>
         </div>
       </div>
       <div className="rounded-lg bg-[#e9f6ec] px-2.5 py-1.5 text-[12.5px] font-bold text-[#166b3a]">
