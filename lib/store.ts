@@ -221,6 +221,8 @@ interface StoreState {
   shareDeal: (dealId: number, roomId: string) => void;
   /** 주최자 개별 금액 조정 (#16) — adjust_participation_amount RPC. 본인 몫은 나머지로 자동 계산 */
   adjustParticipationAmount: (participationId: number, newAmount: number) => Promise<void>;
+  /** 총 금액 변경 (#12) — change_total_amount RPC 호출. 주최자+모집중일 때만 서버가 허용 */
+  changeTotalAmount: (dealId: number, newTotal: number) => Promise<void>;
   sendMsg: () => void;
   /** 대파페이 결제 (#18) — pay_with_wallet RPC. 잔액 검증→차감→입금 처리를 원자적으로 */
   payNow: (participationId: number) => Promise<void>;
@@ -689,6 +691,26 @@ export const useStore = create<StoreState>((set, get) => ({
     });
     if (error) alert(error.message);
     // useRealtimeParticipations 구독이 참여자별 amount_due 변경을 반영한다
+  },
+
+  // 서버가 주최자+모집중 여부를 재확인하고(RLS와 별개로 RPC 안에서 명시 체크), 통과하면
+  // "알림 + 시스템 메시지"까지 한 트랜잭션 안에서 같이 처리한다(CLAUDE.md 규칙 3의 3종 세트).
+  // 1인당 금액 재계산은 lib/deal.ts의 perAmount가 deal.total/deal.joined로 매번 다시
+  // 계산하므로 여기서 따로 할 일이 없다 — total만 반영하면 화면은 자동으로 맞는다.
+  changeTotalAmount: async (dealId, newTotal) => {
+    if (newTotal <= 0) return;
+    const { data, error } = await createClient().rpc("change_total_amount", {
+      p_group_buy_id: dealId,
+      p_new_total: newTotal,
+    });
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    const g = data as GroupBuyRow;
+    set((st) => ({
+      deals: st.deals.map((d) => (d.id === dealId ? { ...d, total: g.total_amount } : d)),
+    }));
   },
 
   /** 공구 카드를 채팅방에 말풍선으로 공유하고 그 방으로 이동 (#10) */
