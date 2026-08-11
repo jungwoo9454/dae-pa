@@ -286,8 +286,92 @@ begin
   return g;
 end $$;
 
+-- 2-1. 총 금액 변경 RPC (#12)
+-- 주최자만 모집중·마감 전 총액을 수정할 수 있으며, 서버에서 권한과 상태를 검증한다.
+create or replace function public.change_total_amount(
+  p_group_buy_id bigint,
+  p_new_total integer
+)
+returns public.group_buys
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  g public.group_buys%rowtype;
+  v_old_total integer;
+  v_per_person integer;
+begin
+  if p_new_total is null or p_new_total <= 0 then
+    raise exception '총 금액은 0보다 커야 합니다';
+  end if;
+
+  select *
+    into g
+    from public.group_buys
+   where id = p_group_buy_id
+   for update;
+
+  if not found then
+    raise exception '공구를 찾을 수 없습니다';
+  end if;
+
+  if g.host_id is distinct from auth.uid() then
+    raise exception '주최자만 총 금액을 수정할 수 있습니다';
+  end if;
+
+  if g.status <> 'recruiting' then
+    raise exception '모집중인 공구만 총 금액을 수정할 수 있습니다';
+  end if;
+
+  if g.deadline <= now() then
+    raise exception '마감된 공구는 수정할 수 없습니다';
+  end if;
+
+  if g.total_amount = p_new_total then
+    return g;
+  end if;
+
+  v_old_total := g.total_amount;
+
+  update public.group_buys
+     set total_amount = p_new_total
+   where id = p_group_buy_id
+   returning * into g;
+
+  v_per_person := ceil(g.total_amount::numeric / greatest(g.joined, 1))::integer;
+
+  insert into public.notifications (user_id, type, payload)
+  select p.user_id,
+         'total_changed',
+         jsonb_build_object(
+           'dealId', g.id,
+           'text', g.title || ' 총액이 '
+             || to_char(v_old_total, 'FM999,999,999') || '원에서 '
+             || to_char(g.total_amount, 'FM999,999,999') || '원으로 변경됐어요'
+         )
+    from public.participations p
+   where p.group_buy_id = g.id;
+
+  perform public.post_system_message(
+    g.id,
+    '💰 총액 변경 ' || to_char(v_old_total, 'FM999,999,999') || '원 → '
+      || to_char(g.total_amount, 'FM999,999,999') || '원 · 1인 '
+      || to_char(v_per_person, 'FM999,999,999') || '원'
+  );
+
+  return g;
+end;
+$$;
+
+revoke execute on function public.change_total_amount(bigint, integer)
+  from public, anon;
+
+grant execute on function public.change_total_amount(bigint, integer)
+  to authenticated;
+
 -- ─────────────────────────────────────────────
--- 2-1. 정산·지갑 RPC (#15~18, 팀원 C)
+-- 2-2. 정산·지갑 RPC (#15~18, 팀원 C)
 --
 -- 시스템 메시지는 #9의 post_system_message(group_buy_id, text) 를 그대로 호출한다.
 -- 문구는 lib/sys-messages.ts 의 sysText 와 맞춘다.
@@ -788,9 +872,10 @@ grant usage on schema public to authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 
 -- 상태 머신·인원 카운터는 컬럼 단위로 UPDATE 권한을 뺀다 → security definer RPC 로만 변경 가능
+-- total_amount 도 뺀다 — 알림·시스템 메시지와 한 트랜잭션이어야 해서 change_total_amount RPC 전용 (#12)
 revoke update on group_buys from authenticated;
 grant update (title, description, category, store_link,
-              total_amount, delivery_fee, deadline, place)
+              delivery_fee, deadline, place)
   on group_buys to authenticated;
 
 -- amount_due 는 정산 RPC(#16)가 쓴다. 클라이언트는 본인 메모·입금 체크만.

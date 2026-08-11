@@ -4,9 +4,11 @@ import { Ban, Coins, MapPin, MessageCircle, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ProgressBar, StatusBadge } from "@/components/ui";
 import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { isSubmitEnter } from "@/lib/keys";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
 import { useRealtimeParticipations } from "@/lib/use-realtime-participations";
+import { useRealtimeDeals } from "@/lib/use-realtime-deals";
 import { ensureDealLoaded } from "@/lib/supabase/queries";
 
 export default function DetailView() {
@@ -22,9 +24,15 @@ export default function DetailView() {
   const [askCancel, setAskCancel] = useState(false);
   const [cancelErr, setCancelErr] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
+  const changeTotalAmount = useStore((s) => s.changeTotalAmount);
+  const [editingTotal, setEditingTotal] = useState(false);
+  const [totalInput, setTotalInput] = useState("");
 
   // 선택된 공구의 participations 실시간 갱신 — store.deals의 joined/participations이 자동 반영된다
   useRealtimeParticipations(sel);
+  // group_buys 변경(총액 등) 실시간 반영 — 홈에서만 구독하던 걸 상세에서도 구독해서,
+  // 다른 세션에서 주최자가 총액을 바꾸면 이 화면도 새로고침 없이 바로 갱신된다 (#12)
+  useRealtimeDeals();
 
   // 홈에서 카테고리 필터를 바꾸면 deals 배열 전체가 교체되므로, 필터에 안 걸리는
   // 공구를 상세로 보고 있던 경우 store에서 사라질 수 있다 — 그런 경우 단건으로 보강 조회한다.
@@ -54,6 +62,22 @@ export default function DetailView() {
   const onJoin = () => {
     if (deal.status === "settling") openSettle(deal.id);
     else join(deal.id);
+  };
+
+  // 총액 수정 (#12) — 주최자 + 모집중 상태에서만. 정산 진입하면 서버(RLS/RPC)가 거부하지만,
+  // 그 전에 버튼 자체를 숨겨서 눌러도 안 되는 걸 미리 보여주지 않는다.
+  const canEditTotal = deal.mine && deal.status === "recruiting";
+  const startEditTotal = () => {
+    setTotalInput(String(deal.total));
+    setEditingTotal(true);
+  };
+  const saveTotal = () => {
+    // parseInt 는 number 입력이 허용하는 "1e5"(=100000)를 1 로 잘라먹는다 → Number 로 파싱하고
+    // 원 단위 정수(CLAUDE.md 규칙 5)가 아니면 저장하지 않는다.
+    const n = Number(totalInput);
+    if (!Number.isInteger(n) || n <= 0) return;
+    setEditingTotal(false);
+    if (n !== deal.total) void changeTotalAmount(deal.id, n);
   };
 
   return (
@@ -89,13 +113,48 @@ export default function DetailView() {
             <div className="flex items-center gap-1.5 rounded-[10px] border border-[#dbe9da] bg-white px-3 py-2 text-[13px]">
               <MapPin aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 수령 · <b>{deal.place}</b>
             </div>
-            <div className="flex items-center gap-1.5 rounded-[10px] border border-[#dbe9da] bg-white px-3 py-2 text-[13px]">
-              <Coins aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
-              <span>
-                총액 · <b>{fmt(deal.total)}</b>{" "}
-                <span className="text-[11.5px] text-[#8aa392]">정산 전까지 변경 가능</span>
-              </span>
-            </div>
+            {editingTotal ? (
+              <div className="flex items-center gap-1.5 rounded-[10px] border border-[#1f8a4c] bg-white px-3 py-2 text-[13px]">
+                <Coins aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+                <input
+                  type="number"
+                  autoFocus
+                  value={totalInput}
+                  onChange={(e) => setTotalInput(e.target.value)}
+                  onKeyDown={(e) => isSubmitEnter(e) && saveTotal()}
+                  className="tnum w-[110px] rounded-md border border-[#d5e6d6] px-2 py-1 text-right outline-none focus:border-[#1f8a4c]"
+                />
+                <span
+                  onClick={saveTotal}
+                  className="cursor-pointer rounded-md bg-[#1f8a4c] px-2.5 py-1 font-bold text-white hover:bg-[#187741]"
+                >
+                  저장
+                </span>
+                <span
+                  onClick={() => setEditingTotal(false)}
+                  className="cursor-pointer rounded-md border border-[#d5e6d6] px-2.5 py-1 font-bold text-[#4d6d58] hover:border-[#1f8a4c]"
+                >
+                  취소
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 rounded-[10px] border border-[#dbe9da] bg-white px-3 py-2 text-[13px]">
+                <Coins aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+                <span>
+                  총액 · <b>{fmt(deal.total)}</b>{" "}
+                  {canEditTotal ? (
+                    <span
+                      onClick={startEditTotal}
+                      className="cursor-pointer text-[11.5px] font-bold text-[#1f8a4c] underline"
+                    >
+                      수정
+                    </span>
+                  ) : (
+                    <span className="text-[11.5px] text-[#8aa392]">정산 전까지 변경 가능</span>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex w-[300px] flex-none flex-col gap-3.5 rounded-[18px] border border-[#cfe4d0] bg-white p-5 shadow-[0_6px_18px_rgba(18,70,38,.08)]">
