@@ -150,7 +150,7 @@
 > 실제 DDL은 **[supabase/schema.sql](../supabase/schema.sql)** 이 단일 출처. 아래는 요약이며 스키마 변경 시 함께 갱신한다.
 
 ```
-profiles            id(=auth.users.id), nickname, avatar_url, bank_account,
+profiles            id(=auth.users.id), nickname, avatar_url, dong, bank_account,
                     transfer_app, trust_score, created_at
 wallets             user_id, balance
 group_buys          id, host_id, title, description, category, store_link,
@@ -181,7 +181,10 @@ notifications       id, user_id, type, payload(jsonb), is_read, created_at
 - 소셜 로그인(Google·Kakao)은 Supabase Auth 가 처리하므로 **테이블 추가가 없다**. 제공자 계정은
   `auth.identities` 에 쌓이고, 어떤 제공자로 들어왔는지는 JWT 의 `app_metadata.provider` 로 읽는다.
   가입 트리거가 제공자별 메타데이터 키(`full_name`/`name`/`user_name`, `avatar_url`/`picture`)에서
-  닉네임·아바타를 뽑아 `profiles` 에 채운다.
+  닉네임·아바타를 뽑아 `profiles` 에 채운다. 이메일 회원가입의 동네 인증 결과는 `dong` 에 저장된다
+  (소셜 로그인은 동네 입력 단계가 없어 `null`).
+- 세션 갱신은 `middleware.ts` 가 맡고, 소셜 로그인 콜백은 `app/auth/callback/route.ts` 에서
+  `code` 를 세션 쿠키로 교환한다.
 - 총 금액 변경은 RLS 로 **주최자 + `status='recruiting'` + 마감 전** 일 때만 허용 (정산 진입·마감 후 서버 거부).
 - 시스템 메시지(`kind='sys'`)는 클라이언트가 삽입할 수 없고 서버 함수만 기록한다.
 - 실시간: `group_buys`, `participations`, `messages`, `notifications` Realtime 구독
