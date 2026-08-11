@@ -1,5 +1,5 @@
 "use client";
-
+import { useEffect } from "react";
 import DealCard from "@/components/deal-card";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
@@ -11,6 +11,18 @@ export default function HomeView() {
   const deals = useStore((s) => s.deals);
   const filter = useStore((s) => s.filter);
   const setFilter = useStore((s) => s.setFilter);
+
+  useEffect(() => {
+  fetch("/api/deals")
+    .then((res) => res.json())
+    .then((deals) => {
+      useStore.setState({ deals });
+    })
+    .catch((error) => {
+      console.error("[GET /api/deals]", error);
+    });
+}, []);
+
   const cards = deals.filter((d) => filter === "전체" || d.cat === filter);
   return (
     <div className="flex-1 overflow-auto px-6 py-5">

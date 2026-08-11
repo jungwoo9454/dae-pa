@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     if (userError || !user) {
       return Response.json({ error: "로그인이 필요합니다" }, { status: 401 });
     }
-    
+
     // 임시 수정 (인증 스킵):
     // const user = {id: "30019992-ef88-40c5-b7a7-5cad74ea6a4e",};
 
@@ -86,8 +86,29 @@ export async function POST(req: Request) {
       return Response.json({ error: error.message }, { status: 400 });
     }
 
-    // ⭐ 이 response만 남김
-    return Response.json(newDeal, { status: 201 });
+        // ⭐ 이 response만 남김
+        if (error) {
+      return Response.json({ error: error.message }, { status: 400 });
+    }
+
+    const dealForClient = {
+      id: Number(newDeal.id),
+      emoji: getCategoryEmoji(newDeal.category),
+      title: newDeal.title,
+      cat: newDeal.category,
+      total: newDeal.total_amount,
+      goal: newDeal.goal,
+      joined: newDeal.joined,
+      end: new Date(newDeal.deadline).getTime(),
+      place: newDeal.place,
+      host: "나",
+      status: newDeal.status,
+      me: true,
+      mine: true,
+      deliveryFee: newDeal.delivery_fee,
+    };
+
+    return Response.json(dealForClient, { status: 201 });
   } catch (error) {
     console.error("[POST /api/deals]", error);
     return Response.json(
@@ -103,9 +124,48 @@ export async function POST(req: Request) {
  * 공고 목록을 조회합니다 (나중에 구현)
  */
 export async function GET() {
-  // TODO: Supabase에서 공고 목록 조회
-  // const { data } = await supabase.from('group_buys').select('*');
-  return Response.json([]);
+  try {
+    const supabase = await createClient();
+    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data, error } = await supabase
+      .from("group_buys")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return Response.json({ error: error.message }, { status: 400 });
+    }
+
+    const deals = (data ?? []).map((row:any) => ({
+      id: Number(row.id),
+      emoji: getCategoryEmoji(row.category),
+      title: row.title,
+      cat: row.category,
+      total: row.total_amount,
+      goal: row.goal,
+      joined: row.joined,
+      end: new Date(row.deadline).getTime(),
+      place: row.place,
+      host: row.host_id,
+      status: row.status,
+      me: row.host_id === user?.id,
+      mine: row.host_id === user?.id,
+      deliveryFee: row.delivery_fee,
+    }));
+
+    return Response.json(deals);
+  } catch (error) {
+    console.error("[GET /api/deals]", error);
+    return Response.json(
+      { error: "공고 목록 조회 중 오류 발생" },
+      { status: 500 }
+    );
+  }   
+  
 }
 
 /**

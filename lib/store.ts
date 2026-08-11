@@ -92,7 +92,7 @@ const seedHistory: HistoryItem[] = [
   { emoji: "🧻", title: "화장지 공구 정산", when: "8월 2일", amt: -16000 },
 ];
 
-const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "" };
+const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "",store_link: "", };
 
 interface AuthForm {
   nick: string;

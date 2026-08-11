@@ -32,6 +32,7 @@ export default function NewDealView() {
         goal: goalN,
         mins: parseInt(f.mins) || 60,
         place: f.place,
+        store_link: f.store_link,
       }),
     });
 
@@ -45,7 +46,7 @@ export default function NewDealView() {
     useStore.setState((st) => ({
       deals: [newDeal, ...st.deals],
       page: "home",
-      form: { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "" },
+      form: { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "",store_link: "", },
     }));
 
   } catch (error) {
@@ -90,7 +91,12 @@ export default function NewDealView() {
           />
           {form.cat === "배달음식" && (
             <>
-              <input placeholder="🔗 가게/메뉴 링크 (배민 · 요기요 등)" className="input-base" />
+              <input
+                value={form.store_link}
+                onChange={(e) => setForm({ store_link: e.target.value })}
+                placeholder="가격/메뉴 링크"
+                className="input-base"
+              />
               <div className="rounded-[10px] bg-[#f0f7ee] px-3 py-[9px] text-[12.5px] text-[#4d6d58]">
                 배달음식 공구 · 배달비도 자동 1/N · 메뉴는 채팅방에서 취합 · 주문 후 실제 금액으로 수정
                 가능
@@ -125,6 +131,23 @@ export default function NewDealView() {
               className="input-base flex-[1.4]"
             />
           </div>
+        <div className="flex gap-2">
+          {[15, 30, 60].map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setForm({ mins: String(m) })}
+              className={`rounded-lg border px-3 py-2 text-sm font-bold ${
+                form.mins === String(m)
+                  ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
+                  : "border-[#d5e6d6] bg-white text-[#4d6d58]"
+              }`}
+            >
+              {m}분
+            </button>
+          ))}
+        </div>
+        
           <div className="text-xs text-[#8aa392]">
             💰 총 금액은 정산 시작 전까지 언제든 수정할 수 있어요 (변경 시 전원 알림)
           </div>

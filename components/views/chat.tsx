@@ -1,6 +1,7 @@
 "use client";
-
+import { useEffect } from "react";
 import { Avatar } from "@/components/ui";
+import { createClient } from "@/lib/supabase/client";
 import { fmt, perAmount, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
@@ -43,6 +44,81 @@ export default function ChatView() {
   const goRoom = useStore((s) => s.goRoom);
   const sendMsg = useStore((s) => s.sendMsg);
   const openDeal = useStore((s) => s.openDeal);
+
+  useEffect(() => {
+  const loadMessages = async () => {
+    const supabase = createClient();
+
+    let roomQuery = supabase
+      .from("chat_rooms")
+      .select("id")
+      .limit(1);
+
+    if (room === "lounge") {
+      roomQuery = roomQuery.eq("type", "lounge");
+    } else if (room.startsWith("d")) {
+      const groupBuyId = Number(room.slice(1));
+
+      roomQuery = roomQuery
+        .eq("type", "group_buy")
+        .eq("group_buy_id", groupBuyId);
+    } else {
+      return;
+    }
+
+    const { data: roomData, error: roomError } = await roomQuery.single();
+
+    if (roomError || !roomData) {
+      console.error("[chat_rooms]", roomError);
+      return;
+    }
+
+    const dbRoomId = roomData.id;
+
+    const { data: messageRows, error: messageError } = await supabase
+      .from("messages")
+      .select("id, user_id, kind, content, payload, created_at")
+      .eq("room_id", dbRoomId)
+      .order("created_at", { ascending: true });
+
+    if (messageError) {
+      console.error("[messages]", messageError);
+      return;
+    }
+
+    const mappedMessages = (messageRows ?? []).map((row: any) => {
+      if (row.kind === "card") {
+        return {
+          kind: "card" as const,
+          cardOf: Number(row.payload?.group_buy_id),
+          who: "나",
+        };
+      }
+
+      if (row.kind === "sys") {
+        return {
+          kind: "sys" as const,
+          text: row.content ?? "",
+        };
+      }
+
+      return {
+        kind: "other" as const,
+        who: "나",
+        text: row.content ?? "",
+      };
+    });
+
+    useStore.setState((st) => ({
+      msgs: {
+        ...st.msgs,
+        [room]: mappedMessages,
+      },
+    }));
+  };
+
+  loadMessages();
+}, [room]);
 
   const loungeRooms: RoomDef[] = [
     { id: "lounge", emoji: "🏘", name: "역삼동 라운지", sub: "이웃 128명 · 자유 수다" },

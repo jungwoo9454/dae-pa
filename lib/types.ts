@@ -81,4 +81,5 @@ export interface DealForm {
   goal: string;
   mins: string;
   place: string;
+  store_link: string;
 }
