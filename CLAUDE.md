@@ -2,6 +2,25 @@
 
 이 파일은 LLM 코딩 에이전트(Claude Code 등)가 이 저장소에서 작업할 때 필요한 컨텍스트를 제공합니다.
 
+## ⛔ 절대 규칙 — `main`에서 작업 금지
+
+**어떤 경우에도 `main` 브랜치에서 코드를 수정·커밋·푸시하지 않는다.**
+파일을 고치기 전에 **먼저 브랜치를 만든다.** 사용자가 "커밋해줘"라고만 해도 `main`이면 브랜치부터 만든다.
+
+```bash
+# 작업 시작 전 항상 이 3줄부터
+git switch main && git pull origin main
+git switch -c feat/#23-작업명        # 타입: feat|fix|design|refactor|chore|docs|test
+# → 이제부터 수정·커밋
+```
+
+- `git push origin main` **금지**. 푸시는 항상 작업 브랜치로: `git push -u origin feat/#23-작업명`
+- 작업이 끝나면 **PR을 만든다** (본문에 `closes #이슈번호`). 머지는 사람이 승인 후 Squash merge.
+- **이미 `main`에서 수정해버렸다면** — 커밋 전이면 `git switch -c feat/#번호-작업명` 으로 변경분을 그대로 가져가고,
+  이미 커밋했다면 `git switch -c feat/#번호-작업명` (커밋이 새 브랜치로 따라옴) → `git switch main` → `git reset --hard origin/main`.
+- 이 저장소는 private이라 GitHub 브랜치 보호가 걸려 있지 않다. **막아주는 장치가 없으므로 이 규칙을 스스로 지켜야 한다.**
+- 유일한 예외: 사용자가 "main에 직접 커밋해라"라고 **명시적으로 지시한 경우**에만.
+
 ## 프로젝트 개요
 
 **대파(대용량 파티원)** — 공고 → 참여 → 채팅 → 정산까지 한 번에 처리하는 동네 공동구매(공구) 플랫폼.
@@ -82,7 +101,7 @@ docs/           기획안·작업 목록·배포·디자인 시안·발표 자�
 
 ## Git 컨벤션 (요약 — 상세는 CONTRIBUTING.md)
 
-- 브랜치: `feat/#이슈번호-설명`, `main` 직접 push 금지
+- 브랜치: `feat/#이슈번호-설명` — **`main` 직접 작업·push 금지** (맨 위 절대 규칙 참고)
 - 커밋: `feat: 제목` 형식 (feat/fix/design/refactor/chore/docs/test), 제목 한국어 OK.
   **커밋 메시지에 Co-Authored-By 트레일러를 넣지 않는다.**
 - PR: 템플릿 작성, `closes #이슈번호`, approve 1개 후 **Squash merge**, 300줄 이하 권장
