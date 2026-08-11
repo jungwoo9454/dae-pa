@@ -340,7 +340,7 @@ export const useStore = create<StoreState>((set, get) => ({
         const { data: p, error } = await sb
           .from("profiles")
           .select(
-            "nickname, avatar_url, dong, bank_account, transfer_app, notify_deadline, notify_payment",
+            "nickname, avatar_url, dong, bank_account, transfer_app, notify_deadline, notify_payment, auto_pay",
           )
           .eq("id", uid)
           .single();
@@ -361,6 +361,7 @@ export const useStore = create<StoreState>((set, get) => ({
           },
           n1: p?.notify_deadline ?? true,
           n2: p?.notify_payment ?? true,
+          autoPay: p?.auto_pay ?? true,
         });
 
         // 대파페이 잔액·이용 내역 (#14) — 최초 조회 후 Realtime 구독으로 계속 최신 유지
@@ -862,7 +863,12 @@ export const useStore = create<StoreState>((set, get) => ({
     if (error) console.error("출금 실패:", error.message);
   },
 
-  toggleAutoPay: () => set((st) => ({ autoPay: !st.autoPay })),
+  toggleAutoPay: () => {
+    const autoPay = !get().autoPay;
+    set({ autoPay });
+    const me = get().me;
+    if (me) void patchProfile(me.id, { auto_pay: autoPay });
+  },
   toggleN1: () => {
     const n1 = !get().n1;
     set({ n1 });
