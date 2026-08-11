@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { CAT_EMOJI, fmt, joinable, recalcMembers } from "./deal";
+import { CAT_EMOJI, emojiForTxKind, fmt, joinable, recalcMembers, relativeWhen } from "./deal";
 import { createClient } from "./supabase/client";
 import { sysText } from "./sys-messages";
 import type {
@@ -204,12 +204,6 @@ const seedMsgs: Record<string, Msg[]> = {
   d5: [{ kind: "sys", text: "공구방이 열렸어요 · 목표 2명" }],
 };
 
-const seedHistory: HistoryItem[] = [
-  { emoji: "🍊", title: "제주 감귤 정산 받음", when: "어제", amt: 4500 },
-  { emoji: "⚡", title: "충전", when: "8월 7일", amt: 30000 },
-  { emoji: "🧻", title: "화장지 공구 정산", when: "8월 2일", amt: -16000 },
-];
-
 const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "",store_link: "", };
 
 /** 전원 입금 완료 시 공구를 마감 처리하고 시스템 메시지까지 함께 적용한다 (신뢰도는 deals 에서 파생) */
@@ -312,14 +306,14 @@ interface StoreState {
   remindUnpaid: (dealId: number) => void;
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
-  doTopup: () => void;
+  doTopup: () => Promise<void>;
   setSettleTotalInput: (v: string) => void;
   toggleSettleReceipt: () => void;
   confirmSettlement: (dealId: number) => void;
   voteSettlement: (dealId: number, agree: boolean) => void;
   toggleWithdraw: () => void;
   setWithdrawAmt: (v: number) => void;
-  doWithdraw: () => void;
+  doWithdraw: () => Promise<void>;
   toggleAutoPay: () => void;
   toggleN1: () => void;
   toggleN2: () => void;
@@ -354,14 +348,14 @@ export const useStore = create<StoreState>((set, get) => ({
   settleReceipt: false,
   withdrawOpen: false,
   withdrawAmt: 10000,
-  balance: 23500,
+  balance: 0, // 로그인 시 initAuth 가 실제 wallets.balance 로 채운다
   autoPay: true,
   n1: true,
   n2: true,
   form: EMPTY_FORM,
   deals: seedDeals,
   msgs: seedMsgs,
-  history: seedHistory,
+  history: [], // 로그인 시 initAuth 가 실제 wallet_transactions 로 채운다
 
   setAuth: (patch) => set((st) => ({ auth: { ...st.auth, ...patch }, authError: "" })),
   switchAuthMode: () =>
@@ -370,6 +364,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
   initAuth: () => {
     const sb = createClient();
+    let walletChannel: ReturnType<typeof sb.channel> | null = null;
     // 소셜 로그인 콜백이 실패하면 /?auth_error=1 로 돌아온다
     if (new URLSearchParams(window.location.search).has("auth_error")) {
       set({ authError: "소셜 로그인에 실패했어요. 다시 시도해주세요" });
@@ -381,6 +376,8 @@ export const useStore = create<StoreState>((set, get) => ({
         // 다음 사람이 남의 알림·대화·설정을 보지 않게 목록·중복 표시·토글을 비운다
         firedDeadlines.clear();
         nickCache.clear();
+        walletChannel?.unsubscribe();
+        walletChannel = null;
         set((st) => ({
           me: null,
           notis: [],
@@ -394,6 +391,8 @@ export const useStore = create<StoreState>((set, get) => ({
           profileOpen: false,
           notiOpen: false,
           authReady: true,
+          balance: 0,
+          history: [],
           auth: { ...st.auth, pw: "" },
         }));
         return;
@@ -432,9 +431,53 @@ export const useStore = create<StoreState>((set, get) => ({
           n1: p?.notify_deadline ?? true,
           n2: p?.notify_payment ?? true,
         });
+
+        // 대파페이 잔액·이용 내역 (#14) — 최초 조회 후 Realtime 구독으로 계속 최신 유지
+        const { data: w } = await sb.from("wallets").select("balance").eq("user_id", uid).single();
+        const { data: txs } = await sb
+          .from("wallet_transactions")
+          .select("kind, amount, title, created_at")
+          .eq("user_id", uid)
+          .order("created_at", { ascending: false })
+          .limit(30);
+        set({
+          balance: w?.balance ?? 0,
+          history: (txs ?? []).map((t) => ({
+            emoji: emojiForTxKind(t.kind),
+            title: t.title,
+            when: relativeWhen(t.created_at),
+            amt: t.amount,
+          })),
+        });
+
+        walletChannel?.unsubscribe();
+        walletChannel = sb
+          .channel("wallet:" + uid)
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "wallets", filter: `user_id=eq.${uid}` },
+            (payload) => set({ balance: (payload.new as { balance: number }).balance }),
+          )
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "wallet_transactions", filter: `user_id=eq.${uid}` },
+            (payload) => {
+              const t = payload.new as { kind: string; amount: number; title: string; created_at: string };
+              set((st) => ({
+                history: [
+                  { emoji: emojiForTxKind(t.kind), title: t.title, when: relativeWhen(t.created_at), amt: t.amount },
+                  ...st.history,
+                ],
+              }));
+            },
+          )
+          .subscribe();
       }, 0);
     });
-    return () => data.subscription.unsubscribe();
+    return () => {
+      data.subscription.unsubscribe();
+      walletChannel?.unsubscribe();
+    };
   },
 
   signIn: async () => {
@@ -836,12 +879,14 @@ export const useStore = create<StoreState>((set, get) => ({
 
   toggleTopup: () => set((st) => ({ topupOpen: !st.topupOpen })),
   setTopupAmt: (v) => set({ topupAmt: v }),
-  doTopup: () =>
-    set((st) => ({
-      balance: st.balance + st.topupAmt,
-      topupOpen: false,
-      history: [{ emoji: "⚡", title: "충전", when: "방금", amt: st.topupAmt }, ...st.history],
-    })),
+  doTopup: async () => {
+    const amt = get().topupAmt;
+    if (amt <= 0) return;
+    set({ topupOpen: false });
+    // 성공하면 wallets/wallet_transactions Realtime 구독이 balance·history 를 갱신한다
+    const { error } = await createClient().rpc("topup_wallet", { p_amount: amt });
+    if (error) console.error("충전 실패:", error.message);
+  },
 
   setSettleTotalInput: (v) => set({ settleTotalInput: v }),
   toggleSettleReceipt: () => set((st) => ({ settleReceipt: !st.settleReceipt })),
@@ -891,15 +936,13 @@ export const useStore = create<StoreState>((set, get) => ({
 
   toggleWithdraw: () => set((st) => ({ withdrawOpen: !st.withdrawOpen })),
   setWithdrawAmt: (v) => set({ withdrawAmt: v }),
-  doWithdraw: () =>
-    set((st) => {
-      if (st.withdrawAmt <= 0 || st.withdrawAmt > st.balance) return {};
-      return {
-        balance: st.balance - st.withdrawAmt,
-        withdrawOpen: false,
-        history: [{ emoji: "🏧", title: "출금", when: "방금", amt: -st.withdrawAmt }, ...st.history],
-      };
-    }),
+  doWithdraw: async () => {
+    const { withdrawAmt: amt, balance } = get();
+    if (amt <= 0 || amt > balance) return;
+    set({ withdrawOpen: false });
+    const { error } = await createClient().rpc("withdraw_wallet", { p_amount: amt });
+    if (error) console.error("출금 실패:", error.message);
+  },
 
   toggleAutoPay: () => set((st) => ({ autoPay: !st.autoPay })),
   toggleN1: () => {
