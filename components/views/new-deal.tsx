@@ -10,7 +10,51 @@ const digits = (v: string) => v.replace(/[^0-9]/g, "");
 export default function NewDealView() {
   const form = useStore((s) => s.form);
   const setForm = useStore((s) => s.setForm);
-  const submitNew = useStore((s) => s.submitNew);
+  // const submitNew = useStore((s) => s.submitNew); //zustand 방식
+  const submitNew = async () => {
+  try {
+    const f = form;
+    const totalN = parseInt(f.total) || 0;
+    const goalN = parseInt(f.goal) || 0;
+
+    if (!f.title || totalN <= 0 || goalN <= 1) {
+      alert("필수 입력값을 확인하세요");
+      return;
+    }
+
+    const res = await fetch("/api/deals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: f.title,
+        cat: f.cat,
+        total: totalN,
+        goal: goalN,
+        mins: parseInt(f.mins) || 60,
+        place: f.place,
+      }),
+    });
+
+    const newDeal = await res.json();
+
+    if (!res.ok) {
+      alert(newDeal.error || "공고 작성 실패");
+      return;
+    }
+
+    useStore.setState((st) => ({
+      deals: [newDeal, ...st.deals],
+      page: "home",
+      form: { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "" },
+    }));
+
+  } catch (error) {
+    // 5-1. 네트워크 에러 등 처리
+    console.error("[submitNew]", error);
+    alert("오류가 발생했습니다: " + (error as Error).message);
+  }
+};
+
 
   const goalN = parseInt(form.goal) || 0;
   const totalN = parseInt(form.total) || 0;
