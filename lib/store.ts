@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { CAT_EMOJI, fmt, joinable } from "./deal";
-import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey } from "./types";
+import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey, Settlement } from "./types";
 
 const t0 = Date.now();
 
@@ -46,6 +46,7 @@ const seedDeals: Deal[] = [
       { name: "준호", amt: 13375, note: "양념 · 주최", paid: false },
       { name: "나", amt: 13625, note: "반반", paid: false },
     ],
+    settlement: { finalTotal: 54500, hasReceipt: true, confirmed: true, votes: {} },
   }),
   mk(3, "🍊", "제주 감귤 10kg", "식료품", 45000, 10, 7, 342, "회사 1층 로비", "나", { me: true, mine: true }),
   mk(4, "☕", "원두 2kg 공구", "식료품", 80000, 10, 9, 41, "3층 탕비실", "커피덕후"),
@@ -105,6 +106,8 @@ interface StoreState {
   profileOpen: boolean;
   topupOpen: boolean;
   topupAmt: number;
+  settleTotalInput: string;
+  settleReceipt: boolean;
   withdrawOpen: boolean;
   withdrawAmt: number;
   balance: number;
@@ -137,6 +140,10 @@ interface StoreState {
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => void;
+  setSettleTotalInput: (v: string) => void;
+  toggleSettleReceipt: () => void;
+  confirmSettlement: (dealId: number) => void;
+  voteSettlement: (dealId: number, agree: boolean) => void;
   toggleWithdraw: () => void;
   setWithdrawAmt: (v: number) => void;
   doWithdraw: () => void;
@@ -160,6 +167,8 @@ export const useStore = create<StoreState>((set) => ({
   profileOpen: false,
   topupOpen: false,
   topupAmt: 10000,
+  settleTotalInput: "",
+  settleReceipt: false,
   withdrawOpen: false,
   withdrawAmt: 10000,
   balance: 23500,
@@ -266,6 +275,55 @@ export const useStore = create<StoreState>((set) => ({
       topupOpen: false,
       history: [{ emoji: "⚡", title: "충전", when: "방금", amt: st.topupAmt }, ...st.history],
     })),
+
+  setSettleTotalInput: (v) => set({ settleTotalInput: v }),
+  toggleSettleReceipt: () => set((st) => ({ settleReceipt: !st.settleReceipt })),
+
+  confirmSettlement: (dealId) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      if (!deal || deal.settlement) return {};
+      const finalTotal = parseInt(st.settleTotalInput) || deal.total;
+      const hasReceipt = st.settleReceipt;
+      const settlement: Settlement = { finalTotal, hasReceipt, confirmed: hasReceipt, votes: {} };
+      const deals = st.deals.map((d) =>
+        d.id !== dealId ? d : { ...d, settlement, total: hasReceipt ? finalTotal : d.total },
+      );
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      msgs[key] = [
+        ...(msgs[key] ?? []),
+        hasReceipt
+          ? { kind: "sys" as const, text: `🧾 영수증 인증 완료 · 총 ${fmt(finalTotal)} · 금액 잠금` }
+          : {
+              kind: "sys" as const,
+              text: `총 ${fmt(finalTotal)}으로 정산 요청 · 영수증 없이 참여자 과반 동의로 확정돼요`,
+            },
+      ];
+      return { deals, msgs, settleTotalInput: "", settleReceipt: false };
+    }),
+
+  voteSettlement: (dealId, agree) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      if (!deal?.settlement || deal.settlement.confirmed) return {};
+      const votes = { ...deal.settlement.votes, 나: agree };
+      const mem = deal.members ?? [];
+      const confirmed = Object.values(votes).filter(Boolean).length > mem.length / 2;
+      const settlement: Settlement = { ...deal.settlement, votes, confirmed };
+      const deals = st.deals.map((d) =>
+        d.id !== dealId ? d : { ...d, settlement, total: confirmed ? settlement.finalTotal : d.total },
+      );
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      if (confirmed) {
+        msgs[key] = [
+          ...(msgs[key] ?? []),
+          { kind: "sys", text: `✅ 참여자 과반 동의로 총 ${fmt(settlement.finalTotal)} 확정 · 금액 잠금` },
+        ];
+      }
+      return { deals, msgs };
+    }),
 
   toggleWithdraw: () => set((st) => ({ withdrawOpen: !st.withdrawOpen })),
   setWithdrawAmt: (v) => set({ withdrawAmt: v }),

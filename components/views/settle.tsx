@@ -10,6 +10,12 @@ export default function SettleView() {
   const balance = useStore((s) => s.balance);
   const go = useStore((s) => s.go);
   const payNow = useStore((s) => s.payNow);
+  const settleTotalInput = useStore((s) => s.settleTotalInput);
+  const settleReceipt = useStore((s) => s.settleReceipt);
+  const setSettleTotalInput = useStore((s) => s.setSettleTotalInput);
+  const toggleSettleReceipt = useStore((s) => s.toggleSettleReceipt);
+  const confirmSettlement = useStore((s) => s.confirmSettlement);
+  const voteSettlement = useStore((s) => s.voteSettlement);
 
   const sd =
     deals.find((x) => x.id === sel && x.status === "settling") ??
@@ -26,6 +32,9 @@ export default function SettleView() {
   const mem = sd.members ?? [];
   const paidN = mem.filter((m) => m.paid).length;
   const mine = mem.find((m) => m.name === "나");
+  const settlement = sd.settlement;
+  const agreeN = Object.values(settlement?.votes ?? {}).filter(Boolean).length;
+  const myVote = settlement?.votes["나"];
 
   return (
     <div className="flex-1 overflow-auto px-7 py-5">
@@ -45,25 +54,82 @@ export default function SettleView() {
               정산중
             </span>
           </div>
-          <div className="flex items-center gap-3 rounded-[14px] border border-[#cfe4d0] bg-white px-4 py-3.5">
-            <div
-              className="flex h-16 w-[52px] items-center justify-center rounded-lg border border-[#d8e7d6]"
-              style={{ background: "repeating-linear-gradient(0deg,#f2f6ef 0 6px,#fff 6px 12px)" }}
-            >
-              🧾
-            </div>
-            <div className="flex-1">
-              <div className="font-extrabold">
-                영수증 인증 완료 <span className="text-[#1f8a4c]">✓</span>
+          {settlement?.confirmed ? (
+            <div className="flex items-center gap-3 rounded-[14px] border border-[#cfe4d0] bg-white px-4 py-3.5">
+              <div
+                className="flex h-16 w-[52px] items-center justify-center rounded-lg border border-[#d8e7d6]"
+                style={{ background: "repeating-linear-gradient(0deg,#f2f6ef 0 6px,#fff 6px 12px)" }}
+              >
+                {settlement.hasReceipt ? "🧾" : "🗳️"}
               </div>
+              <div className="flex-1">
+                <div className="font-extrabold">
+                  {settlement.hasReceipt ? "영수증 인증 완료" : "참여자 과반 동의로 확정"}{" "}
+                  <span className="text-[#1f8a4c]">✓</span>
+                </div>
+                <div className="text-[12.5px] text-[#6b8573]">
+                  확정 총액 {fmt(settlement.finalTotal)} · 금액 확정 · 수정 잠금 🔒
+                </div>
+              </div>
+              {settlement.hasReceipt && (
+                <div className="cursor-pointer rounded-[9px] border-[1.5px] border-[#cfe4d0] px-[11px] py-1.5 text-[12.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]">
+                  영수증 보기
+                </div>
+              )}
+            </div>
+          ) : settlement ? (
+            <div className="flex flex-col gap-2.5 rounded-[14px] border border-[#f0dca0] bg-[#fdf8ec] px-4 py-3.5">
+              <div className="font-extrabold">🗳️ 영수증 없이 정산 · 과반 동의 필요</div>
               <div className="text-[12.5px] text-[#6b8573]">
-                인식 총액 {fmt(sd.total)} · 금액 확정 · 수정 잠금 🔒
+                제안 총액 {fmt(settlement.finalTotal)} · {agreeN}/{mem.length}명 동의
+              </div>
+              {myVote === undefined ? (
+                <div className="flex gap-2">
+                  <div
+                    onClick={() => voteSettlement(sd.id, true)}
+                    className="flex-1 cursor-pointer rounded-lg bg-[#1f8a4c] py-2 text-center text-[13px] font-bold text-white hover:bg-[#187741]"
+                  >
+                    동의
+                  </div>
+                  <div
+                    onClick={() => voteSettlement(sd.id, false)}
+                    className="flex-1 cursor-pointer rounded-lg border-[1.5px] border-[#d5e6d6] py-2 text-center text-[13px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
+                  >
+                    비동의
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[12.5px] font-bold text-[#4d6d58]">
+                  {myVote ? "동의했어요 ✓" : "비동의했어요"}
+                </div>
+              )}
+            </div>
+          ) : sd.host === "나" ? (
+            <div className="flex flex-col gap-2.5 rounded-[14px] border border-[#cfe4d0] bg-white px-4 py-3.5">
+              <div className="font-extrabold">최종 총액 확정</div>
+              <input
+                type="number"
+                value={settleTotalInput}
+                onChange={(e) => setSettleTotalInput(e.target.value)}
+                placeholder={String(sd.total)}
+                className="tnum rounded-lg border border-[#d5e6d6] px-3 py-2 text-[14px] outline-none focus:border-[#1f8a4c]"
+              />
+              <label className="flex items-center gap-2 text-[12.5px] text-[#4d6d58]">
+                <input type="checkbox" checked={settleReceipt} onChange={toggleSettleReceipt} />
+                영수증 사진 첨부함 (선택)
+              </label>
+              <div
+                onClick={() => confirmSettlement(sd.id)}
+                className="cursor-pointer rounded-lg bg-[#1f8a4c] py-2.5 text-center text-[13.5px] font-extrabold text-white hover:bg-[#187741]"
+              >
+                총액 확정하기
               </div>
             </div>
-            <div className="cursor-pointer rounded-[9px] border-[1.5px] border-[#cfe4d0] px-[11px] py-1.5 text-[12.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]">
-              영수증 보기
+          ) : (
+            <div className="rounded-[14px] border border-[#cfe4d0] bg-white px-4 py-3.5 text-center text-[13px] text-[#6b8573]">
+              주최자가 최종 총액을 입력하면 정산이 시작돼요
             </div>
-          </div>
+          )}
           <div className="flex flex-col gap-2">
             {mem.map((p) => (
               <div

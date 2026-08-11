@@ -22,6 +22,14 @@ export interface Member {
   paid: boolean;
 }
 
+export interface Settlement {
+  finalTotal: number;
+  hasReceipt: boolean;
+  confirmed: boolean;
+  /** 참여자 이름 → 동의 여부. 영수증 없을 때 과반 동의로 확정할 때만 사용 */
+  votes: Record<string, boolean>;
+}
+
 export interface Deal {
   id: number;
   emoji: string;
@@ -37,6 +45,7 @@ export interface Deal {
   me: boolean;
   mine: boolean;
   members?: Member[];
+  settlement?: Settlement;
 }
 
 export type Msg =
