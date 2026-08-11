@@ -60,7 +60,12 @@ export default function ChatView() {
       name: x.title,
       sub: `${x.joined}명 · ${statusOf(x, now).label}`,
     }));
-  const bySearch = (r: RoomDef) => !search || r.name.includes(search);
+  // 검색: 대소문자·앞뒤 공백 무시 (#11)
+  const q = search.trim().toLowerCase();
+  const bySearch = (r: RoomDef) => !q || r.name.toLowerCase().includes(q);
+  const foundLounge = loungeRooms.filter(bySearch);
+  const foundDeals = dealRooms.filter(bySearch);
+  const noResult = q !== "" && foundLounge.length === 0 && foundDeals.length === 0;
   const current = [...loungeRooms, ...dealRooms].find((r) => r.id === room) ?? loungeRooms[0];
   const allMsgs = msgs[current.id] ?? [];
   const roomMsgs = allMsgs.slice(-RECENT_LIMIT);
@@ -81,14 +86,36 @@ export default function ChatView() {
           placeholder="🔍 채팅방 검색"
           className="rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white px-3 py-2 text-[13px] outline-none"
         />
-        <div className="mt-1.5 text-[11.5px] font-extrabold tracking-[.5px] text-[#6b8573]">동네</div>
-        {loungeRooms.filter(bySearch).map((r) => (
+        {foundLounge.length > 0 && (
+          <div className="mt-1.5 text-[11.5px] font-extrabold tracking-[.5px] text-[#6b8573]">동네</div>
+        )}
+        {foundLounge.map((r) => (
           <RoomItem key={r.id} room={r} active={room === r.id} onPick={() => goRoom(r.id)} />
         ))}
-        <div className="mt-1.5 text-[11.5px] font-extrabold tracking-[.5px] text-[#6b8573]">내 공구방</div>
-        {dealRooms.filter(bySearch).map((r) => (
+        {foundDeals.length > 0 && (
+          <div className="mt-1.5 text-[11.5px] font-extrabold tracking-[.5px] text-[#6b8573]">
+            내 공구방
+          </div>
+        )}
+        {foundDeals.map((r) => (
           <RoomItem key={r.id} room={r} active={room === r.id} onPick={() => goRoom(r.id)} />
         ))}
+        {noResult && (
+          <div className="mt-4 text-center text-[12.5px] leading-relaxed text-[#8aa392]">
+            &lsquo;{search.trim()}&rsquo; 검색 결과가 없어요
+            <div
+              onClick={() => setSearch("")}
+              className="mt-1.5 cursor-pointer font-bold text-[#1f8a4c]"
+            >
+              검색 지우기
+            </div>
+          </div>
+        )}
+        {!q && dealRooms.length === 0 && (
+          <div className="mt-2 px-1 text-[12px] leading-relaxed text-[#8aa392]">
+            참여한 공구가 없어요. 공구에 참여하면 채팅방이 여기에 생겨요.
+          </div>
+        )}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col bg-white">
