@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { CAT_EMOJI, emojiForTxKind, fmt, joinable, recalcMembers, relativeWhen } from "./deal";
 import { createClient } from "./supabase/client";
 import { sysText } from "./sys-messages";
+import type { GroupBuyRow } from "./db-types";
 import type {
   AuthMode,
   Deal,
@@ -244,7 +245,8 @@ interface StoreState {
   setMySearch: (v: string) => void;
   setFilter: (v: string) => void;
   setForm: (patch: Partial<DealForm>) => void;
-  join: (id: number) => void;
+  /** 공구 참여 (#5) — join_group_buy RPC 호출. 서버가 정원/마감/중복을 원자적으로 거부한다 */
+  join: (id: number) => Promise<void>;
   shareDeal: (dealId: number, roomId: string) => void;
   adjustMemberItem: (dealId: number, name: string, itemAmt: number) => void;
   sendMsg: () => void;
@@ -495,6 +497,9 @@ export const useStore = create<StoreState>((set, get) => ({
     const sb = createClient();
     // 정리된 뒤 늦게 도착한 응답이 화면을 되돌리지 않게 막는다
     let alive = true;
+    // messages INSERT 구독은 방 필터가 없어서(전체 방 대상) 내 방이 아닌 메시지도 다 들어온다.
+    // 한 번 "내 방 아님"이 확인된 room_id는 캐시해서 매번 재조회하지 않는다 (onMsg 참고).
+    const notMineRooms = new Set<number>();
 
     /** 내가 속한 방(라운지 + 참여 중인 공구방)과 각 방의 최근 메시지를 다시 읽는다 */
     const loadRooms = async () => {
@@ -540,7 +545,16 @@ export const useStore = create<StoreState>((set, get) => ({
 
     /** Realtime 으로 들어온 메시지 한 건을 해당 방에 붙인다 */
     const onMsg = async (row: MsgRow) => {
-      if (!get().rooms.some((r) => r.id === row.room_id)) return; // 내 방이 아니면 무시
+      if (!get().rooms.some((r) => r.id === row.room_id)) {
+        // messages INSERT는 room_id만 주고 type/group_buy_id를 안 줘서, 이 방이 내 방인지
+        // 여기서 바로 판단할 방법이 없다. 방금 참여해서 rooms 갱신이 아직 안 끝났을 수 있으니
+        // loadRooms()로 한 번 더 확인한다 — 이미 커밋된 메시지라 room이 진짜 내 것이면
+        // loadRooms()가 최근 메시지를 DB에서 다시 읽어올 때 이 메시지도 같이 따라온다.
+        if (notMineRooms.has(row.room_id)) return;
+        await loadRooms();
+        if (!get().rooms.some((r) => r.id === row.room_id)) notMineRooms.add(row.room_id);
+        return;
+      }
       if (row.user_id && row.user_id !== uid && !nickCache.has(row.user_id)) {
         const { data } = await sb.from("profiles").select("nickname").eq("id", row.user_id).single();
         if (data?.nickname) nickCache.set(row.user_id, data.nickname);
@@ -663,50 +677,29 @@ export const useStore = create<StoreState>((set, get) => ({
   setFilter: (v) => set({ filter: v }),
   setForm: (patch) => set((st) => ({ form: { ...st.form, ...patch } })),
 
-  join: (id) =>
-    set((st) => {
-      const target = st.deals.find((d) => d.id === id);
-      if (!target || !joinable(target, Date.now())) return {};
-      const deals = st.deals.map((x) => {
-        if (x.id !== id) return x;
-        const joined = x.joined + 1;
-        const done = joined >= x.goal;
-        const deliveryFee = x.deliveryFee ?? 0;
-        const itemShare = Math.floor((x.total - deliveryFee) / joined);
-        const roughMembers = done
-          ? Array.from({ length: joined }, (_, i) => {
-              const isLast = i === joined - 1;
-              const isHostSlot = i === 0;
-              const name = isLast ? "나" : isHostSlot ? x.host : "이웃" + i;
-              return {
-                name,
-                itemAmt: itemShare,
-                amt: 0,
-                note: isHostSlot && !isLast ? "균등 1/N · 주최" : "균등 1/N",
-                paid: i < joined - 2,
-              };
-            })
-          : x.members;
-        return {
-          ...x,
-          joined,
-          me: true,
-          status: done ? ("settling" as const) : x.status,
-          members: done ? recalcMembers(x, roughMembers!) : x.members,
-        };
-      });
-      const full = deals.find((x) => x.id === id)!;
-      const key = "d" + id;
-      const msgs = { ...st.msgs };
-      msgs[key] = [
-        ...(msgs[key] ?? []),
-        { kind: "sys", text: sysText.joined("파티원", full.joined, full.goal) },
-      ];
-      if (full.status === "settling") {
-        msgs[key] = [...msgs[key], { kind: "sys", text: sysText.goalReached() }];
-      }
-      return { deals, msgs };
-    }),
+  // 정원 검사 + joined 증가 + 정원 도달 시 settling 전환을 서버가 한 트랜잭션으로
+  // 원자적으로 처리한다(supabase/schema.sql join_group_buy). 클라이언트에서 joinable()로
+  // 먼저 걸러내는 건 뻔히 안 되는 상태에서 괜히 서버까지 왕복하지 않기 위한 사전 체크일
+  // 뿐이고, 실제 방어(동시 클릭 레이스 차단)는 서버 쪽 UPDATE ... WHERE ... RETURNING 이 한다.
+  // 시스템 메시지(참여·목표 달성)와 알림은 RPC 안에서 post_system_message/notifications로
+  // 직접 기록되므로, 여기서는 성공 후 deals의 joined/status/me만 반영하면 된다 —
+  // 채팅 메시지는 initChat의 Realtime 구독이, 홈 목록은 useRealtimeDeals가 알아서 갱신한다.
+  join: async (id) => {
+    const target = get().deals.find((d) => d.id === id);
+    if (!target || !joinable(target, Date.now())) return;
+
+    const { data, error } = await createClient().rpc("join_group_buy", { p_group_buy_id: id });
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    const g = data as GroupBuyRow;
+    set((st) => ({
+      deals: st.deals.map((d) =>
+        d.id === id ? { ...d, joined: g.joined, status: g.status, me: true } : d,
+      ),
+    }));
+  },
 
   adjustMemberItem: (dealId, name, itemAmt) =>
     set((st) => {
