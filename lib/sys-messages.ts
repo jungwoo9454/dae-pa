@@ -20,4 +20,6 @@ export const sysText = {
   settleVoteConfirmed: (total: number) => `✅ 참여자 과반 동의로 총 ${fmt(total)} 확정 · 금액 잠금`,
   paid: (who: string, amount: number) => `${who}님이 ${fmt(amount)} 입금 완료 ✓ (대파페이)`,
   allPaid: () => "전원 입금 완료! 공구가 마감됐어요 🎉",
+  /** 주최자 취소 (#29) — DB 의 cancel_group_buy RPC 도 같은 문구를 넣는다 */
+  canceled: () => "🚫 주최자가 공구를 취소했어요",
 } as const;

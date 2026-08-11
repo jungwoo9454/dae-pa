@@ -9,6 +9,7 @@ const ICON: Record<Noti["type"], string> = {
   payment_reminder: "💸",
   settle_start: "🧾",
   join: "🙌",
+  cancel: "🚫",
 };
 
 function ago(ms: number) {

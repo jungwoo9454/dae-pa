@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { ProgressBar, StatusBadge } from "@/components/ui";
 import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
@@ -16,6 +18,8 @@ export default function DetailView() {
   const shareDeal = useStore((s) => s.shareDeal);
   const join = useStore((s) => s.join);
   const openSettle = useStore((s) => s.openSettle);
+  const cancelDeal = useStore((s) => s.cancelDeal);
+  const [askCancel, setAskCancel] = useState(false);
 
   const deal = deals.find((d) => d.id === sel) ?? deals[0];
   if (!deal) return null;
@@ -25,6 +29,8 @@ export default function DetailView() {
   const closing = st.key === "closing";
   const active = joinable(deal, now);
   const faces = FACES.slice(0, Math.min(4, deal.joined));
+  // 취소는 주최자만, 모집중·정산중일 때만 (#29 — DB 의 cancel_group_buy 판정과 같다)
+  const cancelable = deal.mine && (deal.status === "recruiting" || deal.status === "settling");
 
   const onJoin = () => {
     if (deal.status === "settling") openSettle(deal.id);
@@ -120,6 +126,40 @@ export default function DetailView() {
           >
             🔗 동네 라운지에 공유
           </div>
+          {/* 주최자 취소 (#29) — 어느 단계에서든 주최자는 공구를 취소할 수 있다 */}
+          {cancelable &&
+            (askCancel ? (
+              <div className="flex flex-col gap-2 rounded-xl bg-[#fdecec] p-3">
+                <div className="text-[13px] font-extrabold text-[#b3261e]">공구를 취소할까요?</div>
+                <div className="text-[12px] text-[#8a6a6a]">
+                  참여자 전원에게 알림이 가고 되돌릴 수 없어요.
+                </div>
+                <div className="flex gap-2">
+                  <div
+                    onClick={() => {
+                      setAskCancel(false);
+                      cancelDeal(deal.id);
+                    }}
+                    className="flex-1 cursor-pointer rounded-[10px] bg-[#b3261e] p-2 text-center text-[13px] font-extrabold text-white hover:brightness-110"
+                  >
+                    취소하기
+                  </div>
+                  <div
+                    onClick={() => setAskCancel(false)}
+                    className="flex-1 cursor-pointer rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white p-2 text-center text-[13px] font-bold text-[#4d6d58] hover:border-[#1f8a4c]"
+                  >
+                    그만두기
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => setAskCancel(true)}
+                className="cursor-pointer rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-center text-[13.5px] font-bold text-[#4d6d58] hover:border-[#b3261e] hover:text-[#b3261e]"
+              >
+                🚫 공구 취소
+              </div>
+            ))}
         </div>
       </div>
     </div>

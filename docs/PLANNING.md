@@ -127,9 +127,14 @@
   ▼  전원 입금 완료
 마감 (completed)
 
-* 어느 단계에서든 주최자 취소 → 취소 (canceled)
+* 어느 단계에서든 주최자 취소 → 취소 (canceled)  ※ 모집중·정산중에서만. 마감(completed) 후에는 못 한다
 * 목표 인원 = 정원(선착순). 초과 모집 없음 — 참여 INSERT는 서버에서 원자적으로 정원 검사
 ```
+
+취소 경로(#29)는 상세 화면의 주최자 전용 "🚫 공구 취소" 버튼 → 확인 → `cancel_group_buy(id)` RPC 다.
+`group_buys.status` 는 컬럼 GRANT 로 클라이언트 UPDATE 가 막혀 있어 이 `security definer` RPC 로만 `canceled` 가 된다.
+RPC 는 주최자 본인 + `status in (recruiting, settling)` 을 확인하고, 채팅방 시스템 메시지(`kind='sys'`)와
+참여자 전원 알림(`type='cancel'`)을 함께 넣는다. 취소된 공구의 상태 배지는 `마감` 으로 표시한다(배지 문구 4종 고정).
 
 ## 6. 화면 구성
 
