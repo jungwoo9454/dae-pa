@@ -3,12 +3,37 @@
 import { create } from "zustand";
 import { CAT_EMOJI, fmt, joinable, recalcMembers } from "./deal";
 import { createClient } from "./supabase/client";
-import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, PageKey, Settlement } from "./types";
+import { sysText } from "./sys-messages";
+import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, Noti, PageKey, Settlement } from "./types";
 
 /** 동네 인증은 아직 모의 — 위치 기반 판정은 별도 이슈 */
 export const DONG = "역삼동";
 
 const t0 = Date.now();
+
+/** 마감 몇 분 전에 알림을 넣을지 (#13) */
+const DEADLINE_MS = 30 * 60_000;
+
+/** 같은 공구로 마감 알림을 두 번 넣지 않으려는 표시 — 목록을 불러올 때 지난 것도 채운다 */
+const firedDeadlines = new Set<number>();
+
+/** notifications 행 — 문구·이동할 공구는 payload 에 담는다 */
+interface NotiRow {
+  id: number;
+  type: Noti["type"];
+  payload: { text?: string; dealId?: number } | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+const toNoti = (r: NotiRow): Noti => ({
+  id: r.id,
+  type: r.type,
+  text: r.payload?.text ?? "",
+  dealId: r.payload?.dealId ?? null,
+  isRead: r.is_read,
+  createdAt: Date.parse(r.created_at),
+});
 
 const mk = (
   id: number,
@@ -94,6 +119,27 @@ const seedHistory: HistoryItem[] = [
 
 const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "",store_link: "", };
 
+/** 전원 입금 완료 시 공구를 마감 처리하고 시스템 메시지 + 신뢰도 반영까지 함께 적용한다 */
+function completeIfAllPaid(
+  deals: Deal[],
+  msgs: Record<string, Msg[]>,
+  dealId: number,
+  trustScore: number,
+): { deals: Deal[]; msgs: Record<string, Msg[]>; trustScore: number } {
+  const deal = deals.find((d) => d.id === dealId);
+  const mem = deal?.members ?? [];
+  const allPaid = mem.length > 0 && mem.every((m) => m.paid);
+  if (!deal || !allPaid) return { deals, msgs, trustScore };
+  const nextDeals = deals.map((d) => (d.id === dealId ? { ...d, status: "completed" as const } : d));
+  const key = "d" + dealId;
+  const nextMsgs = { ...msgs };
+  nextMsgs[key] = [
+    ...(nextMsgs[key] ?? []),
+    { kind: "sys" as const, text: "🎉 전원 입금 완료 — 공구가 마감됐어요! 정산 신뢰도가 올랐어요 ⭐" },
+  ];
+  return { deals: nextDeals, msgs: nextMsgs, trustScore: trustScore + 1 };
+}
+
 interface AuthForm {
   nick: string;
   email: string;
@@ -117,6 +163,8 @@ interface StoreState {
   mySearch: string;
   filter: string;
   profileOpen: boolean;
+  notiOpen: boolean;
+  notis: Noti[];
   topupOpen: boolean;
   topupAmt: number;
   settleTotalInput: string;
@@ -124,6 +172,7 @@ interface StoreState {
   withdrawOpen: boolean;
   withdrawAmt: number;
   balance: number;
+  trustScore: number;
   autoPay: boolean;
   n1: boolean;
   n2: boolean;
@@ -146,15 +195,24 @@ interface StoreState {
   openSettle: (id: number) => void;
   goRoom: (roomId: string) => void;
   toggleProfile: () => void;
+  /** 알림 목록 로드 + Realtime 구독 시작. 정리 함수를 돌려준다 */
+  initNotis: (uid: string) => () => void;
+  /** 열 때 미읽음을 전부 읽음 처리한다 */
+  toggleNoti: () => Promise<void>;
+  /** 참여한 공구의 마감 30분 전 알림을 넣는다 — 주기 호출 */
+  notifyDeadlines: () => Promise<void>;
   setChatInput: (v: string) => void;
   setSearch: (v: string) => void;
   setMySearch: (v: string) => void;
   setFilter: (v: string) => void;
   setForm: (patch: Partial<DealForm>) => void;
   join: (id: number) => void;
+  shareDeal: (dealId: number, roomId: string) => void;
   adjustMemberItem: (dealId: number, name: string, itemAmt: number) => void;
   sendMsg: () => void;
   payNow: (dealId: number) => void;
+  confirmSelfPaid: (dealId: number, method: "account" | "toss") => void;
+  remindUnpaid: (dealId: number) => void;
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => void;
@@ -187,6 +245,8 @@ export const useStore = create<StoreState>((set, get) => ({
   mySearch: "",
   filter: "전체",
   profileOpen: false,
+  notiOpen: false,
+  notis: [],
   topupOpen: false,
   topupAmt: 10000,
   settleTotalInput: "",
@@ -194,6 +254,7 @@ export const useStore = create<StoreState>((set, get) => ({
   withdrawOpen: false,
   withdrawAmt: 10000,
   balance: 23500,
+  trustScore: 100,
   autoPay: true,
   n1: true,
   n2: true,
@@ -217,11 +278,15 @@ export const useStore = create<StoreState>((set, get) => ({
     const { data } = sb.auth.onAuthStateChange((_event, session) => {
       const uid = session?.user.id;
       if (!uid) {
+        // 다음 사람이 남의 알림을 보지 않게 목록·중복 표시를 비운다
+        firedDeadlines.clear();
         set((st) => ({
           me: null,
+          notis: [],
           page: "login",
           authMode: "login",
           profileOpen: false,
+          notiOpen: false,
           authReady: true,
           auth: { ...st.auth, pw: "" },
         }));
@@ -305,11 +370,90 @@ export const useStore = create<StoreState>((set, get) => ({
     // 화면 정리는 onAuthStateChange 가 한다
   },
 
-  go: (page) => set({ page, profileOpen: false }),
-  openDeal: (id) => set({ page: "detail", sel: id, profileOpen: false }),
-  openSettle: (id) => set({ page: "settle", sel: id, profileOpen: false }),
-  goRoom: (roomId) => set({ page: "chat", room: roomId, profileOpen: false }),
-  toggleProfile: () => set((st) => ({ profileOpen: !st.profileOpen })),
+  go: (page) => set({ page, profileOpen: false, notiOpen: false }),
+  openDeal: (id) => set({ page: "detail", sel: id, profileOpen: false, notiOpen: false }),
+  openSettle: (id) => set({ page: "settle", sel: id, profileOpen: false, notiOpen: false }),
+  goRoom: (roomId) => set({ page: "chat", room: roomId, profileOpen: false, notiOpen: false }),
+  toggleProfile: () => set((st) => ({ profileOpen: !st.profileOpen, notiOpen: false })),
+
+  initNotis: (uid) => {
+    const sb = createClient();
+    void (async () => {
+      // RLS 가 본인 행만 내주므로 user_id 조건은 따로 걸지 않는다
+      const { data } = await sb
+        .from("notifications")
+        .select("id, type, payload, is_read, created_at")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      const rows = (data ?? []) as NotiRow[];
+      for (const r of rows) {
+        if (r.type === "deadline_soon" && r.payload?.dealId) firedDeadlines.add(r.payload.dealId);
+      }
+      // 응답을 기다리는 동안 Realtime 으로 먼저 들어온 알림이 있을 수 있다 — 덮지 말고 합친다
+      set((st) => {
+        const loaded = rows.map(toNoti);
+        const ids = new Set(loaded.map((n) => n.id));
+        return { notis: [...st.notis.filter((n) => !ids.has(n.id)), ...loaded] };
+      });
+    })();
+
+    const ch = sb
+      .channel("notis")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` },
+        ({ new: row }) =>
+          set((st) => {
+            const n = toNoti(row as NotiRow);
+            return st.notis.some((x) => x.id === n.id) ? {} : { notis: [n, ...st.notis] };
+          }),
+      )
+      .subscribe();
+    return () => {
+      void sb.removeChannel(ch);
+    };
+  },
+
+  // supabase-js 쿼리 빌더는 await 해야 요청이 나간다 — 결과를 안 봐도 async 로 둔다
+  toggleNoti: async () => {
+    const opening = !get().notiOpen;
+    set({ notiOpen: opening, profileOpen: false });
+    if (!opening) return;
+    // 여는 순간 미읽음을 다 읽은 것으로 본다
+    const unreadIds = get()
+      .notis.filter((n) => !n.isRead)
+      .map((n) => n.id);
+    if (!unreadIds.length) return;
+    set((st) => ({ notis: st.notis.map((n) => (n.isRead ? n : { ...n, isRead: true })) }));
+    await createClient().from("notifications").update({ is_read: true }).in("id", unreadIds);
+  },
+
+  notifyDeadlines: async () => {
+    const { me, n1, deals } = get();
+    if (!me || !n1) return;
+    const now = Date.now();
+    // 공구는 아직 목데이터라 payload.dealId 도 목 id 다 — 공구 연동(#4) 때 같이 실 id 로 바뀐다
+    const due = deals.filter(
+      (d) =>
+        d.me &&
+        d.status === "recruiting" &&
+        d.end - now > 0 &&
+        d.end - now <= DEADLINE_MS &&
+        !firedDeadlines.has(d.id),
+    );
+    if (!due.length) return;
+    due.forEach((d) => firedDeadlines.add(d.id));
+    // 목록에 넣는 건 Realtime INSERT 구독이 한다
+    await createClient()
+      .from("notifications")
+      .insert(
+        due.map((d) => ({
+          user_id: me.id,
+          type: "deadline_soon",
+          payload: { text: `${d.title} · 마감 30분 전이에요`, dealId: d.id },
+        })),
+      );
+  },
   setChatInput: (v) => set({ chatInput: v }),
   setSearch: (v) => set({ search: v }),
   setMySearch: (v) => set({ mySearch: v }),
@@ -353,10 +497,10 @@ export const useStore = create<StoreState>((set, get) => ({
       const msgs = { ...st.msgs };
       msgs[key] = [
         ...(msgs[key] ?? []),
-        { kind: "sys", text: `파티원님이 참여했어요 (${full.joined}/${full.goal})` },
+        { kind: "sys", text: sysText.joined("파티원", full.joined, full.goal) },
       ];
       if (full.status === "settling") {
-        msgs[key] = [...msgs[key], { kind: "sys", text: "목표 달성! 정산이 시작돼요 🎉" }];
+        msgs[key] = [...msgs[key], { kind: "sys", text: sysText.goalReached() }];
       }
       return { deals, msgs };
     }),
@@ -372,6 +516,15 @@ export const useStore = create<StoreState>((set, get) => ({
       return { deals };
     }),
 
+  /** 공구 카드를 채팅방에 말풍선으로 공유하고 그 방으로 이동 (#10) */
+  shareDeal: (dealId, roomId) =>
+    set((st) => {
+      if (!st.deals.some((d) => d.id === dealId)) return {};
+      const msgs = { ...st.msgs };
+      msgs[roomId] = [...(msgs[roomId] ?? []), { kind: "card", cardOf: dealId, who: "나" }];
+      return { msgs, page: "chat", room: roomId, profileOpen: false };
+    }),
+
   sendMsg: () =>
     set((st) => {
       const text = st.chatInput.trim();
@@ -385,24 +538,65 @@ export const useStore = create<StoreState>((set, get) => ({
     set((st) => {
       const deal = st.deals.find((d) => d.id === dealId);
       const mine = deal?.members?.find((m) => m.name === "나");
-      if (!deal || !mine || mine.paid) return {};
+      // 잔액 검증 → 차감·입금 처리·내역 기록을 한 번의 set()으로 원자적으로 묶는다
+      if (!deal || !mine || mine.paid || st.balance < mine.amt) return {};
       const deals = st.deals.map((x) =>
         x.id !== dealId
           ? x
-          : { ...x, members: x.members!.map((m) => (m.name === "나" ? { ...m, paid: true } : m)) },
+          : {
+              ...x,
+              members: x.members!.map((m) =>
+                m.name === "나" ? { ...m, paid: true, payMethod: "wallet" as const } : m,
+              ),
+            },
       );
       const key = "d" + dealId;
       const msgs = { ...st.msgs };
       msgs[key] = [
         ...(msgs[key] ?? []),
-        { kind: "sys", text: `파티원님이 ${fmt(mine.amt)} 입금 완료 ✓ (대파페이)` },
+        { kind: "sys", text: sysText.paid("파티원", mine.amt) },
       ];
+      const after = completeIfAllPaid(deals, msgs, dealId, st.trustScore);
       return {
-        deals,
-        msgs,
+        ...after,
         balance: st.balance - mine.amt,
         history: [{ emoji: deal.emoji, title: deal.title + " 정산", when: "방금", amt: -mine.amt }, ...st.history],
       };
+    }),
+
+  confirmSelfPaid: (dealId, method) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      const mine = deal?.members?.find((m) => m.name === "나");
+      if (!deal || !mine || mine.paid) return {};
+      const deals = st.deals.map((x) =>
+        x.id !== dealId
+          ? x
+          : { ...x, members: x.members!.map((m) => (m.name === "나" ? { ...m, paid: true, payMethod: method } : m)) },
+      );
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      const label = method === "account" ? "계좌 이체" : "토스 송금";
+      msgs[key] = [
+        ...(msgs[key] ?? []),
+        { kind: "sys", text: `파티원님이 ${fmt(mine.amt)} 입금 완료 ✓ (${label} · 셀프 체크)` },
+      ];
+      return completeIfAllPaid(deals, msgs, dealId, st.trustScore);
+    }),
+
+  remindUnpaid: (dealId) =>
+    set((st) => {
+      const deal = st.deals.find((d) => d.id === dealId);
+      if (!deal || deal.host !== "나") return {};
+      const unpaid = (deal.members ?? []).filter((m) => !m.paid).map((m) => m.name);
+      if (unpaid.length === 0) return {};
+      const key = "d" + dealId;
+      const msgs = { ...st.msgs };
+      msgs[key] = [
+        ...(msgs[key] ?? []),
+        { kind: "sys", text: `🔔 아직 입금 안 하신 분들 확인해주세요 — ${unpaid.join(", ")}` },
+      ];
+      return { msgs };
     }),
 
   toggleTopup: () => set((st) => ({ topupOpen: !st.topupOpen })),
@@ -432,11 +626,8 @@ export const useStore = create<StoreState>((set, get) => ({
       msgs[key] = [
         ...(msgs[key] ?? []),
         hasReceipt
-          ? { kind: "sys" as const, text: `🧾 영수증 인증 완료 · 총 ${fmt(finalTotal)} · 금액 잠금` }
-          : {
-              kind: "sys" as const,
-              text: `총 ${fmt(finalTotal)}으로 정산 요청 · 영수증 없이 참여자 과반 동의로 확정돼요`,
-            },
+          ? { kind: "sys" as const, text: sysText.settleReceipt(finalTotal) }
+          : { kind: "sys" as const, text: sysText.settleVoteOpen(finalTotal) },
       ];
       return { deals, msgs, settleTotalInput: "", settleReceipt: false };
     }),
@@ -457,7 +648,7 @@ export const useStore = create<StoreState>((set, get) => ({
       if (confirmed) {
         msgs[key] = [
           ...(msgs[key] ?? []),
-          { kind: "sys", text: `✅ 참여자 과반 동의로 총 ${fmt(settlement.finalTotal)} 확정 · 금액 잠금` },
+          { kind: "sys", text: sysText.settleVoteConfirmed(settlement.finalTotal) },
         ];
       }
       return { deals, msgs };
@@ -502,7 +693,7 @@ export const useStore = create<StoreState>((set, get) => ({
         mine: true,
       };
       const msgs = { ...st.msgs };
-      msgs["d" + id] = [{ kind: "sys", text: `공구방이 열렸어요 · 목표 ${goalN}명` }];
+      msgs["d" + id] = [{ kind: "sys", text: sysText.roomOpened(goalN) }];
       msgs.lounge = [...(msgs.lounge ?? []), { kind: "card", cardOf: id, who: "나" }];
       return { deals: [nd, ...st.deals], msgs, page: "home", form: EMPTY_FORM };
     }),

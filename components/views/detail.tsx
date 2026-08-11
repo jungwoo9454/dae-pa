@@ -13,6 +13,7 @@ export default function DetailView() {
   const sel = useStore((s) => s.sel);
   const go = useStore((s) => s.go);
   const goRoom = useStore((s) => s.goRoom);
+  const shareDeal = useStore((s) => s.shareDeal);
   const join = useStore((s) => s.join);
   const openSettle = useStore((s) => s.openSettle);
 
@@ -111,6 +112,13 @@ export default function DetailView() {
             className="cursor-pointer rounded-xl border-[1.5px] border-[#1f8a4c] p-2.5 text-center font-extrabold text-[#1f8a4c] hover:bg-[#e9f6ec]"
           >
             💬 공구 채팅방
+          </div>
+          {/* 라운지에 카드 말풍선으로 공유 → 대화 중 바로 참여로 이어진다 (#10) */}
+          <div
+            onClick={() => shareDeal(deal.id, "lounge")}
+            className="cursor-pointer rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-center text-[13.5px] font-bold text-[#4d6d58] hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
+          >
+            🔗 동네 라운지에 공유
           </div>
         </div>
       </div>
