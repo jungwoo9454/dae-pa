@@ -530,6 +530,39 @@ begin
   perform public.complete_group_buy_if_all_paid(v_group_buy_id);
 end $$;
 
+-- 지갑 충전 (#14). wallets 는 authenticated 에 전체 권한이 열려 있어 RPC 없이도 되지만,
+-- balance 증가·wallet_transactions 기록을 한 트랜잭션으로 묶어 원자적으로 처리한다.
+create or replace function public.topup_wallet(p_amount int) returns void
+language plpgsql security definer set search_path = public as $$
+declare v_user_id uuid := auth.uid();
+begin
+  if p_amount <= 0 then
+    raise exception '충전 금액은 0보다 커야 합니다';
+  end if;
+  update public.wallets set balance = balance + p_amount where user_id = v_user_id;
+  insert into public.wallet_transactions (user_id, kind, amount, title)
+  values (v_user_id, 'charge', p_amount, '충전');
+end $$;
+
+-- 지갑 출금 (#14). `for update` 로 잔액 행을 잠가 동시 출금 레이스를 막는다.
+create or replace function public.withdraw_wallet(p_amount int) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_balance int;
+begin
+  if p_amount <= 0 then
+    raise exception '출금 금액은 0보다 커야 합니다';
+  end if;
+  select balance into v_balance from public.wallets where user_id = v_user_id for update;
+  if v_balance < p_amount then
+    raise exception '잔액이 부족합니다';
+  end if;
+  update public.wallets set balance = balance - p_amount where user_id = v_user_id;
+  insert into public.wallet_transactions (user_id, kind, amount, title)
+  values (v_user_id, 'withdraw', -p_amount, '출금');
+end $$;
+
 -- ─────────────────────────────────────────────
 -- 3. ⚠️ 설계 규약 — 상태 전이·타인 행 쓰기는 RPC로만
 --
@@ -669,6 +702,12 @@ grant  execute on function public.confirm_self_paid(bigint, text) to authenticat
 
 revoke execute on function public.remind_unpaid(bigint) from public, anon;
 grant  execute on function public.remind_unpaid(bigint) to authenticated;
+
+revoke execute on function public.topup_wallet(int) from public, anon;
+grant  execute on function public.topup_wallet(int) to authenticated;
+
+revoke execute on function public.withdraw_wallet(int) from public, anon;
+grant  execute on function public.withdraw_wallet(int) to authenticated;
 
 -- ⚠️ 앞으로 security definer RPC 를 추가할 때마다 아래 두 줄을 같이 넣어라.
 -- security definer 함수는 PUBLIC 에 EXECUTE 가 열리고, Supabase 기본 default privileges 가
