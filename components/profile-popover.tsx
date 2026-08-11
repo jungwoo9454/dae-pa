@@ -10,7 +10,7 @@ export default function ProfilePopover() {
   const logout = useStore((s) => s.logout);
   const deals = useStore((s) => s.deals);
   const now = useNow();
-  const { hosted, joined, trust } = profileStats(deals, now);
+  const { hosted, joined, trust } = profileStats(deals, now, me?.id ?? null);
   return (
     <div className="absolute right-5 top-[58px] z-50 flex w-[230px] flex-col gap-[9px] rounded-[14px] border border-[#d5e6d6] bg-white p-3.5 shadow-[0_12px_32px_rgba(18,49,30,.18)]">
       <div className="flex items-center gap-2.5">
