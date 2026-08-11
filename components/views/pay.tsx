@@ -14,6 +14,8 @@ export default function PayView() {
   const balance = useStore((s) => s.balance);
   const topupOpen = useStore((s) => s.topupOpen);
   const topupAmt = useStore((s) => s.topupAmt);
+  const topupResult = useStore((s) => s.topupResult);
+  const setTopupResult = useStore((s) => s.setTopupResult);
   const withdrawOpen = useStore((s) => s.withdrawOpen);
   const withdrawAmt = useStore((s) => s.withdrawAmt);
   const autoPay = useStore((s) => s.autoPay);
@@ -36,6 +38,18 @@ export default function PayView() {
     <div className="flex-1 overflow-auto px-6 py-5">
       <div className="flex max-w-[900px] items-start gap-5">
         <div className="flex w-80 flex-none flex-col gap-3">
+          {topupResult && (
+            <div
+              onClick={() => setTopupResult(null)}
+              className={`cursor-pointer rounded-[12px] px-3.5 py-2.5 text-[13px] font-bold ${
+                topupResult === "ok"
+                  ? "bg-[#e9f6ec] text-[#166b3a]"
+                  : "bg-[#fdecec] text-[#a33]"
+              }`}
+            >
+              {topupResult === "ok" ? "✓ 충전이 완료됐어요" : "결제에 실패했어요. 다시 시도해주세요"}
+            </div>
+          )}
           <div
             className="rounded-[18px] p-[22px] text-white shadow-[0_10px_24px_rgba(18,70,38,.25)]"
             style={{ background: "linear-gradient(135deg,#14532d,#1f8a4c)" }}
@@ -82,7 +96,9 @@ export default function PayView() {
               >
                 {fmt(topupAmt)} 충전하기
               </div>
-              <div className="text-[11.5px] text-[#8aa392]">충전 수단 · 초록은행 1104-04 (자동이체)</div>
+              <div className="text-[11.5px] text-[#8aa392]">
+                충전 수단 · 토스페이먼츠 (테스트 결제 · 실제 출금 없음)
+              </div>
             </div>
           )}
 
