@@ -495,6 +495,9 @@ export const useStore = create<StoreState>((set, get) => ({
     const sb = createClient();
     // 정리된 뒤 늦게 도착한 응답이 화면을 되돌리지 않게 막는다
     let alive = true;
+    // messages INSERT 구독은 방 필터가 없어서(전체 방 대상) 내 방이 아닌 메시지도 다 들어온다.
+    // 한 번 "내 방 아님"이 확인된 room_id는 캐시해서 매번 재조회하지 않는다 (onMsg 참고).
+    const notMineRooms = new Set<number>();
 
     /** 내가 속한 방(라운지 + 참여 중인 공구방)과 각 방의 최근 메시지를 다시 읽는다 */
     const loadRooms = async () => {
@@ -540,7 +543,16 @@ export const useStore = create<StoreState>((set, get) => ({
 
     /** Realtime 으로 들어온 메시지 한 건을 해당 방에 붙인다 */
     const onMsg = async (row: MsgRow) => {
-      if (!get().rooms.some((r) => r.id === row.room_id)) return; // 내 방이 아니면 무시
+      if (!get().rooms.some((r) => r.id === row.room_id)) {
+        // messages INSERT는 room_id만 주고 type/group_buy_id를 안 줘서, 이 방이 내 방인지
+        // 여기서 바로 판단할 방법이 없다. 방금 참여해서 rooms 갱신이 아직 안 끝났을 수 있으니
+        // loadRooms()로 한 번 더 확인한다 — 이미 커밋된 메시지라 room이 진짜 내 것이면
+        // loadRooms()가 최근 메시지를 DB에서 다시 읽어올 때 이 메시지도 같이 따라온다.
+        if (notMineRooms.has(row.room_id)) return;
+        await loadRooms();
+        if (!get().rooms.some((r) => r.id === row.room_id)) notMineRooms.add(row.room_id);
+        return;
+      }
       if (row.user_id && row.user_id !== uid && !nickCache.has(row.user_id)) {
         const { data } = await sb.from("profiles").select("nickname").eq("id", row.user_id).single();
         if (data?.nickname) nickCache.set(row.user_id, data.nickname);
