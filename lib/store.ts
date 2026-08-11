@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { CAT_EMOJI, fmt } from "./deal";
-import type { Deal, DealForm, HistoryItem, Msg, PageKey } from "./types";
+import type { AuthMode, Deal, DealForm, HistoryItem, Msg, PageKey } from "./types";
 
 const t0 = Date.now();
 
@@ -85,9 +85,18 @@ const seedHistory: HistoryItem[] = [
 
 const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "" };
 
+interface AuthForm {
+  nick: string;
+  email: string;
+  pw: string;
+}
+
 interface StoreState {
   page: PageKey;
   sel: number | null;
+  authMode: AuthMode;
+  auth: AuthForm;
+  dongOk: boolean;
   room: string;
   chatInput: string;
   search: string;
@@ -105,6 +114,11 @@ interface StoreState {
   msgs: Record<string, Msg[]>;
   history: HistoryItem[];
 
+  setAuth: (patch: Partial<AuthForm>) => void;
+  switchAuthMode: () => void;
+  verifyDong: () => void;
+  enterApp: () => void;
+  logout: () => void;
   go: (page: PageKey) => void;
   openDeal: (id: number) => void;
   openSettle: (id: number) => void;
@@ -128,8 +142,11 @@ interface StoreState {
 }
 
 export const useStore = create<StoreState>((set) => ({
-  page: "home",
+  page: "login",
   sel: null,
+  authMode: "login",
+  auth: { nick: "", email: "", pw: "" },
+  dongOk: false,
   room: "lounge",
   chatInput: "",
   search: "",
@@ -146,6 +163,13 @@ export const useStore = create<StoreState>((set) => ({
   deals: seedDeals,
   msgs: seedMsgs,
   history: seedHistory,
+
+  setAuth: (patch) => set((st) => ({ auth: { ...st.auth, ...patch } })),
+  switchAuthMode: () => set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup" })),
+  verifyDong: () => set({ dongOk: true }),
+  enterApp: () => set((st) => ({ page: "home", authMode: "login", auth: { ...st.auth, pw: "" } })),
+  logout: () =>
+    set((st) => ({ page: "login", profileOpen: false, authMode: "login", auth: { ...st.auth, pw: "" } })),
 
   go: (page) => set({ page, profileOpen: false }),
   openDeal: (id) => set({ page: "detail", sel: id, profileOpen: false }),

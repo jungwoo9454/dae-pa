@@ -4,6 +4,7 @@ import { useStore } from "@/lib/store";
 
 export default function ProfilePopover() {
   const go = useStore((s) => s.go);
+  const logout = useStore((s) => s.logout);
   return (
     <div className="absolute right-5 top-[58px] z-50 flex w-[230px] flex-col gap-[9px] rounded-[14px] border border-[#d5e6d6] bg-white p-3.5 shadow-[0_12px_32px_rgba(18,49,30,.18)]">
       <div className="flex items-center gap-2.5">
@@ -28,7 +29,9 @@ export default function ProfilePopover() {
       <div onClick={() => go("set")} className="cursor-pointer px-0.5 py-1 hover:text-[#1f8a4c]">
         알림 · 계좌 설정
       </div>
-      <div className="cursor-pointer px-0.5 py-1 text-[#94a89a]">로그아웃</div>
+      <div onClick={logout} className="cursor-pointer px-0.5 py-1 text-[#94a89a] hover:text-[#1f8a4c]">
+        로그아웃
+      </div>
     </div>
   );
 }

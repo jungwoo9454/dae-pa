@@ -12,7 +12,42 @@
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
 <style>body{margin:0;background:#eef4ec;font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif}a{color:#1f8a4c}a:hover{color:#166b3a}input{font-family:inherit}::placeholder{color:#9db5a4}</style>
 </helmet>
-<div style="display:flex;height:100vh;background:#eef4ec;color:#17301f;overflow:hidden;font-size:14px">
+<div style="display:flex;height:100vh;background:#eef4ec;color:#17301f;overflow:hidden;font-size:14px;position:relative">
+<sc-if value="{{ isAuth }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:100;display:flex;background:#eef4ec">
+<div style="width:44%;min-width:340px;background:linear-gradient(160deg,#12311e,#1f8a4c);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:56px;gap:18px">
+<div style="font-family:Jua,sans-serif;font-size:64px;line-height:1">대<span style="color:#7fdc95">파</span></div>
+<div style="font-family:Jua,sans-serif;font-size:22px;color:#d7efdc">대용량 파티원 — 같이 사면 이득</div>
+<div style="display:flex;flex-direction:column;gap:12px;margin-top:10px;font-size:14.5px;color:#bfe3c8">
+<div>🧅 이웃과 대용량으로 나눠 사고</div>
+<div>💬 공구별 채팅방에서 편하게 조율하고</div>
+<div>🧾 영수증 인증으로 투명하게 1/N 정산</div>
+</div>
+</div>
+<div style="flex:1;display:flex;align-items:center;justify-content:center;padding:32px;overflow:auto">
+<div style="width:360px;background:#fff;border:1px solid #dbe9da;border-radius:20px;padding:30px;display:flex;flex-direction:column;gap:12px;box-shadow:0 14px 36px rgba(18,70,38,.12)">
+<div style="font-family:Jua,sans-serif;font-size:24px">{{ authTitle }}</div>
+<sc-if value="{{ isSignup }}" hint-placeholder-val="{{ false }}">
+<input value="{{ aNick }}" onChange="{{ onANick }}" placeholder="닉네임 — 예: 파밍맘" style="border:1.5px solid #d5e6d6;border-radius:11px;padding:12px 14px;font-size:14px;outline:none">
+</sc-if>
+<input value="{{ aEmail }}" onChange="{{ onAEmail }}" placeholder="이메일" style="border:1.5px solid #d5e6d6;border-radius:11px;padding:12px 14px;font-size:14px;outline:none">
+<input value="{{ aPw }}" onChange="{{ onAPw }}" type="password" placeholder="비밀번호" style="border:1.5px solid #d5e6d6;border-radius:11px;padding:12px 14px;font-size:14px;outline:none">
+<sc-if value="{{ isSignup }}" hint-placeholder-val="{{ false }}">
+<div style="border:1.5px dashed #9fd4ae;border-radius:11px;padding:11px 14px;display:flex;align-items:center;gap:9px;background:#f5faf4">
+<span style="font-size:18px">📍</span>
+<div style="flex:1"><div style="font-weight:800;font-size:13.5px">동네 인증</div><div style="font-size:12px;color:#6b8573">{{ aDongLabel }}</div></div>
+<div onClick="{{ verifyDong }}" style="{{ dongBtnStyle }}" style-hover="filter:brightness(1.05)">{{ dongBtnLabel }}</div>
+</div>
+</sc-if>
+<div onClick="{{ authSubmit }}" style="{{ authBtnStyle }}" style-hover="filter:brightness(1.06)">{{ authBtnLabel }}</div>
+<div style="display:flex;align-items:center;gap:10px;color:#9db5a4;font-size:12px"><div style="flex:1;height:1px;background:#e2eee2"></div>또는<div style="flex:1;height:1px;background:#e2eee2"></div></div>
+<div onClick="{{ authSocial }}" style="background:#fee500;color:#191919;border-radius:11px;padding:11px;text-align:center;font-weight:800;cursor:pointer" style-hover="filter:brightness(.97)">💬 카카오로 3초 만에 시작</div>
+<div onClick="{{ authSocial }}" style="border:1.5px solid #d5e6d6;border-radius:11px;padding:11px;text-align:center;font-weight:700;cursor:pointer" style-hover="border-color:#1f8a4c;color:#1f8a4c">G  구글로 계속하기</div>
+<div style="text-align:center;font-size:13px;color:#6b8573;margin-top:2px">{{ authSwitchHint }} <span onClick="{{ authSwitch }}" style="color:#1f8a4c;font-weight:800;cursor:pointer">{{ authSwitchLabel }}</span></div>
+</div>
+</div>
+</div>
+</sc-if>
 <div style="width:192px;background:#12311e;color:#e9f4ec;display:flex;flex-direction:column;padding:16px 10px;gap:2px;flex:none">
 <div style="padding:8px 12px 20px">
 <div style="font-family:Jua,sans-serif;font-size:32px;color:#fff;line-height:1">대<span style="color:#7fdc95">파</span></div>
@@ -41,7 +76,7 @@
 <div onClick="{{ goMyFromPop }}" style="cursor:pointer;padding:4px 2px" style-hover="color:#1f8a4c">내 공구 내역</div>
 <div onClick="{{ goPayFromPop }}" style="cursor:pointer;padding:4px 2px" style-hover="color:#1f8a4c">대파페이 지갑</div>
 <div onClick="{{ goSetFromPop }}" style="cursor:pointer;padding:4px 2px" style-hover="color:#1f8a4c">알림 · 계좌 설정</div>
-<div style="color:#94a89a;padding:4px 2px;cursor:pointer">로그아웃</div>
+<div onClick="{{ doLogout }}" style="color:#94a89a;padding:4px 2px;cursor:pointer" style-hover="color:#1f8a4c">로그아웃</div>
 </div>
 </sc-if>
 
@@ -315,7 +350,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;startPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;chat&quot;,&quot;pay&quot;,&quot;new&quot;,&quot;set&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;데모&quot;},&quot;startBalance&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:23500,&quot;min&quot;:0,&quot;max&quot;:1000000,&quot;step&quot;:500,&quot;unit&quot;:&quot;원&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;데모&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;startPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;home&quot;,&quot;chat&quot;,&quot;pay&quot;,&quot;new&quot;,&quot;set&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;데모&quot;},&quot;startBalance&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:23500,&quot;min&quot;:0,&quot;max&quot;:1000000,&quot;step&quot;:500,&quot;unit&quot;:&quot;원&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;데모&quot;}}">
 class Component extends DCLogic {
   constructor(p){
     super(p);
@@ -323,6 +358,7 @@ class Component extends DCLogic {
     const mk=(id,emoji,title,cat,total,goal,joined,endMin,place,host,opts)=>Object.assign({id,emoji,title,cat,total,goal,joined,end:now+endMin*60000,place,host,status:'recruit',me:false,mine:false},opts||{});
     this.state={
       page:this.props.startPage??'home',sel:null,room:'lounge',chatInput:'',search:'',mySearch:'',filter:'전체',
+      authMode:'login',aNick:'',aEmail:'',aPw:'',dongOk:false,
       now,profileOpen:false,topupOpen:false,topupAmt:10000,balance:this.props.startBalance??23500,
       autoPay:true,n1:true,n2:true,
       f:{cat:'식료품',title:'',total:'',goal:'',mins:'',place:''},
@@ -487,7 +523,27 @@ class Component extends DCLogic {
         msgs.lounge=[...msgs.lounge,{cardOf:id,who:'나'}];
         return{deals:[nd,...s2.deals],msgs,page:'home',f:{cat:'식료품',title:'',total:'',goal:'',mins:'',place:''}};
       });};
+    const isSignup=st.authMode==='signup';
+    const authOk=isSignup?(st.aNick&&st.aEmail&&st.aPw&&st.dongOk):(st.aEmail&&st.aPw);
+    const enterApp=()=>this.setState({page:'home',authMode:'login',aPw:''});
     return{
+      isAuth:st.page==='login',isSignup,
+      authTitle:isSignup?'대파 시작하기':'다시 만나서 반가워요',
+      aNick:st.aNick,onANick:e=>this.setState({aNick:e.target.value}),
+      aEmail:st.aEmail,onAEmail:e=>this.setState({aEmail:e.target.value}),
+      aPw:st.aPw,onAPw:e=>this.setState({aPw:e.target.value}),
+      aDongLabel:st.dongOk?'역삼동 인증 완료 ✓':'현재 위치로 우리 동네를 인증해요',
+      verifyDong:()=>this.setState({dongOk:true}),
+      dongBtnStyle:'border-radius:9px;padding:7px 12px;font-weight:800;font-size:12.5px;cursor:pointer;flex:none;'+(st.dongOk?'background:#e9f6ec;color:#166b3a':'background:#1f8a4c;color:#fff'),
+      dongBtnLabel:st.dongOk?'인증됨 ✓':'인증하기',
+      authSubmit:()=>{if(authOk)enterApp();},
+      authBtnStyle:'border-radius:12px;padding:13px;text-align:center;font-weight:800;font-size:15px;cursor:pointer;'+(authOk?'background:#1f8a4c;color:#fff':'background:#e6efe4;color:#8a9a8e'),
+      authBtnLabel:isSignup?'가입하고 시작하기':'로그인',
+      authSocial:enterApp,
+      authSwitchHint:isSignup?'이미 파티원이신가요?':'아직 계정이 없나요?',
+      authSwitchLabel:isSignup?'로그인':'회원가입',
+      authSwitch:()=>this.setState({authMode:isSignup?'login':'signup'}),
+      doLogout:()=>this.setState({page:'login',profileOpen:false,authMode:'login',aPw:''}),
       nav,pageTitle:pages[st.page]||'홈',
       goNew:()=>this.setState({page:'new',profileOpen:false}),
       goHome:()=>this.setState({page:'home'}),goMy:()=>this.setState({page:'my'}),
