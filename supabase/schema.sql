@@ -219,6 +219,318 @@ begin
 end $$;
 
 -- ─────────────────────────────────────────────
+-- 2-1. 정산·지갑 RPC (#15~18, 팀원 C)
+--
+-- ⚠️ #9(시스템 메시지 post_system_message RPC)가 아직 main에 없어서, 그 사이엔
+-- emit_sys_message 를 자체 구현해 쓴다. #9가 머지되면 emit_sys_message 를 지우고
+-- 그 안의 post_system_message 호출로 교체할 것.
+-- ⚠️ #5(join_group_buy)가 아직 없어서 participations.amount_due 초기값을 넣어주는
+-- 주체가 없다 — 정산 시작 전까지는 amount_due 가 null 일 수 있다는 전제로 짰다.
+-- ─────────────────────────────────────────────
+
+-- 채팅방이 없으면(#8 트리거 미병합) 조용히 무시한다 — 다른 RPC를 막지 않기 위해.
+create or replace function public.emit_sys_message(p_group_buy_id bigint, p_text text) returns void
+language plpgsql security definer set search_path = public as $$
+declare v_room_id bigint;
+begin
+  select id into v_room_id from public.chat_rooms where group_buy_id = p_group_buy_id;
+  if v_room_id is null then return; end if;
+
+  insert into public.messages (room_id, user_id, kind, content)
+  values (v_room_id, null, 'sys', p_text);
+end $$;
+
+-- 확정 총액을 참여자 수만큼 균등 분배하고, 항목·배달비 나머지는 모두 주최자가 흡수한다.
+-- (CLAUDE.md 규칙 4·5 — 배달비 항상 균등, 1/N 나머지는 주최자 부담)
+create or replace function public.apply_settlement_split(
+  p_group_buy_id bigint,
+  p_total_amount int,
+  p_delivery_fee int
+) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_host_id uuid;
+  v_n int;
+  v_item_total int;
+  v_item_base int;
+  v_item_remainder int;
+  v_delivery_base int;
+  v_delivery_remainder int;
+begin
+  select host_id into v_host_id from public.group_buys where id = p_group_buy_id;
+  select count(*) into v_n from public.participations where group_buy_id = p_group_buy_id;
+  if v_n = 0 then return; end if;
+
+  v_item_total := p_total_amount - p_delivery_fee;
+  v_item_base := v_item_total / v_n;
+  v_item_remainder := v_item_total - v_item_base * v_n;
+  v_delivery_base := p_delivery_fee / v_n;
+  v_delivery_remainder := p_delivery_fee - v_delivery_base * v_n;
+
+  update public.participations
+    set amount_due = v_item_base + v_delivery_base
+  where group_buy_id = p_group_buy_id and user_id <> v_host_id;
+
+  update public.participations
+    set amount_due = v_item_base + v_item_remainder + v_delivery_base + v_delivery_remainder
+  where group_buy_id = p_group_buy_id and user_id = v_host_id;
+end $$;
+
+-- 정산 시작/총액 확정 (#15). 영수증 있으면 즉시 확정, 없으면 과반 동의 대기(pending).
+create or replace function public.confirm_settlement(
+  p_group_buy_id bigint,
+  p_total_amount int,
+  p_delivery_fee int default 0,
+  p_receipt_url text default null
+) returns bigint
+language plpgsql security definer set search_path = public as $$
+declare
+  v_host_id uuid;
+  v_settlement_id bigint;
+  v_status text;
+begin
+  select host_id into v_host_id from public.group_buys where id = p_group_buy_id;
+  if v_host_id is null then
+    raise exception '공구를 찾을 수 없습니다';
+  end if;
+  if v_host_id <> auth.uid() then
+    raise exception '주최자만 총액을 확정할 수 있습니다';
+  end if;
+  if p_total_amount <= 0 then
+    raise exception '총액은 0보다 커야 합니다';
+  end if;
+
+  v_status := case when p_receipt_url is not null then 'confirmed' else 'pending' end;
+
+  insert into public.settlements (group_buy_id, total_amount, delivery_fee, receipt_url, status, confirmed_at)
+  values (p_group_buy_id, p_total_amount, p_delivery_fee, p_receipt_url, v_status,
+          case when v_status = 'confirmed' then now() else null end)
+  on conflict (group_buy_id) do update
+    set total_amount = excluded.total_amount,
+        delivery_fee = excluded.delivery_fee,
+        receipt_url = excluded.receipt_url,
+        status = excluded.status,
+        confirmed_at = excluded.confirmed_at
+  returning id into v_settlement_id;
+
+  if v_status = 'confirmed' then
+    perform public.apply_settlement_split(p_group_buy_id, p_total_amount, p_delivery_fee);
+    perform public.emit_sys_message(p_group_buy_id,
+      '🧾 영수증 인증 완료 · 총 ' || to_char(p_total_amount, 'FM999,999,999') || '원 · 금액 잠금');
+  else
+    perform public.emit_sys_message(p_group_buy_id,
+      '총 ' || to_char(p_total_amount, 'FM999,999,999') || '원으로 정산 요청 · 영수증 없이 참여자 과반 동의로 확정돼요');
+  end if;
+
+  return v_settlement_id;
+end $$;
+
+-- 영수증 없을 때 과반 동의로 확정 (#15). 본인 투표는 settlement_votes_own 정책으로
+-- 클라이언트가 먼저 직접 insert 한 뒤, 이 RPC로 과반 여부를 판정·확정한다.
+create or replace function public.finalize_settlement_vote(p_settlement_id bigint) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare
+  v_group_buy_id bigint;
+  v_total_amount int;
+  v_delivery_fee int;
+  v_status text;
+  v_n int;
+  v_agree int;
+begin
+  select group_buy_id, total_amount, delivery_fee, status
+    into v_group_buy_id, v_total_amount, v_delivery_fee, v_status
+  from public.settlements where id = p_settlement_id;
+
+  if v_group_buy_id is null then
+    raise exception '정산 정보를 찾을 수 없습니다';
+  end if;
+  if v_status = 'confirmed' then
+    return true;
+  end if;
+
+  select count(*) into v_n from public.participations where group_buy_id = v_group_buy_id;
+  select count(*) into v_agree from public.settlement_votes
+    where settlement_id = p_settlement_id and agree = true;
+
+  if v_agree * 2 <= v_n then
+    return false;
+  end if;
+
+  update public.settlements set status = 'confirmed', confirmed_at = now() where id = p_settlement_id;
+  perform public.apply_settlement_split(v_group_buy_id, v_total_amount, v_delivery_fee);
+  perform public.emit_sys_message(v_group_buy_id,
+    '✅ 참여자 과반 동의로 총 ' || to_char(v_total_amount, 'FM999,999,999') || '원 확정 · 금액 잠금');
+
+  return true;
+end $$;
+
+-- 정산 분배 개별 조정 (#16). 배달비 제외 항목 금액만 조정 가능하고, 주최자 본인 몫은
+-- 나머지로 자동 계산돼 합계가 항상 settlements.total_amount 와 같게 유지된다.
+create or replace function public.adjust_participation_amount(p_participation_id bigint, p_new_amount int)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_group_buy_id bigint;
+  v_target_user uuid;
+  v_host_id uuid;
+  v_old_amount int;
+  v_host_participation_id bigint;
+  v_host_amount int;
+  v_delta int;
+begin
+  select group_buy_id, user_id, coalesce(amount_due, 0)
+    into v_group_buy_id, v_target_user, v_old_amount
+  from public.participations where id = p_participation_id;
+
+  if v_group_buy_id is null then
+    raise exception '참여 정보를 찾을 수 없습니다';
+  end if;
+
+  select host_id into v_host_id from public.group_buys where id = v_group_buy_id;
+  if v_host_id <> auth.uid() then
+    raise exception '주최자만 금액을 조정할 수 있습니다';
+  end if;
+  if v_target_user = v_host_id then
+    raise exception '주최자 본인 몫은 나머지로 자동 계산됩니다';
+  end if;
+  if p_new_amount < 0 then
+    raise exception '금액은 0 이상이어야 합니다';
+  end if;
+
+  select id, coalesce(amount_due, 0) into v_host_participation_id, v_host_amount
+  from public.participations where group_buy_id = v_group_buy_id and user_id = v_host_id;
+
+  v_delta := p_new_amount - v_old_amount;
+
+  update public.participations set amount_due = p_new_amount where id = p_participation_id;
+  update public.participations set amount_due = v_host_amount - v_delta where id = v_host_participation_id;
+end $$;
+
+-- 전원 입금 완료 시 공구 마감 + 신뢰도 반영 (#17). pay_with_wallet·confirm_self_paid 에서
+-- 입금 처리 직후 호출한다 — 직접 노출하지 않는다.
+create or replace function public.complete_group_buy_if_all_paid(p_group_buy_id bigint) returns void
+language plpgsql security definer set search_path = public as $$
+declare v_unpaid int;
+begin
+  select count(*) into v_unpaid from public.participations
+  where group_buy_id = p_group_buy_id and is_paid = false;
+
+  if v_unpaid > 0 then return; end if;
+
+  update public.group_buys set status = 'completed' where id = p_group_buy_id;
+
+  update public.profiles set trust_score = trust_score + 1
+  where id in (select user_id from public.participations where group_buy_id = p_group_buy_id);
+
+  perform public.emit_sys_message(p_group_buy_id, '🎉 전원 입금 완료 — 공구가 마감됐어요! 정산 신뢰도가 올랐어요 ⭐');
+end $$;
+
+-- 미입금자 리마인드 (#17). 주최자만 호출 가능.
+create or replace function public.remind_unpaid(p_group_buy_id bigint) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_host_id uuid;
+  v_names text;
+begin
+  select host_id into v_host_id from public.group_buys where id = p_group_buy_id;
+  if v_host_id <> auth.uid() then
+    raise exception '주최자만 리마인드를 보낼 수 있습니다';
+  end if;
+
+  select string_agg(p.nickname, ', ') into v_names
+  from public.participations pt join public.profiles p on p.id = pt.user_id
+  where pt.group_buy_id = p_group_buy_id and pt.is_paid = false;
+
+  if v_names is null then return; end if;
+
+  perform public.emit_sys_message(p_group_buy_id, '🔔 아직 입금 안 하신 분들 확인해주세요 — ' || v_names);
+end $$;
+
+-- 대파페이 잔액 결제 (#18). 검증→차감→입금 처리→내역 기록을 한 트랜잭션(RPC 1회 호출)
+-- 안에서 원자적으로 처리한다. `for update` 로 잔액 행을 잠가 동시 결제 레이스를 막는다.
+create or replace function public.pay_with_wallet(p_participation_id bigint) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_group_buy_id bigint;
+  v_user_id uuid;
+  v_amount int;
+  v_is_paid boolean;
+  v_balance int;
+  v_title text;
+begin
+  select group_buy_id, user_id, amount_due, is_paid
+    into v_group_buy_id, v_user_id, v_amount, v_is_paid
+  from public.participations where id = p_participation_id;
+
+  if v_group_buy_id is null then
+    raise exception '참여 정보를 찾을 수 없습니다';
+  end if;
+  if v_user_id <> auth.uid() then
+    raise exception '본인 결제만 처리할 수 있습니다';
+  end if;
+  if v_is_paid then
+    raise exception '이미 입금 완료된 참여입니다';
+  end if;
+  if v_amount is null then
+    raise exception '정산 총액이 아직 확정되지 않았습니다';
+  end if;
+
+  select balance into v_balance from public.wallets where user_id = v_user_id for update;
+  if v_balance < v_amount then
+    raise exception '잔액이 부족합니다';
+  end if;
+
+  update public.wallets set balance = balance - v_amount where user_id = v_user_id;
+  update public.participations set is_paid = true, paid_at = now() where id = p_participation_id;
+
+  select title into v_title from public.group_buys where id = v_group_buy_id;
+  insert into public.wallet_transactions (user_id, kind, amount, group_buy_id, title)
+  values (v_user_id, 'pay', -v_amount, v_group_buy_id, v_title || ' 정산');
+
+  perform public.emit_sys_message(v_group_buy_id,
+    '파티원님이 ' || to_char(v_amount, 'FM999,999,999') || '원 입금 완료 ✓ (대파페이)');
+
+  perform public.complete_group_buy_if_all_paid(v_group_buy_id);
+end $$;
+
+-- 계좌·토스 셀프 체크 (#17·#18 — 대파페이가 아니라서 잔액 이동은 없다).
+create or replace function public.confirm_self_paid(p_participation_id bigint, p_method text) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_group_buy_id bigint;
+  v_user_id uuid;
+  v_amount int;
+  v_is_paid boolean;
+  v_label text;
+begin
+  if p_method not in ('account', 'toss') then
+    raise exception '잘못된 입금 수단입니다';
+  end if;
+
+  select group_buy_id, user_id, amount_due, is_paid
+    into v_group_buy_id, v_user_id, v_amount, v_is_paid
+  from public.participations where id = p_participation_id;
+
+  if v_group_buy_id is null then
+    raise exception '참여 정보를 찾을 수 없습니다';
+  end if;
+  if v_user_id <> auth.uid() then
+    raise exception '본인 입금만 체크할 수 있습니다';
+  end if;
+  if v_is_paid then
+    raise exception '이미 입금 완료된 참여입니다';
+  end if;
+
+  update public.participations set is_paid = true, paid_at = now() where id = p_participation_id;
+
+  v_label := case p_method when 'account' then '계좌 이체' else '토스 송금' end;
+  perform public.emit_sys_message(v_group_buy_id,
+    '파티원님이 ' || to_char(v_amount, 'FM999,999,999') || '원 입금 완료 ✓ (' || v_label || ' · 셀프 체크)');
+
+  perform public.complete_group_buy_if_all_paid(v_group_buy_id);
+end $$;
+
+-- ─────────────────────────────────────────────
 -- 3. ⚠️ 설계 규약 — 상태 전이·타인 행 쓰기는 RPC로만
 --
 -- group_buys.status / joined / goal, 시스템 메시지(kind='sys'),
@@ -234,7 +546,11 @@ end $$;
 --   #8  공구 생성 트리거         chat_rooms 자동 생성 + 주최자 participations 삽입.
 --                               chat_rooms 에도 INSERT 정책이 없다.
 --   #9  시스템 메시지            kind='sys' 는 클라이언트 INSERT 가 막혀 있어 RPC/트리거로만 기록.
---   #12 금액 변경 / #13 알림 / #16 분배 / #17 입금·마감 / #18 자동결제
+--   #12 금액 변경 / #13 알림
+--   #15 confirm_settlement·finalize_settlement_vote — ✅ 추가됨 (섹션 2-1)
+--   #16 adjust_participation_amount               — ✅ 추가됨 (섹션 2-1)
+--   #17 complete_group_buy_if_all_paid·remind_unpaid — ✅ 추가됨 (섹션 2-1)
+--   #18 pay_with_wallet·confirm_self_paid          — ✅ 추가됨 (섹션 2-1)
 --   #29 cancel_group_buy(id)   주최자 취소 → canceled. 현재 canceled 로 가는 경로가 없다.
 --
 -- 참고 구현: 브랜치 `feat/#1-supabase-schema` 에 join_group_buy·공구 생성 트리거 원본이 있다.
@@ -329,6 +645,30 @@ revoke execute on function public.handle_new_user() from public, anon, authentic
 revoke execute on function public.on_group_buy_created() from public, anon, authenticated;
 revoke execute on function public.sync_chat_room_name() from public, anon, authenticated;
 revoke execute on function public.post_system_message(bigint, text) from public, anon, authenticated;
+
+-- 정산·지갑 RPC (#15~18) — emit_sys_message·apply_settlement_split·
+-- complete_group_buy_if_all_paid 는 다른 RPC 안에서만 쓰는 내부 함수라 authenticated 에도 안 연다.
+revoke execute on function public.emit_sys_message(bigint, text) from public, anon, authenticated;
+revoke execute on function public.apply_settlement_split(bigint, int, int) from public, anon, authenticated;
+revoke execute on function public.complete_group_buy_if_all_paid(bigint) from public, anon, authenticated;
+
+revoke execute on function public.confirm_settlement(bigint, int, int, text) from public, anon;
+grant  execute on function public.confirm_settlement(bigint, int, int, text) to authenticated;
+
+revoke execute on function public.finalize_settlement_vote(bigint) from public, anon;
+grant  execute on function public.finalize_settlement_vote(bigint) to authenticated;
+
+revoke execute on function public.adjust_participation_amount(bigint, int) from public, anon;
+grant  execute on function public.adjust_participation_amount(bigint, int) to authenticated;
+
+revoke execute on function public.pay_with_wallet(bigint) from public, anon;
+grant  execute on function public.pay_with_wallet(bigint) to authenticated;
+
+revoke execute on function public.confirm_self_paid(bigint, text) from public, anon;
+grant  execute on function public.confirm_self_paid(bigint, text) to authenticated;
+
+revoke execute on function public.remind_unpaid(bigint) from public, anon;
+grant  execute on function public.remind_unpaid(bigint) to authenticated;
 
 -- ⚠️ 앞으로 security definer RPC 를 추가할 때마다 아래 두 줄을 같이 넣어라.
 -- security definer 함수는 PUBLIC 에 EXECUTE 가 열리고, Supabase 기본 default privileges 가
