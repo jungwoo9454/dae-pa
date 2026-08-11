@@ -1,9 +1,13 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Avatar } from "@/components/ui";
 import { fmt, perAmount, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
+
+/** 입장 시 보여줄 최근 메시지 수 — Supabase 연동 후엔 이 값으로 쿼리 limit을 건다 */
+const RECENT_LIMIT = 100;
 
 interface RoomDef {
   id: string;
@@ -57,7 +61,15 @@ export default function ChatView() {
     }));
   const bySearch = (r: RoomDef) => !search || r.name.includes(search);
   const current = [...loungeRooms, ...dealRooms].find((r) => r.id === room) ?? loungeRooms[0];
-  const roomMsgs = msgs[current.id] ?? [];
+  const allMsgs = msgs[current.id] ?? [];
+  const roomMsgs = allMsgs.slice(-RECENT_LIMIT);
+
+  // 방 전환·새 메시지 시 항상 최신 메시지가 보이도록 하단 고정
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [current.id, allMsgs.length]);
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -85,7 +97,13 @@ export default function ChatView() {
           </b>
           <span className="flex-none whitespace-nowrap text-xs text-[#6b8573]">{current.sub}</span>
         </div>
-        <div className="flex flex-1 flex-col gap-2.5 overflow-auto bg-[#fbfdf9] px-[18px] py-4">
+        <div ref={scrollRef} className="flex flex-1 flex-col gap-2.5 overflow-auto bg-[#fbfdf9] px-[18px] py-4">
+          {roomMsgs.length === 0 && (
+            <div className="m-auto text-center text-[13px] text-[#8aa392]">
+              아직 대화가 없어요
+              <div className="mt-1 text-xs">첫 메시지를 보내 이웃과 이야기를 시작해보세요</div>
+            </div>
+          )}
           {roomMsgs.map((mg, i) => {
             if (mg.kind === "sys") {
               return (
@@ -124,7 +142,7 @@ export default function ChatView() {
                   <Avatar ch={mg.who[0] ?? "?"} />
                   <div>
                     <div className="mb-[3px] ml-1 text-[11.5px] text-[#8aa392]">{mg.who}</div>
-                    <div className="rounded-[4px_16px_16px_16px] border border-[#e2eee2] bg-white px-[13px] py-[9px] leading-normal">
+                    <div className="whitespace-pre-wrap break-words rounded-[4px_16px_16px_16px] border border-[#e2eee2] bg-white px-[13px] py-[9px] leading-normal">
                       {mg.text}
                     </div>
                   </div>
@@ -134,7 +152,7 @@ export default function ChatView() {
             return (
               <div
                 key={i}
-                className="max-w-[72%] self-end rounded-[16px_4px_16px_16px] bg-[#1f8a4c] px-[13px] py-[9px] leading-normal text-white"
+                className="max-w-[72%] self-end whitespace-pre-wrap break-words rounded-[16px_4px_16px_16px] bg-[#1f8a4c] px-[13px] py-[9px] leading-normal text-white"
               >
                 {mg.text}
               </div>
