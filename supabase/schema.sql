@@ -219,12 +219,78 @@ begin
 end $$;
 
 -- ─────────────────────────────────────────────
+-- 2-0. 참여 RPC (#5) — 선착순 정원을 서버에서 원자적으로 처리한다.
+--    클라이언트에서 joined < goal 을 미리 체크해도 동시 클릭 레이스는 못 막는다 —
+--    UPDATE ... WHERE joined < goal ... RETURNING 패턴으로 단일 트랜잭션 안에서
+--    "정원 확인 + 카운터 증가"를 원자적으로 묶는다. 행이 안 돌아오면(not found)
+--    마감·정원 초과·중복 참여 중 하나 — 클라이언트는 이 예외 메시지를 그대로 보여준다.
+-- ─────────────────────────────────────────────
+create or replace function public.join_group_buy(p_group_buy_id bigint)
+returns group_buys
+language plpgsql security definer set search_path = public as $$
+declare
+  g          group_buys;
+  v_nickname text;
+begin
+  if auth.uid() is null then
+    raise exception '로그인이 필요합니다';
+  end if;
+
+  -- 정원(joined < goal) + 모집중(status='recruiting') + 마감 전(deadline > now())
+  -- + 중복 참여 아님을 한 UPDATE의 WHERE 절에서 동시에 검사한다. 행 잠금이 걸리는
+  -- 동안 다른 트랜잭션은 대기하므로 동시 클릭 레이스가 여기서 직렬화된다.
+  -- 정원에 도달하는 참여면 같은 UPDATE에서 바로 settling 으로 전환한다.
+  update public.group_buys
+     set joined = joined + 1,
+         status = case when joined + 1 >= goal then 'settling' else status end
+   where id = p_group_buy_id
+     and status = 'recruiting'
+     and deadline > now()
+     and joined < goal
+     and not exists (
+       select 1 from public.participations p
+        where p.group_buy_id = group_buys.id and p.user_id = auth.uid()
+     )
+  returning * into g;
+
+  if not found then
+    raise exception '참여할 수 없는 공구입니다 (마감·정원 초과·중복 참여)';
+  end if;
+
+  -- participations 에 INSERT 정책이 없으므로(설계 규약, 섹션 3) 이 RPC 안에서만 넣을 수 있다.
+  -- unique(group_buy_id, user_id) 제약이 위 not exists 체크의 최종 안전망 역할도 한다.
+  insert into public.participations (group_buy_id, user_id) values (g.id, auth.uid());
+
+  select nickname into v_nickname from public.profiles where id = auth.uid();
+
+  perform public.post_system_message(g.id,
+    v_nickname || '님이 참여했어요 (' || g.joined || '/' || g.goal || ')');
+
+  -- 주최자에게 참여 알림 (#13 'join' 타입 — 아이콘은 noti-popover.tsx ICON 맵에 이미 있음)
+  insert into public.notifications (user_id, type, payload)
+  values (g.host_id, 'join',
+    jsonb_build_object('dealId', g.id, 'text', v_nickname || '님이 ' || g.title || ' 공구에 참여했어요'));
+
+  -- 정원 도달 → 자동 정산 전환 + 참여자 전원에게 알림
+  if g.status = 'settling' then
+    perform public.post_system_message(g.id, '목표 달성! 정산이 시작돼요 🎉');
+
+    insert into public.notifications (user_id, type, payload)
+    select p.user_id, 'settle_start',
+           jsonb_build_object('dealId', g.id, 'text', g.title || ' 목표 달성! 정산이 시작돼요')
+      from public.participations p where p.group_buy_id = g.id;
+  end if;
+
+  return g;
+end $$;
+
+-- ─────────────────────────────────────────────
 -- 2-1. 정산·지갑 RPC (#15~18, 팀원 C)
 --
 -- 시스템 메시지는 #9의 post_system_message(group_buy_id, text) 를 그대로 호출한다.
 -- 문구는 lib/sys-messages.ts 의 sysText 와 맞춘다.
--- ⚠️ #5(join_group_buy)가 아직 없어서 participations.amount_due 초기값을 넣어주는
--- 주체가 없다 — 정산 시작 전까지는 amount_due 가 null 일 수 있다는 전제로 짰다.
+-- amount_due 는 join_group_buy 에서도 안 채운다(설계상 정산 시작 전까지 계속 null) —
+-- apply_settlement_split 이 정산 확정 시점에 한 번에 채운다.
 -- ─────────────────────────────────────────────
 
 -- 확정 총액을 참여자 수만큼 균등 분배하고, 항목·배달비 나머지는 모두 주최자가 흡수한다.
@@ -566,9 +632,7 @@ end $$;
 --
 -- 이 파일(#1)은 테이블·RLS·GRANT까지만 담는다. 아래 RPC는 각 담당 이슈에서 추가한다:
 --
---   #5  join_group_buy(id)      선착순 정원 원자 처리 (UPDATE ... WHERE joined < goal
---                               AND status='recruiting' RETURNING). 정원 도달 시 settling 전환.
---                               ⚠️ participations 에 INSERT 정책이 없으므로 이 RPC 없이는 참여 불가.
+--   #5  join_group_buy(id)      — ✅ 추가됨 (섹션 2-0). 선착순 정원 원자 처리.
 --   #8  공구 생성 트리거         — ✅ 추가됨 (섹션 2, on_group_buy_created)
 --   #9  시스템 메시지            — ✅ 추가됨 (섹션 2, post_system_message)
 --   #12 금액 변경 / #13 알림
@@ -613,7 +677,7 @@ create policy group_buys_host_update on group_buys for update to authenticated
   with check (host_id = auth.uid());
 
 create policy participations_read on participations for select to authenticated using (true);
--- INSERT 정책 없음 → 참여는 #5 에서 추가할 join_group_buy RPC 로만 가능 (동시 클릭 레이스 차단)
+-- INSERT 정책 없음 → 참여는 join_group_buy RPC 로만 가능 (동시 클릭 레이스 차단, 섹션 2-0)
 create policy participations_own_update on participations for update to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 
@@ -670,6 +734,10 @@ revoke execute on function public.handle_new_user() from public, anon, authentic
 revoke execute on function public.on_group_buy_created() from public, anon, authenticated;
 revoke execute on function public.sync_chat_room_name() from public, anon, authenticated;
 revoke execute on function public.post_system_message(bigint, text) from public, anon, authenticated;
+
+-- 참여 RPC (#5) — 클라이언트(참여 버튼)에서 직접 호출한다
+revoke execute on function public.join_group_buy(bigint) from public, anon;
+grant  execute on function public.join_group_buy(bigint) to authenticated;
 
 -- 정산·지갑 RPC (#15~18) — apply_settlement_split·complete_group_buy_if_all_paid 는
 -- 다른 RPC 안에서만 쓰는 내부 함수라 authenticated 에도 안 연다.

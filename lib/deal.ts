@@ -61,8 +61,9 @@ export function remainLabel(d: Deal, now: number) {
   return (dd > 0 ? dd + "일 " : "") + p(h) + ":" + p(m) + ":" + p(ss);
 }
 
+/** 1인당 금액 = 총 금액 ÷ 현재 참여자 수 (목표 인원이 아니라 joined) — docs/PLANNING.md 4.2 */
 export function perAmount(d: Deal) {
-  return Math.ceil(d.total / d.goal);
+  return Math.ceil(d.total / Math.max(1, d.joined));
 }
 
 export function splitEven(amount: number, n: number) {
