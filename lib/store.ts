@@ -251,6 +251,8 @@ interface StoreState {
   payNow: (dealId: number) => void;
   confirmSelfPaid: (dealId: number, method: "account" | "toss") => void;
   remindUnpaid: (dealId: number) => void;
+  /** 주최자 취소 (#29) — 모집중·정산중이면 canceled 로 보낸다. 실패하면 사유 문구를 돌려준다 */
+  cancelDeal: (dealId: number) => Promise<string | null>;
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => Promise<void>;
@@ -823,6 +825,22 @@ export const useStore = create<StoreState>((set, get) => ({
       ];
       return { msgs };
     }),
+
+  // 시스템 메시지·참여자 알림은 서버 RPC 가 넣는다 (채팅은 Realtime 으로 따라온다).
+  // 목록은 홈에서 fetchDeals() 로 다시 읽고 useRealtimeDeals 가 group_buys UPDATE 도
+  // 받으므로, 성공했을 때만 화면 상태를 바꾼다 (홈 밖에서 취소한 경우를 위해 남겨둔다).
+  cancelDeal: async (dealId) => {
+    const deal = get().deals.find((d) => d.id === dealId);
+    if (!deal || !deal.mine) return "주최자만 취소할 수 있어요";
+    if (deal.status !== "recruiting" && deal.status !== "settling") return "이미 마감된 공구예요";
+    const { error } = await createClient().rpc("cancel_group_buy", { p_group_buy_id: dealId });
+    // RPC 의 raise exception 문구가 그대로 온다 — 그걸 화면에 보여준다
+    if (error) return error.message;
+    set((st) => ({
+      deals: st.deals.map((d) => (d.id === dealId ? { ...d, status: "canceled" as const } : d)),
+    }));
+    return null;
+  },
 
   toggleTopup: () => set((st) => ({ topupOpen: !st.topupOpen })),
   setTopupAmt: (v) => set({ topupAmt: v }),

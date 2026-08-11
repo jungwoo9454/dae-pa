@@ -557,6 +557,78 @@ begin
 end $$;
 
 -- ─────────────────────────────────────────────
+-- 2-2. 공구 취소 RPC (#29, 팀원 A)
+-- ─────────────────────────────────────────────
+
+-- 주최자 취소 (#29). 기획안 상태 머신의 "어느 단계에서든 주최자 취소 → canceled" 경로.
+-- group_buys.status 는 컬럼 GRANT 로 클라이언트 UPDATE 가 막혀 있어 이 RPC 로만 canceled 가 된다.
+-- 취소 시 부수효과: 채팅방 시스템 메시지 + 참여자 전원 알림(type='cancel').
+create or replace function public.cancel_group_buy(p_group_buy_id bigint) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_host_id uuid;
+  v_status  text;
+  v_title   text;
+  v_refund  record;
+begin
+  select host_id, status, title into v_host_id, v_status, v_title
+  from public.group_buys where id = p_group_buy_id for update;
+
+  if v_host_id is null then
+    raise exception '공구를 찾을 수 없습니다';
+  end if;
+  if v_host_id <> auth.uid() then
+    raise exception '주최자만 공구를 취소할 수 있습니다';
+  end if;
+  if v_status not in ('recruiting', 'settling') then
+    raise exception '이미 마감되었거나 취소된 공구입니다';
+  end if;
+
+  update public.group_buys set status = 'canceled' where id = p_group_buy_id;
+
+  -- 문구는 lib/sys-messages.ts 의 sysText.canceled() 와 맞춘다.
+  perform public.post_system_message(p_group_buy_id, '🚫 주최자가 공구를 취소했어요');
+
+  -- 대파페이로 이미 낸 참여자 환불. pay_with_wallet 이 잔액만 깎았으니 그대로 되돌린다
+  -- (계좌·토스로 낸 사람은 앱 밖 송금이라 주최자가 직접 돌려줘야 한다 — 아래 안내 메시지).
+  for v_refund in
+    select user_id, -amount as amt from public.wallet_transactions
+    where group_buy_id = p_group_buy_id and kind = 'pay'
+  loop
+    update public.wallets set balance = balance + v_refund.amt where user_id = v_refund.user_id;
+    insert into public.wallet_transactions (user_id, kind, amount, group_buy_id, title)
+    values (v_refund.user_id, 'receive', v_refund.amt, p_group_buy_id, v_title || ' 취소 환불');
+
+    insert into public.notifications (user_id, type, payload)
+    values (v_refund.user_id, 'cancel',
+            jsonb_build_object('text', v_title || ' 취소 · 대파페이 '
+              || to_char(v_refund.amt, 'FM999,999,999') || '원 환불됐어요', 'dealId', p_group_buy_id));
+  end loop;
+
+  -- 앱 밖(계좌·토스)으로 낸 사람이 있으면 채팅방에 환불 안내를 남긴다.
+  -- 문구는 lib/sys-messages.ts 의 sysText.cancelRefundOffApp() 와 맞춘다.
+  if exists (
+    select 1 from public.participations pt
+    where pt.group_buy_id = p_group_buy_id and pt.is_paid
+      and not exists (select 1 from public.wallet_transactions w
+                      where w.group_buy_id = p_group_buy_id and w.kind = 'pay' and w.user_id = pt.user_id)
+  ) then
+    perform public.post_system_message(p_group_buy_id,
+      '💸 계좌·토스로 입금한 분은 주최자가 직접 환불해 주세요');
+  end if;
+
+  -- 주최자 본인은 뺀다 (본인이 누른 행동이라 알림이 의미 없다).
+  -- 환불 알림을 이미 받은 사람도 뺀다 — 같은 사실을 두 번 알리지 않는다.
+  insert into public.notifications (user_id, type, payload)
+  select pt.user_id, 'cancel',
+         jsonb_build_object('text', v_title || ' 공구가 취소됐어요', 'dealId', p_group_buy_id)
+  from public.participations pt
+  where pt.group_buy_id = p_group_buy_id and pt.user_id <> v_host_id
+    and not exists (select 1 from public.wallet_transactions w
+                    where w.group_buy_id = p_group_buy_id and w.kind = 'pay' and w.user_id = pt.user_id);
+end $$;
+
+-- ─────────────────────────────────────────────
 -- 3. ⚠️ 설계 규약 — 상태 전이·타인 행 쓰기는 RPC로만
 --
 -- group_buys.status / joined / goal, 시스템 메시지(kind='sys'),
@@ -576,7 +648,7 @@ end $$;
 --   #16 adjust_participation_amount               — ✅ 추가됨 (섹션 2-1)
 --   #17 complete_group_buy_if_all_paid·remind_unpaid — ✅ 추가됨 (섹션 2-1)
 --   #18 pay_with_wallet·confirm_self_paid          — ✅ 추가됨 (섹션 2-1)
---   #29 cancel_group_buy(id)   주최자 취소 → canceled. 현재 canceled 로 가는 경로가 없다.
+--   #29 cancel_group_buy(id)   주최자 취소 → canceled          — ✅ 추가됨 (섹션 2-2)
 --
 -- 참고 구현: 브랜치 `feat/#1-supabase-schema` 에 join_group_buy·공구 생성 트리거 원본이 있다.
 -- ─────────────────────────────────────────────
@@ -693,6 +765,9 @@ grant  execute on function public.confirm_self_paid(bigint, text) to authenticat
 
 revoke execute on function public.remind_unpaid(bigint) from public, anon;
 grant  execute on function public.remind_unpaid(bigint) to authenticated;
+
+revoke execute on function public.cancel_group_buy(bigint) from public, anon;
+grant  execute on function public.cancel_group_buy(bigint) to authenticated;
 
 revoke execute on function public.topup_wallet(int) from public, anon;
 grant  execute on function public.topup_wallet(int) to authenticated;
