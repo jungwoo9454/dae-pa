@@ -982,6 +982,8 @@ alter publication supabase_realtime add table messages;
 alter publication supabase_realtime add table notifications;
 alter publication supabase_realtime add table wallets;
 alter publication supabase_realtime add table wallet_transactions;
+alter publication supabase_realtime add table settlements;
+alter publication supabase_realtime add table settlement_votes;
 
 -- ─────────────────────────────────────────────
 -- 7. Storage — 미사용
