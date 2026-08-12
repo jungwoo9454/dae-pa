@@ -53,15 +53,12 @@ export default function AuthView() {
   const auth = useStore((s) => s.auth);
   const dongOk = useStore((s) => s.dongOk);
   const dongValue = useStore((s) => s.dongValue);
-  const dongBusy = useStore((s) => s.dongBusy);
-  const dongDetail = useStore((s) => s.dongDetail);
   const setDongValue = useStore((s) => s.setDongValue);
   const confirmDong = useStore((s) => s.confirmDong);
   const authBusy = useStore((s) => s.authBusy);
   const authError = useStore((s) => s.authError);
   const setAuth = useStore((s) => s.setAuth);
   const switchAuthMode = useStore((s) => s.switchAuthMode);
-  const verifyDong = useStore((s) => s.verifyDong);
   const signIn = useStore((s) => s.signIn);
   const signUp = useStore((s) => s.signUp);
   const signInWithOAuth = useStore((s) => s.signInWithOAuth);
@@ -164,24 +161,11 @@ export default function AuthView() {
                 <div className="flex-1">
                   <div className="text-[13.5px] font-extrabold">동네 인증</div>
                   <div className="text-xs text-[#6b8573]">
-                    {dongOk
-                      ? `${dongValue} 인증 완료 ✓`
-                      : dongBusy
-                        ? "접속 위치를 확인하는 중…"
-                        : dongDetail || "접속 위치(IP)로 우리 동네를 확인해요"}
+                    {dongOk ? `${dongValue} 인증 완료 ✓` : "우리 동네를 직접 적어주세요"}
                   </div>
                 </div>
-                <div
-                  onClick={() => void verifyDong()}
-                  className={`flex-none cursor-pointer rounded-[9px] px-3 py-[7px] text-[12.5px] font-extrabold hover:brightness-105 ${
-                    dongOk ? "bg-[#e9f6ec] text-[#166b3a]" : "bg-[#1f8a4c] text-white"
-                  }`}
-                >
-                  {dongOk ? "다시 확인" : dongBusy ? "확인 중…" : "위치 확인"}
-                </div>
               </div>
-              {/* GeoIP 는 시/구까지만 맞는다 — 동 이름은 사용자가 고쳐서 확정한다 (#83) */}
-              {dongDetail && !dongOk && (
+              {!dongOk && (
                 <div className="flex gap-2">
                   <input
                     value={dongValue}

@@ -7,9 +7,6 @@ import { sysText } from "./sys-messages";
 import type { GroupBuyRow } from "./db-types";
 import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, Noti, PageKey, Room } from "./types";
 
-/** IP 판정이 안 될 때(로컬·사설 IP) 쓰는 기본 동네 (#83) */
-export const DONG = "역삼동";
-
 /** 마감 몇 분 전에 알림을 넣을지 (#13) */
 const DEADLINE_MS = 30 * 60_000;
 
@@ -186,12 +183,8 @@ interface StoreState {
   authBusy: boolean;
   authError: string;
   dongOk: boolean;
-  /** IP 로 추정했거나 사용자가 고친 동네 이름 — 확정 시 profiles.dong 으로 간다 (#83) */
+  /** 사용자가 적은 동네 이름 — 확정 시 profiles.dong 으로 간다 (#83) */
   dongValue: string;
-  /** IP 판정 API 를 부르는 중 */
-  dongBusy: boolean;
-  /** 판정 근거 문구 ("서울 · 강남구" 등). 빈 문자열이면 아직 안 불렀다 */
-  dongDetail: string;
   room: string;
   chatInput: string;
   search: string;
@@ -226,10 +219,8 @@ interface StoreState {
   switchAuthMode: () => void;
   /** bfcache 복원 등으로 남은 authBusy 를 푼다 — 안 풀면 로그인 버튼이 죽는다 (#82) */
   resetAuthBusy: () => void;
-  /** IP 기반 동네 판정 (#83) — /api/verify-dong 결과를 dongValue 에 채운다 */
-  verifyDong: () => Promise<void>;
   setDongValue: (v: string) => void;
-  /** 동네 확정 — 가입 전이면 dongOk 만 켜고, 로그인 상태면 profiles.dong 까지 저장한다 */
+  /** 동네 확정 — 가입 전이면 dongOk 만 켜고, 로그인 상태면 profiles.dong 까지 저장한다 (#83) */
   confirmDong: () => void;
   /** 세션 구독 시작. 정리 함수를 돌려준다 */
   initAuth: () => () => void;
@@ -312,9 +303,7 @@ export const useStore = create<StoreState>((set, get) => ({
   authBusy: false,
   authError: "",
   dongOk: false,
-  dongValue: DONG,
-  dongBusy: false,
-  dongDetail: "",
+  dongValue: "",
   room: "lounge",
   chatInput: "",
   search: "",
@@ -348,18 +337,6 @@ export const useStore = create<StoreState>((set, get) => ({
   switchAuthMode: () =>
     set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup", authError: "" })),
   resetAuthBusy: () => set({ authBusy: false }),
-  verifyDong: async () => {
-    if (get().dongBusy) return;
-    set({ dongBusy: true });
-    try {
-      const res = await fetch("/api/verify-dong");
-      const d = (await res.json()) as { dong: string; detail: string };
-      set({ dongValue: d.dong, dongDetail: d.detail, dongBusy: false });
-    } catch {
-      set({ dongDetail: "위치를 확인하지 못했어요", dongBusy: false });
-    }
-  },
-
   setDongValue: (v) => set({ dongValue: v }),
 
   confirmDong: () => {
