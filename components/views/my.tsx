@@ -14,14 +14,13 @@ export default function MyView() {
   const setMySearch = useStore((s) => s.setMySearch);
   const goRoom = useStore((s) => s.goRoom);
   const openSettle = useStore((s) => s.openSettle);
+  const openDeal = useStore((s) => s.openDeal);
   const deleteDeal = useStore((s) => s.deleteDeal);
   const [askDeleteId, setAskDeleteId] = useState<number | null>(null);
   const [deleteErr, setDeleteErr] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const myDeals = deals.filter((x) => x.me && (!mySearch || x.title.includes(mySearch)));
-  const sel = useStore((s) => s.sel);
-  const go = useStore((s) => s.go);
 
   return (
     <div className="max-w-[860px] flex-1 overflow-auto px-6 py-5">
@@ -39,10 +38,7 @@ export default function MyView() {
           return (
             <div key={m.id}>
               <div
-                onClick={() => {
-                  useStore.setState({ sel: m.id });
-                  go("detail");
-                }}
+                onClick={() => openDeal(m.id)}
                 className="flex cursor-pointer items-center gap-3.5 rounded-[14px] border border-[#dbe9da] bg-white px-4 py-3.5 hover:border-[#1f8a4c] hover:bg-[#f9fdf9]"
               >
                 <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-[#e9f6ec] text-xl">
