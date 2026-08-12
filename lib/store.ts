@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { CAT_EMOJI, joinable, relativeWhen, settleStartable } from "./deal";
+import { isEmoticon } from "./emoticons";
 import { createClient } from "./supabase/client";
 import { subscribePg } from "./supabase/realtime";
 import { sysText } from "./sys-messages";
@@ -58,6 +59,7 @@ const senderCache = new Map<string, { nickname: string | null; avatarUrl: string
 /**
  * messages 행 — 카드 말풍선은 payload.group_buy_id 로 어떤 공구인지 담는다 (#7).
  * 사진 말풍선은 kind 를 그대로 'text' 로 두고 payload.image_url 에 R2 URL 을 담는다 (#15) —
+ * 이모티콘도 같은 방식으로 payload.emoticon 에 시트 칸 번호를 담는다 (#179).
  * 새 kind 를 만들면 messages_own_insert 정책의 kind in ('text','card') 도 같이 고쳐야 한다.
  */
 interface MsgRow {
@@ -66,7 +68,7 @@ interface MsgRow {
   user_id: string | null;
   kind: "text" | "sys" | "card";
   content: string | null;
-  payload: { group_buy_id?: number; image_url?: string } | null;
+  payload: { group_buy_id?: number; image_url?: string; emoticon?: number } | null;
   profiles?: { nickname: string | null; avatar_url?: string | null } | null;
 }
 
@@ -85,8 +87,11 @@ const toMsg = (r: MsgRow, myId: string | null): Msg => {
     return { kind: "card", cardOf: Number(r.payload?.group_buy_id ?? 0), who, id: r.id, avatarUrl };
   }
   const imageUrl = r.payload?.image_url;
-  if (r.user_id && r.user_id === myId) return { kind: "mine", text: r.content ?? "", id: r.id, imageUrl };
-  return { kind: "other", who, text: r.content ?? "", id: r.id, imageUrl, avatarUrl };
+  // 시트를 줄인 뒤 옛 메시지가 남아 있을 수 있어 범위를 확인한다 — 벗어나면 빈 칸이 뜬다
+  const emoticon = isEmoticon(r.payload?.emoticon) ? r.payload.emoticon : undefined;
+  if (r.user_id && r.user_id === myId)
+    return { kind: "mine", text: r.content ?? "", id: r.id, imageUrl, emoticon };
+  return { kind: "other", who, text: r.content ?? "", id: r.id, imageUrl, emoticon, avatarUrl };
 };
 
 /**
@@ -97,7 +102,11 @@ async function insertOwnMsg(
   roomId: number,
   key: string,
   userId: string,
-  row: { kind: "text" | "card"; content?: string; payload?: { group_buy_id?: number; image_url?: string } },
+  row: {
+    kind: "text" | "card";
+    content?: string;
+    payload?: { group_buy_id?: number; image_url?: string; emoticon?: number };
+  },
   render: (id: number) => Msg,
 ) {
   const { data, error } = await createClient()
@@ -278,6 +287,8 @@ interface StoreState {
   sendMsg: () => void;
   /** 사진 말풍선 — kind 는 'text' 그대로, payload.image_url 에 R2 URL 을 담는다 (#15) */
   sendImageMsg: (imageUrl: string) => void;
+  /** 이모티콘 보내기 (#179) — i 는 시트 칸 번호 */
+  sendEmoticon: (i: number) => void;
   /** 대파페이 결제 (#18) — pay_with_wallet RPC. 잔액 검증→차감→입금 처리를 원자적으로 */
   payNow: (participationId: number) => Promise<void>;
   /** 계좌·토스 셀프 체크 (#17) — confirm_self_paid RPC */
@@ -919,6 +930,20 @@ export const useStore = create<StoreState>((set, get) => ({
       st.me.id,
       { kind: "text", content: "", payload: { image_url: imageUrl } },
       (id) => ({ kind: "mine", text: "", imageUrl, id }),
+    );
+  },
+
+  sendEmoticon: (i) => {
+    const st = get();
+    if (roomLocked(st.deals, st.rooms, st.room)) return;
+    const target = st.rooms.find((r) => roomKey(r) === st.room);
+    if (!target || !st.me) return;
+    void insertOwnMsg(
+      target.id,
+      st.room,
+      st.me.id,
+      { kind: "text", content: "", payload: { emoticon: i } },
+      (id) => ({ kind: "mine", text: "", emoticon: i, id }),
     );
   },
 

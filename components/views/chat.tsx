@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { Emoticon, EmoticonPicker } from "@/components/emoticon";
 import { uploadImage } from "@/components/image-upload";
 import { Avatar, StatusBadge, receiptNo } from "@/components/ui";
 import {
@@ -67,8 +68,10 @@ export default function ChatView() {
   const openDeal = useStore((s) => s.openDeal);
   const join = useStore((s) => s.join);
   const sendImageMsg = useStore((s) => s.sendImageMsg);
+  const sendEmoticon = useStore((s) => s.sendEmoticon);
   const photoRef = useRef<HTMLInputElement>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [emoOpen, setEmoOpen] = useState(false);
 
   const sendPhoto = async (file?: File) => {
     if (!file) return;
@@ -134,6 +137,9 @@ export default function ChatView() {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [current?.id, allMsgs.length]);
+
+  // 방을 옮기면 열어둔 이모티콘 창은 닫는다 (새 메시지에는 닫지 않는다 — 고르는 중일 수 있다)
+  useEffect(() => setEmoOpen(false), [current?.id]);
 
   return (
     <div className="flex min-h-0 flex-1 gap-6 px-9 py-7">
@@ -273,7 +279,9 @@ export default function ChatView() {
                     <Avatar ch={mg.who[0] ?? "?"} src={mg.avatarUrl} />
                     <div className="min-w-0">
                       <div className="mb-1 text-[11px] text-[#9c9ca3]">{mg.who}</div>
-                      {mg.imageUrl ? (
+                      {mg.emoticon !== undefined ? (
+                        <Emoticon i={mg.emoticon} />
+                      ) : mg.imageUrl ? (
                         <a href={mg.imageUrl} target="_blank" rel="noreferrer" className="block">
                           {/* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */}
                           <img
@@ -288,6 +296,14 @@ export default function ChatView() {
                         </div>
                       )}
                     </div>
+                  </div>
+                );
+              }
+              if (mg.emoticon !== undefined) {
+                return (
+                  <div key={i} className="flex max-w-[78%] flex-row-reverse gap-2.5 self-end">
+                    <Avatar ch={me?.nickname?.[0] ?? "나"} src={me?.avatarUrl} />
+                    <Emoticon i={mg.emoticon} />
                   </div>
                 );
               }
@@ -341,6 +357,24 @@ export default function ChatView() {
                 className="key key-line px-3 py-2 text-xs"
               >
                 [{photoBusy ? "전송 중" : "사진"}]
+              </div>
+              <div className="relative flex-none">
+                <div
+                  onClick={() => setEmoOpen((v) => !v)}
+                  title="이모티콘 보내기"
+                  className={`key px-3 py-2 text-xs ${emoOpen ? "key-ink" : "key-line"}`}
+                >
+                  [이모티콘]
+                </div>
+                {emoOpen && (
+                  <EmoticonPicker
+                    onPick={(n) => {
+                      sendEmoticon(n);
+                      setEmoOpen(false);
+                    }}
+                    onClose={() => setEmoOpen(false)}
+                  />
+                )}
               </div>
               <input
                 value={chatInput}

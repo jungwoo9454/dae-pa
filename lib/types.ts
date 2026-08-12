@@ -95,11 +95,20 @@ export interface Deal {
   participations?: ParticipationWithProfile[];
 }
 
+/** emoticon 은 이모티콘 시트에서 몇 번째 칸인지 (0~11, lib/emoticons.ts) */
 export type Msg =
   | { kind: "sys"; text: string; id?: number }
   | { kind: "card"; cardOf: number; who: string; id?: number; avatarUrl?: string | null }
-  | { kind: "other"; who: string; text: string; id?: number; imageUrl?: string; avatarUrl?: string | null }
-  | { kind: "mine"; text: string; id?: number; imageUrl?: string };
+  | {
+      kind: "other";
+      who: string;
+      text: string;
+      id?: number;
+      imageUrl?: string;
+      emoticon?: number;
+      avatarUrl?: string | null;
+    }
+  | { kind: "mine"; text: string; id?: number; imageUrl?: string; emoticon?: number };
 
 /** 채팅방 한 개 (#7) — chat_rooms 행에서 만든다 */
 export interface Room {
