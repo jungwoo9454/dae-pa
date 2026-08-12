@@ -322,6 +322,8 @@ export const useStore = create<StoreState>((set, get) => ({
     }
     const { data } = sb.auth.onAuthStateChange((_event, session) => {
       const uid = session?.user.id;
+      // 가입 수단 표시용 (#81) — profiles 에는 없고 auth user 메타에만 있다
+      const provider = session?.user.app_metadata?.provider ?? null;
       if (!uid) {
         // 다음 사람이 남의 알림·대화·설정을 보지 않게 목록·중복 표시·토글을 비운다
         firedDeadlines.clear();
@@ -375,6 +377,7 @@ export const useStore = create<StoreState>((set, get) => ({
             nickname: p?.nickname ?? "파티원",
             avatarUrl: p?.avatar_url ?? null,
             dong: p?.dong ?? null,
+            provider,
             bankAccount: p?.bank_account ?? null,
             transferApp: p?.transfer_app ?? null,
           },
