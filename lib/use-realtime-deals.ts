@@ -25,7 +25,8 @@ import type { GroupBuyRow } from "@/lib/db-types";
  *   participations를 다시 세지 않고 payload.new를 그대로 반영한다 — fetchDeals와 같은 source of truth.
  *
  * INSERT(새 공구 등록)는 필드를 그대로 옮기는 대신 fetchDeals()로 전체를 다시 불러온다 —
- * me/mine 계산을 fetchDeals와 어긋나지 않게 재사용하기 위해서다.
+ * me/mine 계산을 fetchDeals와 어긋나지 않게 재사용하기 위해서다. 단, 이미 store에 있던
+ * participations는 그대로 유지한다 — fetchDeals는 목록용이라 participations가 비어 있다.
  */
 export function useRealtimeDeals(): void {
   useEffect(() => {
@@ -68,7 +69,19 @@ export function useRealtimeDeals(): void {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "group_buys" },
         () => {
-          void fetchDeals().then((deals) => useStore.setState({ deals }));
+          void fetchDeals().then((fresh) =>
+            useStore.setState((st) => {
+              // fetchDeals는 목록용이라 participations를 비운 채로 준다 — 이미 상세에서
+              // 불러둔 참여자 정보를 통째로 덮어쓰면 아바타가 사라진다 (#72).
+              const kept = new Map(st.deals.map((d) => [d.id, d.participations]));
+              return {
+                deals: fresh.map((d) => {
+                  const parts = kept.get(d.id);
+                  return parts ? { ...d, participations: parts } : d;
+                }),
+              };
+            }),
+          );
         },
       )
       .subscribe();
