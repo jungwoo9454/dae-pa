@@ -66,7 +66,8 @@ export default function DetailView() {
 
   // 총액 수정 (#12) — 주최자 + 모집중 상태에서만. 정산 진입하면 서버(RLS/RPC)가 거부하지만,
   // 그 전에 버튼 자체를 숨겨서 눌러도 안 되는 걸 미리 보여주지 않는다.
-  const canEditTotal = deal.mine && deal.status === "recruiting";
+  // 마감 시각이 지나도 DB status 는 recruiting 그대로라(마감 크론 없음) deadline 도 같이 본다 (#73).
+  const canEditTotal = deal.mine && deal.status === "recruiting" && deal.end > now;
   const startEditTotal = () => {
     setTotalInput(String(deal.total));
     setEditingTotal(true);
@@ -113,7 +114,7 @@ export default function DetailView() {
             <div className="flex items-center gap-1.5 rounded-[10px] border border-[#dbe9da] bg-white px-3 py-2 text-[13px]">
               <MapPin aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 수령 · <b>{deal.place}</b>
             </div>
-            {editingTotal ? (
+            {editingTotal && canEditTotal ? (
               <div className="flex items-center gap-1.5 rounded-[10px] border border-[#1f8a4c] bg-white px-3 py-2 text-[13px]">
                 <Coins aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
                 <input
