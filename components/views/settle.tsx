@@ -237,7 +237,9 @@ export default function SettleView() {
               // 의미가 있다 — 영수증 없이 확정 요청해서 과반 동의 대기 중일 땐(settlement 존재,
               // 미확정) 이미 서버에 넘어간 제안이라 화면에서 더 손댈 수 없다(읽기 전용 미리보기).
               const composing = !settlement && showPreview;
-              const editable = isHost && !isHostRow && (composing || !!settlement?.confirmed);
+              // 확정 = 참여자들이 "이 금액으로 내겠다"에 동의한 시점 — 그 뒤로는 주최자도 못 고친다 (#150).
+              // 확정 후에도 열어두면 동의한 금액과 실제 청구 금액이 갈리고, 이미 입금한 사람 몫까지 바뀐다.
+              const editable = isHost && !isHostRow && composing;
               const displayAmount = showPreview ? previewAmount(p) : (p.amount_due ?? 0);
               const nickname = p.profile?.nickname ?? "탈퇴한 사용자";
               return (

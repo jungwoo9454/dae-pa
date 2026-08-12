@@ -686,6 +686,14 @@ begin
   if p_new_amount < 0 then
     raise exception '금액은 0 이상이어야 합니다';
   end if;
+  -- 확정된 정산은 금액이 잠긴다 (#150). #130 이 재확정(confirm_settlement)을 막았지만
+  -- 개별 조정 경로는 열려 있어서, 동의한 금액과 실제 청구 금액이 갈릴 수 있었다.
+  if exists (
+    select 1 from public.settlements s
+    where s.group_buy_id = v_group_buy_id and s.status = 'confirmed'
+  ) then
+    raise exception '확정된 정산은 금액을 바꿀 수 없습니다';
+  end if;
 
   select id, coalesce(amount_due, 0) into v_host_participation_id, v_host_amount
   from public.participations where group_buy_id = v_group_buy_id and user_id = v_host_id;
