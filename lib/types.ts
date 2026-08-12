@@ -32,7 +32,7 @@ export interface Me {
 /** 인앱 알림 한 건 (#13) — notifications 행에서 만든다 */
 export interface Noti {
   id: number;
-  type: "deadline_soon" | "total_changed" | "payment_reminder" | "settle_start" | "join" | "cancel" | "leave";
+  type: "deadline_soon" | "total_changed" | "payment_reminder" | "settle_start" | "join" | "cancel";
   text: string;
   /** 누르면 이동할 공구. 없으면 이동하지 않는다 */
   dealId: number | null;
@@ -72,6 +72,8 @@ export interface Deal {
   imageUrl?: string | null;
   /** 배달비 — 있으면 항상 균등 분배, 개별 조정 대상 아님 */
   deliveryFee?: number;
+  /** 배달음식 전용 — 가게 최소 주문 금액 (#95) */
+  minOrderAmount?: number | null;
   settlement?: Settlement;
 
   // Supabase fields
@@ -118,6 +120,7 @@ export interface HistoryItem {
 export interface DealForm {
   cat: Category;
   title: string;
+  /** 배달음식은 선택 — 비워두면 서버가 minOrderAmount로 채운다 (#95) */
   total: string;
   goal: string;
   mins: string;
@@ -125,4 +128,8 @@ export interface DealForm {
   store_link: string;
   /** 대표 이미지 R2 URL — 빈 문자열이면 첨부 안 함 */
   imageUrl: string;
+  /** 배달음식 전용 필수 입력 — 가게 최소 주문 금액 (#95) */
+  minOrderAmount: string;
+  /** 배달음식 전용 필수 입력 (#95). 다른 카테고리는 항상 "0" */
+  deliveryFee: string;
 }

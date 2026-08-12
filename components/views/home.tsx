@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import DealCard from "@/components/deal-card";
 import { statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
@@ -15,9 +15,10 @@ export default function HomeView() {
   const deals = useStore((s) => s.deals);
   const filter = useStore((s) => s.filter);
   const setFilter = useStore((s) => s.setFilter);
-  const statusFilter = useStore((s) => s.statusFilter ?? "전체");
+  const statusFilter = useStore((s) => s.statusFilter);
   const setStatusFilter = useStore((s) => s.setStatusFilter);
-  const [myDealsOnly, setMyDealsOnly] = useState(false);
+  const myDealsOnly = useStore((s) => s.myDealsOnly);
+  const setMyDealsOnly = useStore((s) => s.setMyDealsOnly);
 
   // 목록 카드의 참여자 수/총액/상태 등을 실시간 반영 — 다른 세션 참여, 총액 변경, 정원
   // 도달로 인한 settling 전환이 필터를 유지한 채로 카드에 바로 보인다
@@ -38,78 +39,62 @@ export default function HomeView() {
   // 취소된 공구는 모집 목록에서 뺀다 — 내 공구·채팅방에는 기록으로 남는다 (#29)
   const cards = deals.filter((d) => {
     if (d.status === "canceled") return false;
-
-    // 카테고리 필터
     if (filter !== "전체" && d.cat !== filter) return false;
-
-    // 내 공구만 보기
-    if (myDealsOnly && !d.me && !d.mine) return false;
-
-    // 상태 필터
-    if (statusFilter !== "전체") {
-      const left = d.end - now;
-      if (statusFilter === "모집중") {
-        return d.status === "recruiting" && left > 0;
-      }
-      if (statusFilter === "마감임박") {
-        return d.status === "recruiting" && left > 0 && left < 3_600_000;
-      }
-    }
-
+    if (myDealsOnly && !d.me) return false;
+    // 마감임박 판정은 statusOf 한 곳에만 둔다 (1시간 임계값 중복 금지)
+    const key = statusOf(d, now).key;
+    if (statusFilter === "모집중") return key === "recruiting" || key === "closing";
+    if (statusFilter === "마감임박") return key === "closing";
     return true;
   });
   return (
-    <div className="flex-1 overflow-auto px-6 py-5">
-      <div className="sticky top-0 z-10 bg-white pb-4">
-        <div className="mb-4 flex flex-wrap gap-2">
-          {CATS.map((c) => (
-            <div
-              key={c}
-              onClick={() => setFilter(c)}
-              className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
-                filter === c
-                  ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
-                  : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
-              }`}
-            >
-              {c}
-            </div>
-          ))}
-        </div>
-        <div className="mb-4 flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((s) => (
-            <div
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
-                statusFilter === s
-                  ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
-                  : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
-              }`}
-            >
-              {s}
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="flex-1 overflow-auto px-6 pb-5">
+      {/* 카드가 길어져서 스크롤해도 필터는 남아 있게 한다 (#89) */}
+      <div className="sticky top-0 z-10 -mx-6 bg-[#eef4ec] px-6 pb-1 pt-5">
+      <div className="mb-4 flex flex-wrap gap-2">
+        {CATS.map((c) => (
+          <div
+            key={c}
+            onClick={() => setFilter(c)}
+            className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
+              filter === c
+                ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
+                : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
+            }`}
+          >
+            {c}
+          </div>
+        ))}
+      </div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {STATUS_FILTERS.map((s) => (
+          <div
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
+              statusFilter === s
+                ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
+                : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
+            }`}
+          >
+            {s}
+          </div>
+        ))}
+        <label className="ml-1 flex cursor-pointer items-center gap-1.5 text-[13px] font-bold text-[#4d6d58]">
           <input
             type="checkbox"
-            id="myDealsOnly"
             checked={myDealsOnly}
             onChange={(e) => setMyDealsOnly(e.target.checked)}
-            className="cursor-pointer"
+            className="h-[15px] w-[15px] cursor-pointer accent-[#1f8a4c]"
           />
-          <label htmlFor="myDealsOnly" className="cursor-pointer text-[13px] font-bold text-[#4d6d58]">
-            내 공구만 보기
-          </label>
-        </div>
+          내 공구만 보기
+        </label>
+      </div>
       </div>
       {cards.length === 0 ? (
-        <div className="flex h-96 items-center justify-center text-center text-[#8aa392]">
-          <div>
-            <div className="text-[18px] font-bold">공구가 없어요</div>
-            <div className="mt-1 text-[14px]">필터를 조정해보세요</div>
-          </div>
+        <div className="mt-16 text-center text-[13.5px] text-[#8aa392]">
+          조건에 맞는 공구가 없어요
+          <div className="mt-1 text-xs">필터를 바꾸거나 직접 공구를 올려보세요</div>
         </div>
       ) : (
         <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))" }}>

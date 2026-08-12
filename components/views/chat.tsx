@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { uploadImage } from "@/components/image-upload";
 import { Avatar } from "@/components/ui";
-import { countdownDisplay, fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, statusOf } from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
 import { RECENT_LIMIT, useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
@@ -230,46 +230,23 @@ export default function ChatView() {
             if (mg.kind === "card") {
               const cd = deals.find((x) => x.id === mg.cardOf);
               if (!cd) return null;
-              const cdisplay = countdownDisplay(cd, now);
-
-              // 카드 상태별 색상
-              let cardBorderColor = "#9fd4ae";
-              let cardTextColor = "#1f8a4c";
-              let buttonBgColor = "#1f8a4c";
-              let buttonTextColor = "white";
-              let buttonHoverBg = "#187741";
-
-              if (cd.status === "settling") {
-                cardBorderColor = "#06b6d4";
-                cardTextColor = "#0e7490";
-                buttonBgColor = "#0e7490";
-                buttonHoverBg = "#0891b2";
-              } else if (cd.status !== "recruiting" || cd.end - now <= 0) {
-                cardBorderColor = "#cbd5e1";
-                cardTextColor = "#64748b";
-                buttonBgColor = "#e2e8f0";
-                buttonTextColor = "#64748b";
-                buttonHoverBg = "#cbd5e1";
-              }
-
               return (
                 <div key={i} className="flex max-w-[78%] gap-2 self-start">
                   <Avatar ch={mg.who[0] ?? "?"} />
                   <div
                     onClick={() => openDeal(cd.id)}
-                    className="flex cursor-pointer flex-col gap-[5px] rounded-[14px] border-[1.5px] bg-white px-3.5 py-2.5 hover:shadow-[0_4px_12px_rgba(18,70,38,.12)]"
-                    style={{ borderColor: cardBorderColor }}
+                    className="flex cursor-pointer flex-col gap-[5px] rounded-[14px] border-[1.5px] border-[#9fd4ae] bg-white px-3.5 py-2.5 hover:shadow-[0_4px_12px_rgba(18,70,38,.12)]"
                   >
-                    <div className="font-extrabold" style={{ color: cdisplay.color }}>
+                    <div className="font-extrabold">
                       {cd.emoji} {cd.title}
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-1 text-[12.5px] font-bold" style={{ color: cardTextColor }}>
+                    <div className="flex flex-wrap items-center gap-x-1 text-[12.5px] font-bold text-[#1f8a4c]">
                       <span>
                         {cd.joined}/{cd.goal}명 ·
                       </span>
                       <Timer aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
                       <span>
-                        {remainLabel(cd, now)} · 1인 {fmt(perAmount(cd))}
+                        {remainLabel(cd, now)} · {perLabel(cd)} {fmt(perAmount(cd))}
                       </span>
                     </div>
                     {/* 대화 중 카드에서 바로 참여 — 상세로 안 나가도 됨 (#10) */}
@@ -278,18 +255,11 @@ export default function ChatView() {
                         e.stopPropagation();
                         join(cd.id);
                       }}
-                      className="mt-0.5 rounded-lg py-1.5 text-center text-[12.5px] font-extrabold"
-                      style={{
-                        backgroundColor: joinable(cd, now) ? buttonBgColor : buttonBgColor,
-                        color: joinable(cd, now) ? buttonTextColor : buttonTextColor,
-                        cursor: joinable(cd, now) ? "pointer" : "default",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (joinable(cd, now)) e.currentTarget.style.backgroundColor = buttonHoverBg;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = buttonBgColor;
-                      }}
+                      className={`mt-0.5 rounded-lg py-1.5 text-center text-[12.5px] font-extrabold ${
+                        joinable(cd, now)
+                          ? "cursor-pointer bg-[#1f8a4c] text-white hover:bg-[#187741]"
+                          : "cursor-default bg-[#e6efe4] text-[#6b8573]"
+                      }`}
                     >
                       {joinable(cd, now) ? "바로 참여하기" : joinLabel(cd, now)}
                     </div>

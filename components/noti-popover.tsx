@@ -1,6 +1,6 @@
 "use client";
 
-import { AlarmClock, Ban, Coins, LogOut, PartyPopper, ReceiptText, Send } from "lucide-react";
+import { AlarmClock, Ban, Coins, PartyPopper, ReceiptText, Send } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { Noti } from "@/lib/types";
@@ -12,7 +12,6 @@ const ICON: Record<Noti["type"], LucideIcon> = {
   settle_start: ReceiptText,
   join: PartyPopper,
   cancel: Ban,
-  leave: LogOut,
 };
 
 function ago(ms: number) {
@@ -43,10 +42,6 @@ export default function NotiPopover() {
             >
               {(() => {
                 const Icon = ICON[n.type];
-                if (!Icon) {
-                  console.error(`[Noti] Unknown notification type: "${n.type}". Available types: ${Object.keys(ICON).join(", ")}`);
-                  return null;
-                }
                 return <Icon aria-hidden className="mt-0.5 h-[17px] w-[17px] flex-none text-[#1f8a4c]" />;
               })()}
               <div className="min-w-0">

@@ -258,6 +258,7 @@ function rowToDeal(
     description: row.description || undefined,
     total: row.total_amount,
     deliveryFee: row.delivery_fee,
+    minOrderAmount: row.min_order_amount,
     goal: row.goal,
     // group_buys.joined는 join_group_buy RPC가 원자적으로 유지하는 값 — 참여자
     // 목록을 함께 불러왔을 때(fetchDeal)는 실제 행 수로, 아니면(fetchDeals) 이 컬럼으로 채운다.
