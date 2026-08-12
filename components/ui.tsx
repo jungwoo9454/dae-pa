@@ -4,7 +4,7 @@ import type { StatusView } from "@/lib/deal";
 
 export function StatusBadge({ s }: { s: StatusView }) {
   return (
-    <span className="badge" style={{ background: s.bg, color: s.fg }}>
+    <span className="badge" style={{ background: s.key === "canceled" ? "transparent" : s.bg, color: s.fg, border: s.key === "canceled" ? `1.5px solid ${s.fg}` : "none", padding: s.key === "canceled" ? "3px 8px" : "4px 8px" }}>
       {s.label}
     </span>
   );
