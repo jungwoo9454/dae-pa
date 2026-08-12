@@ -36,8 +36,10 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
       : "key key-off";
 
   return (
-    <div onClick={() => openDeal(deal.id)} className="cursor-pointer">
-      <div className={`receipt px-[26px] pb-[22px] pt-6 ${dead ? "receipt-dead" : ""}`}>
+    // 카드 높이는 제목 줄 수·바코드 유무로 제각각이었다 — 그리드 칸을 꽉 채우고
+    // 아래 묶음(바코드·참여 키)을 바닥에 붙여 한 줄의 카드 높이를 맞춘다.
+    <div onClick={() => openDeal(deal.id)} className="flex h-full cursor-pointer flex-col">
+      <div className={`receipt flex flex-1 flex-col px-[26px] pb-[22px] pt-6 ${dead ? "receipt-dead" : ""}`}>
         <div className="receipt-head">＊ 대파 공구 ＊</div>
         <div className="mt-[7px] text-center text-[12.5px] text-[#8b8478]">
           {receiptNo(deal.id, deal.created_at)} ｜ {deal.cat} ｜ 주최: {deal.host}
@@ -89,10 +91,12 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
           </span>
         </div>
 
-        {!dead && <Barcode seed={deal.id} className="mt-3.5 h-8" />}
+        <div className="mt-auto pt-3.5">
+          {!dead && <Barcode seed={deal.id} className="h-8" />}
 
-        <div onClick={onJoin} className={`${keyClass} mt-3.5 py-3 text-sm tracking-[.1em]`}>
-          [ {joinLabel(deal, now)} ]
+          <div onClick={onJoin} className={`${keyClass} mt-3.5 py-3 text-sm tracking-[.1em]`}>
+            [ {joinLabel(deal, now)} ]
+          </div>
         </div>
       </div>
       <div className={`receipt-edge ${dead ? "receipt-edge-dead" : ""}`} />
