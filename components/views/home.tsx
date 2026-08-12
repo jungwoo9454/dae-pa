@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import DealCard from "@/components/deal-card";
 import { statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
@@ -19,6 +19,7 @@ export default function HomeView() {
   const setStatusFilter = useStore((s) => s.setStatusFilter);
   const myDealsOnly = useStore((s) => s.myDealsOnly);
   const setMyDealsOnly = useStore((s) => s.setMyDealsOnly);
+  const [search, setSearch] = useState("");
 
   // 목록 카드의 참여자 수/총액/상태 등을 실시간 반영 — 다른 세션 참여, 총액 변경, 정원
   // 도달로 인한 settling 전환이 필터를 유지한 채로 카드에 바로 보인다
@@ -41,6 +42,15 @@ export default function HomeView() {
     if (d.status === "canceled") return false;
     if (filter !== "전체" && d.cat !== filter) return false;
     if (myDealsOnly && !d.me) return false;
+
+    // 검색: 제목 + 설명에서 품목 찾기
+    if (search) {
+      const searchLower = search.toLowerCase();
+      const titleMatch = d.title.toLowerCase().includes(searchLower);
+      const descMatch = d.description?.toLowerCase().includes(searchLower);
+      if (!titleMatch && !descMatch) return false;
+    }
+
     // 마감임박 판정은 statusOf 한 곳에만 둔다 (1시간 임계값 중복 금지)
     const key = statusOf(d, now).key;
     if (statusFilter === "모집중") return key === "recruiting" || key === "closing";
@@ -66,29 +76,38 @@ export default function HomeView() {
           </div>
         ))}
       </div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {STATUS_FILTERS.map((s) => (
-          <div
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
-              statusFilter === s
-                ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
-                : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
-            }`}
-          >
-            {s}
-          </div>
-        ))}
-        <label className="ml-1 flex cursor-pointer items-center gap-1.5 text-[13px] font-bold text-[#4d6d58]">
-          <input
-            type="checkbox"
-            checked={myDealsOnly}
-            onChange={(e) => setMyDealsOnly(e.target.checked)}
-            className="h-[15px] w-[15px] cursor-pointer accent-[#1f8a4c]"
-          />
-          내 공구만 보기
-        </label>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {STATUS_FILTERS.map((s) => (
+            <div
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
+                statusFilter === s
+                  ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
+                  : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
+              }`}
+            >
+              {s}
+            </div>
+          ))}
+          <label className="flex cursor-pointer items-center gap-1.5 text-[13px] font-bold text-[#4d6d58]">
+            <input
+              type="checkbox"
+              checked={myDealsOnly}
+              onChange={(e) => setMyDealsOnly(e.target.checked)}
+              className="h-[15px] w-[15px] cursor-pointer accent-[#1f8a4c]"
+            />
+            내 공구만 보기
+          </label>
+        </div>
+        <input
+          type="text"
+          placeholder="공구 검색"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-xs rounded-[8px] border-[1.5px] border-[#d5e6d6] bg-white px-3 py-1.5 text-[13px] outline-none focus:border-[#1f8a4c]"
+        />
       </div>
       </div>
       {cards.length === 0 ? (
