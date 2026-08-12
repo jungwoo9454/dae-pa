@@ -88,7 +88,7 @@ export default function ChatView() {
     ? rooms
         .filter((r) => r.type === "lounge")
         .map((r) => ({ id: "lounge", name: r.name, sub: "이웃과 자유 수다", pinned: true }))
-    : [{ id: "lounge", name: "크래프톤 라운지", sub: "이웃과 자유 수다", pinned: true }];
+    : [{ id: "lounge", name: "크래프톤 정글 라운지", sub: "이웃과 자유 수다", pinned: true }];
 
   const dealRooms: RoomDef[] = chatReady
     ? rooms
