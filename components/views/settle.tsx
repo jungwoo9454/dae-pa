@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell, Bike, Landmark, Lock, ReceiptText, Vote, Wallet } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ImageUpload from "@/components/image-upload";
 import { Avatar, ProgressBar } from "@/components/ui";
 import { commaFmt, digits, fmt } from "@/lib/deal";
@@ -44,6 +44,15 @@ export default function SettleView() {
   const sd =
     deals.find((x) => x.id === sel && (x.status === "settling" || x.status === "completed")) ??
     deals.find((x) => x.status === "settling");
+
+  // openSettle 이 총액을 못 채운 경우(공구가 아직 로딩 전) 한 번만 보강한다 (#127).
+  // 공구당 1회로 막아야 주최자가 칸을 비우고 다시 칠 때 값이 되돌아오지 않는다.
+  const prefilled = useRef<number | null>(null);
+  useEffect(() => {
+    if (!sd || sd.settlement || prefilled.current === sd.id) return;
+    prefilled.current = sd.id;
+    if (!useStore.getState().settleTotalInput && sd.total > 0) setSettleTotalInput(String(sd.total));
+  }, [sd, setSettleTotalInput]);
 
   // 정산 대상 공구가 바뀌거나(다른 공구 열람) 확정되고 나면 이전 미리보기 조정값은 의미가 없다
   useEffect(() => {
@@ -201,7 +210,7 @@ export default function SettleView() {
               <input
                 value={commaFmt(settleTotalInput)}
                 onChange={(e) => setSettleTotalInput(digits(e.target.value))}
-                placeholder={String(sd.total)}
+                placeholder="예: 54,500"
                 className="tnum rounded-lg border border-[#d5e6d6] px-3 py-2 text-[14px] outline-none focus:border-[#1f8a4c]"
               />
               <div className="flex flex-col gap-1.5">

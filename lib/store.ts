@@ -566,15 +566,18 @@ export const useStore = create<StoreState>((set, get) => ({
   // 총액 입력과 영수증 첨부는 "이 공구" 의 것이다 — 초기화하지 않으면 A 공구에서 올린
   // 영수증이 B 공구 확정에 그대로 붙고, receipt_url 이 있으면 서버가 투표 없이 즉시
   // 확정하므로 과반 동의 절차까지 건너뛴다.
+  // 총액 칸은 공구 총액으로 미리 채운다 (#127) — placeholder 만 있으면 주최자가 채워진 줄 알고
+  // 그대로 확정을 눌러 아무 일도 안 일어난다. 배달음식도 total 에 배달비가 포함된 값이라
+  // apply_settlement_split(항목비 = total - delivery_fee) 과 기준이 같다.
   openSettle: (id) =>
-    set({
+    set((st) => ({
       page: "settle",
       sel: id,
       profileOpen: false,
       notiOpen: false,
-      settleTotalInput: "",
+      settleTotalInput: String(st.deals.find((d) => d.id === id)?.total || ""),
       settleReceiptUrl: null,
-    }),
+    })),
   goRoom: (roomId) => set({ page: "chat", room: roomId, profileOpen: false, notiOpen: false }),
   toggleProfile: () => set((st) => ({ profileOpen: !st.profileOpen, notiOpen: false })),
 
@@ -1010,7 +1013,10 @@ export const useStore = create<StoreState>((set, get) => ({
     const deal = st.deals.find((d) => d.id === dealId);
     if (!deal || deal.settlement) return;
     const total = parseInt(st.settleTotalInput) || 0;
-    if (total <= 0) return;
+    if (total <= 0) {
+      alert("최종 총액을 입력해주세요");
+      return;
+    }
     // 영수증 사진이 있으면 그 R2 URL 이 곧 증빙 → 서버가 즉시 확정한다. 없으면 과반 동의 투표.
     // overrides 는 settlements.overrides 에 그대로 저장돼서, 즉시 확정이든 나중에 투표로
     // 확정되든 apply_settlement_split 이 항상 이 값을 적용한다 (RPC 안에서 처리 — #95).
