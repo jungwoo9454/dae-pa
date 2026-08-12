@@ -35,10 +35,10 @@ export interface StatusView {
 
 /** 마감임박은 DB 상태가 아니라 마감 1시간 전부터 파생 표시 */
 export function statusOf(d: Deal, now: number): StatusView {
-  if (d.status === "settling") return { key: "settling", label: "정산중", bg: "#e0f0f1", fg: "#0e7490" };
-  if (d.status === "canceled") return { key: "canceled", label: "취소됨", bg: "#f3f4f6", fg: "#6b7280" };
+  if (d.status === "settling") return { key: "settling", label: "정산중", bg: "#ecf9ff", fg: "#0e7490" };
+  if (d.status === "canceled") return { key: "canceled", label: "취소됨", bg: "#ffffff", fg: "#dc2626" };
   const left = d.end - now;
-  if (d.status !== "recruiting" || left <= 0) return { key: "closed", label: "마감", bg: "#eceff0", fg: "#64748b" };
+  if (d.status !== "recruiting" || left <= 0) return { key: "closed", label: "마감", bg: "#f5f3f0", fg: "#57534e" };
   if (left < 3_600_000) return { key: "closing", label: "마감임박", bg: "#fdf0dc", fg: "#b45309" };
   return { key: "recruiting", label: "모집중", bg: "#e9f6ec", fg: "#166b3a" };
 }
@@ -62,7 +62,7 @@ export function countdownDisplay(d: Deal, now: number): { text: string; caption:
     return { text: "정산 진행 중", caption: "정산 진행 중", color: "#0e7490" };
   }
   if (d.status === "canceled") {
-    return { text: "취소됨", caption: "공구 취소", color: "#6b7280" };
+    return { text: "취소됨", caption: "공구 취소", color: "#dc2626" };
   }
   const left = d.end - now;
   if (d.status !== "recruiting" || left <= 0) {

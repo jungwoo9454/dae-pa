@@ -3,7 +3,7 @@
 import { Ban } from "lucide-react";
 import { useState } from "react";
 import { StatusBadge } from "@/components/ui";
-import { fmt, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { countdownDisplay, fmt, perAmount, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
 
@@ -35,6 +35,47 @@ export default function MyView() {
         {myDeals.map((m) => {
           const deletable = m.mine && m.status === "recruiting";
           const showDeleteDialog = askDeleteId === m.id;
+          const cd = countdownDisplay(m, now);
+          const left = m.end - now;
+          const isClosing = m.status === "recruiting" && left < 3_600_000;
+
+          // 상태별 색상
+          let borderColor = "#dbe9da";
+          let bgColor = "white";
+          let hoverBgColor = "#f9fdf9";
+          let textColor = "#6b8573";
+
+          if (m.status === "settling") {
+            borderColor = "#0891b2";
+            bgColor = "#ecf9ff";
+            hoverBgColor = "#cffafe";
+            textColor = "#0e7490";
+          } else if (m.status === "canceled") {
+            borderColor = "#dc2626";
+            bgColor = "white";
+            hoverBgColor = "#fafafa";
+            textColor = "#dc2626";
+          } else if (m.status !== "recruiting") {
+            borderColor = "#78716c";
+            bgColor = "#f5f3f0";
+            hoverBgColor = "#ede9e6";
+            textColor = "#57534e";
+          } else if (left <= 0) {
+            borderColor = "#78716c";
+            bgColor = "#f5f3f0";
+            hoverBgColor = "#ede9e6";
+            textColor = "#57534e";
+          } else if (isClosing) {
+            borderColor = "#d97706";
+            bgColor = "#fef3c7";
+            hoverBgColor = "#fde68a";
+            textColor = "#b45309";
+          } else {
+            borderColor = "#16a34a";
+            bgColor = "#f0fdf4";
+            hoverBgColor = "#dcfce7";
+            textColor = "#166b3a";
+          }
 
           return (
             <div key={m.id}>
@@ -43,18 +84,24 @@ export default function MyView() {
                   useStore.setState({ sel: m.id });
                   go("detail");
                 }}
-                className="flex cursor-pointer items-center gap-3.5 rounded-[14px] border border-[#dbe9da] bg-white px-4 py-3.5 hover:border-[#1f8a4c] hover:bg-[#f9fdf9]"
+                className="flex cursor-pointer items-center gap-3.5 rounded-[14px] border px-4 py-3.5 transition-all"
+                style={{
+                  borderColor,
+                  backgroundColor: bgColor,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBgColor}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = bgColor}
               >
-                <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-[#e9f6ec] text-xl">
+                <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] text-xl" style={{ backgroundColor: `${cd.color}20` }}>
                   {m.emoji}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <b>{m.title}</b>
+                    <b style={{ color: cd.color }}>{m.title}</b>
                     <StatusBadge s={statusOf(m, now)} />
-                    <span className="text-[11.5px] text-[#8aa392]">{m.mine ? "주최" : "참여"}</span>
+                    <span className="text-[11.5px]" style={{ color: textColor }}>{m.mine ? "주최" : "참여"}</span>
                   </div>
-                  <div className="mt-[3px] text-[12.5px] text-[#6b8573]">
+                  <div className="mt-[3px] text-[12.5px]" style={{ color: textColor }}>
                     {m.joined}/{m.goal}명 · ⏱ {remainLabel(m, now)} · 1인 {fmt(perAmount(m))}
                   </div>
                 </div>
