@@ -56,23 +56,30 @@ export default function MyView() {
         {myDeals.map((m) => {
           const deletable = m.mine && m.status === "recruiting";
           const showDeleteDialog = askDeleteId === m.id;
+          const st = statusOf(m, now);
+          const dimmed = st.key === "closed";
 
           return (
             <div key={m.id}>
               <div
                 onClick={() => openDeal(m.id)}
-                className="flex cursor-pointer items-center gap-3.5 rounded-[14px] border border-[#dbe9da] bg-white px-4 py-3.5 hover:border-[#1f8a4c] hover:bg-[#f9fdf9]"
+                className={`flex cursor-pointer items-center gap-3.5 rounded-[14px] border px-4 py-3.5 ${
+                  dimmed
+                    ? "border-[#e3e7e6] bg-[#f4f6f5]"
+                    : "border-[#dbe9da] bg-white hover:border-[#1f8a4c] hover:bg-[#f9fdf9]"
+                }`}
+                style={{ borderColor: st.fg }}
               >
-                <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-[#e9f6ec] text-xl">
+                <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] text-xl" style={{ backgroundColor: st.bg }}>
                   {m.emoji}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <b>{m.title}</b>
-                    <StatusBadge s={statusOf(m, now)} />
-                    <span className="text-[11.5px] text-[#8aa392]">{m.mine ? "주최" : "참여"}</span>
+                    <b style={{ color: st.fg }}>{m.title}</b>
+                    <StatusBadge s={st} />
+                    <span className="text-[11.5px]" style={{ color: dimmed ? "#b4b8b7" : "#8aa392" }}>{m.mine ? "주최" : "참여"}</span>
                   </div>
-                  <div className="mt-[3px] text-[12.5px] text-[#6b8573]">
+                  <div className="mt-[3px] text-[12.5px]" style={{ color: dimmed ? "#8a9089" : "#6b8573" }}>
                     {m.joined}/{m.goal}명 · ⏱ {remainLabel(m, now)} · {perLabel(m)} {fmt(perAmount(m))}
                   </div>
                 </div>

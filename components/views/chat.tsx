@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { uploadImage } from "@/components/image-upload";
 import { Avatar } from "@/components/ui";
-import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, statusOf, type StatusView } from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
 import { RECENT_LIMIT, useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
@@ -16,15 +16,24 @@ interface RoomDef {
   icon?: LucideIcon;
   name: string;
   sub: string;
+  st?: StatusView;
 }
 
 function RoomItem({ room, active, onPick }: { room: RoomDef; active: boolean; onPick: () => void }) {
+  const st = room.st;
+  const dimmed = st?.key === "closed";
+
   return (
     <div
       onClick={onPick}
-      className={`flex cursor-pointer items-center gap-[9px] rounded-[11px] border-[1.5px] px-[11px] py-[9px] hover:border-[#9fd4ae] ${
-        active ? "border-[#1f8a4c] bg-[#e9f6ec]" : "border-transparent"
+      className={`flex cursor-pointer items-center gap-[9px] rounded-[11px] border-[1.5px] px-[11px] py-[9px] ${
+        active
+          ? "border-[#1f8a4c] bg-[#e9f6ec]"
+          : dimmed
+          ? "border-[#e3e7e6] bg-[#f4f6f5] hover:border-[#d0d6d5]"
+          : "border-transparent hover:border-[#9fd4ae]"
       }`}
+      style={st && !active ? { borderColor: st.fg } : undefined}
     >
       {room.icon ? (
         <room.icon aria-hidden className="h-[17px] w-[17px] flex-none text-[#4d6d58]" />
@@ -32,10 +41,12 @@ function RoomItem({ room, active, onPick }: { room: RoomDef; active: boolean; on
         <span className="text-[17px]">{room.emoji}</span>
       )}
       <div className="min-w-0 flex-1">
-        <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] font-bold">
+        <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] font-bold" style={st && !active ? { color: st.fg } : undefined}>
           {room.name}
         </div>
-        <div className="text-[11.5px] text-[#8aa392]">{room.sub}</div>
+        <div className="text-[11.5px]" style={st && !active ? { color: dimmed ? "#b4b8b7" : st.fg } : { color: "#8aa392" }}>
+          {room.sub}
+        </div>
       </div>
     </div>
   );
@@ -78,30 +89,43 @@ export default function ChatView() {
   const loungeRooms: RoomDef[] = chatReady
     ? rooms
         .filter((r) => r.type === "lounge")
-        .map((r) => ({ id: "lounge", emoji: "", icon: Home, name: r.name, sub: "이웃과 자유 수다" }))
-    : [{ id: "lounge", emoji: "", icon: Home, name: "역삼동 라운지", sub: "이웃 128명 · 자유 수다" }];
+        .map((r) => ({
+          id: "lounge",
+          emoji: "",
+          icon: Home,
+          name: r.name,
+          sub: "이웃과 자유 수다",
+          st: { key: "recruiting" as const, label: "라운지", bg: "#e9f6ec", fg: "#1f8a4c" },
+        }))
+    : [{ id: "lounge", emoji: "", icon: Home, name: "역삼동 라운지", sub: "이웃 128명 · 자유 수다", st: { key: "recruiting" as const, label: "라운지", bg: "#e9f6ec", fg: "#1f8a4c" } }];
 
   const dealRooms: RoomDef[] = chatReady
     ? rooms
         .filter((r) => r.type === "group_buy")
         .map((r) => {
           const d = deals.find((x) => x.id === r.dealId);
+          const st = d ? statusOf(d, now) : undefined;
           return {
             id: "d" + r.dealId,
             emoji: d?.emoji ?? "",
             icon: d ? undefined : ShoppingCart,
             name: r.name,
-            sub: d ? `${d.joined}명 · ${statusOf(d, now).label}` : "공구방",
+            sub: d ? `${d.joined}명 · ${st?.label}` : "공구방",
+            st,
           };
         })
     : deals
         .filter((x) => x.me)
-        .map((x) => ({
-          id: "d" + x.id,
-          emoji: x.emoji,
-          name: x.title,
-          sub: `${x.joined}명 · ${statusOf(x, now).label}`,
-        }));
+        .map((x) => {
+          const st = statusOf(x, now);
+          return {
+            id: "d" + x.id,
+            emoji: x.emoji,
+            name: x.title,
+            sub: `${x.joined}명 · ${st.label}`,
+            st,
+          };
+        });
   // 검색: 대소문자·앞뒤 공백 무시 (#11)
   const q = search.trim().toLowerCase();
   const bySearch = (r: RoomDef) => !q || r.name.toLowerCase().includes(q);
@@ -230,17 +254,20 @@ export default function ChatView() {
             if (mg.kind === "card") {
               const cd = deals.find((x) => x.id === mg.cardOf);
               if (!cd) return null;
+              const st = statusOf(cd, now);
+              const dimmed = st.key === "closed";
               return (
                 <div key={i} className="flex max-w-[78%] gap-2 self-start">
                   <Avatar ch={mg.who[0] ?? "?"} />
                   <div
                     onClick={() => openDeal(cd.id)}
-                    className="flex cursor-pointer flex-col gap-[5px] rounded-[14px] border-[1.5px] border-[#9fd4ae] bg-white px-3.5 py-2.5 hover:shadow-[0_4px_12px_rgba(18,70,38,.12)]"
+                    className="flex cursor-pointer flex-col gap-[5px] rounded-[14px] border-[1.5px] px-3.5 py-2.5 hover:shadow-[0_4px_12px_rgba(18,70,38,.12)]"
+                    style={{ borderColor: st.fg, backgroundColor: st.bg }}
                   >
-                    <div className="font-extrabold">
+                    <div className="font-extrabold" style={{ color: st.fg }}>
                       {cd.emoji} {cd.title}
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-1 text-[12.5px] font-bold text-[#1f8a4c]">
+                    <div className="flex flex-wrap items-center gap-x-1 text-[12.5px] font-bold" style={{ color: dimmed ? "#8a9089" : st.fg }}>
                       <span>
                         {cd.joined}/{cd.goal}명 ·
                       </span>
