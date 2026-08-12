@@ -1,6 +1,10 @@
 // app/api/deals/route.ts
 import { createClient } from "@/lib/supabase/server"; //SUPERBASE추가후
-import type { Deal } from "@/lib/types";
+import { CAT_EMOJI } from "@/lib/deal";
+import type { Category } from "@/lib/types";
+
+/** 카테고리 이모지는 lib/deal.ts 의 CAT_EMOJI 한 벌만 쓴다 (#90) — DB 값이 정해진 카테고리를 벗어나면 기타 */
+const emojiOf = (cat: string) => CAT_EMOJI[cat as Category] ?? CAT_EMOJI.기타;
 
 /**
  * POST /api/deals
@@ -95,7 +99,7 @@ export async function POST(req: Request) {
 
     const dealForClient = {
       id: Number(newDeal.id),
-      emoji: getCategoryEmoji(newDeal.category),
+      emoji: emojiOf(newDeal.category),
       title: newDeal.title,
       cat: newDeal.category,
       total: newDeal.total_amount,
@@ -149,7 +153,7 @@ export async function GET() {
 
     const deals = (data ?? []).map((row:any) => ({
       id: Number(row.id),
-      emoji: getCategoryEmoji(row.category),
+      emoji: emojiOf(row.category),
       title: row.title,
       cat: row.category,
       total: row.total_amount,
@@ -174,18 +178,4 @@ export async function GET() {
     );
   }   
   
-}
-
-/**
- * 카테고리에 맞는 이모지 반환
- */
-function getCategoryEmoji(cat: string): string {
-  const emojiMap: Record<string, string> = {
-    식료품: "🧅",
-    배달음식: "🍗",
-    생활용품: "🧻",
-    대량구매: "📦",
-    기타: "🎁",
-  };
-  return emojiMap[cat] || "🧅";
 }

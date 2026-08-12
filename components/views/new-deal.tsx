@@ -2,7 +2,7 @@
 
 import { Coins, Timer } from "lucide-react";
 import ImageUpload from "@/components/image-upload";
-import { CAT_EMOJI, fmt } from "@/lib/deal";
+import { CAT_EMOJI, CAT_ICON, fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Category } from "@/lib/types";
 
@@ -71,19 +71,23 @@ export default function NewDealView() {
           <div>
             <div className="mb-2 font-extrabold">카테고리</div>
             <div className="flex flex-wrap gap-2">
-              {FORM_CATS.map((c) => (
-                <div
-                  key={c}
-                  onClick={() => setForm({ cat: c })}
-                  className={`cursor-pointer rounded-full border-[1.5px] px-4 py-2 text-[13.5px] font-bold hover:border-[#1f8a4c] ${
-                    form.cat === c
-                      ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
-                      : "border-[#d5e6d6] bg-white text-[#4d6d58]"
-                  }`}
-                >
-                  {c}
-                </div>
-              ))}
+              {FORM_CATS.map((c) => {
+                const Icon = CAT_ICON[c];
+                return (
+                  <div
+                    key={c}
+                    onClick={() => setForm({ cat: c })}
+                    className={`flex cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-4 py-2 text-[13.5px] font-bold hover:border-[#1f8a4c] ${
+                      form.cat === c
+                        ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
+                        : "border-[#d5e6d6] bg-white text-[#4d6d58]"
+                    }`}
+                  >
+                    <Icon aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+                    {c}
+                  </div>
+                );
+              })}
             </div>
           </div>
           <input
