@@ -54,6 +54,7 @@ export default function ChatView() {
   const now = useNow();
   const deals = useStore((s) => s.deals);
   const msgs = useStore((s) => s.msgs);
+  const me = useStore((s) => s.me);
   const rooms = useStore((s) => s.rooms);
   const chatReady = useStore((s) => s.chatReady);
   const room = useStore((s) => s.room);
@@ -237,7 +238,7 @@ export default function ChatView() {
                 return (
                   // 공유 카드는 보낸 사람이 따로 있다 — 오른쪽(=내 말풍선) 정렬이면 내가 보낸 걸로 읽힌다
                   <div key={i} className="flex max-w-[78%] gap-2.5 self-start">
-                    <Avatar ch={mg.who[0] ?? "?"} />
+                    <Avatar ch={mg.who[0] ?? "?"} src={mg.avatarUrl} />
                     <div
                       onClick={() => openDeal(cd.id)}
                       className="w-[250px] cursor-pointer border-[1.5px] border-dashed border-[#1b1917] bg-white p-4"
@@ -269,7 +270,7 @@ export default function ChatView() {
               if (mg.kind === "other") {
                 return (
                   <div key={i} className="flex max-w-[78%] gap-2.5 self-start">
-                    <Avatar ch={mg.who[0] ?? "?"} />
+                    <Avatar ch={mg.who[0] ?? "?"} src={mg.avatarUrl} />
                     <div className="min-w-0">
                       <div className="mb-1 text-[11px] text-[#9c9ca3]">{mg.who}</div>
                       {mg.imageUrl ? (
@@ -292,27 +293,27 @@ export default function ChatView() {
               }
               if (mg.imageUrl) {
                 return (
-                  <a
-                    key={i}
-                    href={mg.imageUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="max-w-[78%] self-end"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */}
-                    <img
-                      src={mg.imageUrl}
-                      alt="보낸 사진"
-                      className="max-h-[260px] border-[1.5px] border-[#1b1917] object-cover"
-                    />
-                  </a>
+                  <div key={i} className="flex max-w-[78%] flex-row-reverse gap-2.5 self-end">
+                    <Avatar ch={me?.nickname?.[0] ?? "나"} src={me?.avatarUrl} />
+                    <a href={mg.imageUrl} target="_blank" rel="noreferrer" className="min-w-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */}
+                      <img
+                        src={mg.imageUrl}
+                        alt="보낸 사진"
+                        className="max-h-[260px] border-[1.5px] border-[#1b1917] object-cover"
+                      />
+                    </a>
+                  </div>
                 );
               }
               return (
-                <div key={i} className="max-w-[78%] self-end">
-                  <div className="mb-1 text-right text-[11px] text-[#9c9ca3]">나</div>
-                  <div className="font-sans-ko whitespace-pre-wrap break-words bg-[#1b1917] px-3.5 py-2.5 leading-[1.6] text-[#fdfdfb]">
-                    {mg.text}
+                <div key={i} className="flex max-w-[78%] flex-row-reverse gap-2.5 self-end">
+                  <Avatar ch={me?.nickname?.[0] ?? "나"} src={me?.avatarUrl} />
+                  <div className="min-w-0">
+                    <div className="mb-1 text-right text-[11px] text-[#9c9ca3]">나</div>
+                    <div className="font-sans-ko whitespace-pre-wrap break-words bg-[#1b1917] px-3.5 py-2.5 leading-[1.6] text-[#fdfdfb]">
+                      {mg.text}
+                    </div>
                   </div>
                 </div>
               );
