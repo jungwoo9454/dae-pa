@@ -60,53 +60,64 @@ export default function HomeView() {
   });
   return (
     <div className="flex-1 overflow-auto px-6 py-5">
-      <div className="mb-4 flex flex-wrap gap-2">
-        {CATS.map((c) => (
-          <div
-            key={c}
-            onClick={() => setFilter(c)}
-            className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
-              filter === c
-                ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
-                : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
-            }`}
-          >
-            {c}
+      <div className="sticky top-0 z-10 bg-white pb-4">
+        <div className="mb-4 flex flex-wrap gap-2">
+          {CATS.map((c) => (
+            <div
+              key={c}
+              onClick={() => setFilter(c)}
+              className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
+                filter === c
+                  ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
+                  : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
+              }`}
+            >
+              {c}
+            </div>
+          ))}
+        </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {STATUS_FILTERS.map((s) => (
+            <div
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
+                statusFilter === s
+                  ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
+                  : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
+              }`}
+            >
+              {s}
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="myDealsOnly"
+            checked={myDealsOnly}
+            onChange={(e) => setMyDealsOnly(e.target.checked)}
+            className="cursor-pointer"
+          />
+          <label htmlFor="myDealsOnly" className="cursor-pointer text-[13px] font-bold text-[#4d6d58]">
+            내 공구만 보기
+          </label>
+        </div>
+      </div>
+      {cards.length === 0 ? (
+        <div className="flex h-96 items-center justify-center text-center text-[#8aa392]">
+          <div>
+            <div className="text-[18px] font-bold">공구가 없어요</div>
+            <div className="mt-1 text-[14px]">필터를 조정해보세요</div>
           </div>
-        ))}
-      </div>
-      <div className="mb-4 flex flex-wrap gap-2">
-        {STATUS_FILTERS.map((s) => (
-          <div
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
-              statusFilter === s
-                ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
-                : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
-            }`}
-          >
-            {s}
-          </div>
-        ))}
-      </div>
-      <div className="mb-4 flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="myDealsOnly"
-          checked={myDealsOnly}
-          onChange={(e) => setMyDealsOnly(e.target.checked)}
-          className="cursor-pointer"
-        />
-        <label htmlFor="myDealsOnly" className="cursor-pointer text-[13px] font-bold text-[#4d6d58]">
-          내 공구만 보기
-        </label>
-      </div>
-      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(272px,1fr))" }}>
-        {cards.map((d) => (
-          <DealCard key={d.id} deal={d} now={now} />
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))" }}>
+          {cards.map((d) => (
+            <DealCard key={d.id} deal={d} now={now} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

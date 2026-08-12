@@ -13,30 +13,17 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
 
   const st = statusOf(deal, now);
   const pct = Math.min(100, Math.round((deal.joined / deal.goal) * 100));
-  const closing = st.key === "closing";
   const active = joinable(deal, now);
   const cd = countdownDisplay(deal, now);
 
-  // 상태별 색상 팔레트
-  const colorScheme = (() => {
-    if (deal.status === "settling") {
-      return { primary: "#0e7490", light: "#cffafe", text: "#0e7490", textLight: "#06b6d4", borderHover: "#06b6d4" };
-    }
-    // 정산중을 제외한 모든 마감된 공고 → 회색
-    if (deal.status !== "recruiting") {
-      return { primary: "#64748b", light: "#f1f5f9", text: "#64748b", textLight: "#94a3b8", borderHover: "#94a3b8" };
-    }
-    // recruiting 상태에서 시간 초과 → 회색
-    if (deal.end - now <= 0) {
-      return { primary: "#64748b", light: "#f1f5f9", text: "#64748b", textLight: "#94a3b8", borderHover: "#94a3b8" };
-    }
-    // 마감임박 → 주황색
-    if (closing) {
-      return { primary: "#d97706", light: "#fef3c7", text: "#b45309", textLight: "#d97706", borderHover: "#d97706" };
-    }
-    // 모집중 → 초록색
-    return { primary: "#1f8a4c", light: "#e9f6ec", text: "#1f8a4c", textLight: "#4ade80", borderHover: "#9fd4ae" };
-  })();
+  // 상태별 색상 팔레트 — statusOf()의 bg/fg만 재사용 (CLAUDE.md 규칙)
+  const colorScheme = {
+    primary: st.fg,
+    light: st.bg,
+    text: st.fg,
+    textLight: st.fg,
+    borderHover: st.fg,
+  };
 
   const onJoin = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -44,23 +31,31 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
     else join(deal.id);
   };
 
+  const isClosed = st.key === "closed" || st.key === "canceled";
+
   return (
     <div
       onClick={() => openDeal(deal.id)}
-      className="flex cursor-pointer flex-col gap-2.5 rounded-2xl bg-white p-4 shadow-[0_1px_2px_rgba(18,49,30,.05)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(18,70,38,.13)]"
-      style={{ borderColor: colorScheme.primary, borderWidth: "1px" }}
+      className={`flex cursor-pointer flex-col gap-2.5 rounded-2xl p-5 shadow-[0_1px_2px_rgba(18,49,30,.05)] transition-all duration-150 ${
+        !isClosed ? "bg-white hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(18,70,38,.13)]" : ""
+      }`}
+      style={{
+        backgroundColor: isClosed ? st.bg : "white",
+        borderColor: colorScheme.primary,
+        borderWidth: "1px",
+      }}
     >
       <div className="flex items-center gap-2.5">
         <div className="flex h-11 w-11 flex-none items-center justify-center overflow-hidden rounded-xl text-[22px]"  style={{ backgroundColor: colorScheme.light }}>
           {deal.imageUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */
-            <img src={deal.imageUrl} alt="" className="h-full w-full object-cover" />
+            <img src={deal.imageUrl} alt="" className={`h-full w-full object-cover ${isClosed ? "grayscale" : ""}`} />
           ) : (
             deal.emoji
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-extrabold">
+          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[17px] font-extrabold">
             {deal.title}
           </div>
           <div className="text-xs" style={{ color: colorScheme.text }}>
