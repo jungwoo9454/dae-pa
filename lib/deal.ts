@@ -47,10 +47,10 @@ export interface StatusView {
 
 /** 마감임박은 DB 상태가 아니라 마감 1시간 전부터 파생 표시 */
 export function statusOf(d: Deal, now: number): StatusView {
-  if (d.status === "settling") return { key: "settling", label: "정산중", bg: "#ecf9ff", fg: "#0e7490" };
-  if (d.status === "canceled") return { key: "canceled", label: "취소됨", bg: "#ffffff", fg: "#dc2626" };
+  if (d.status === "settling") return { key: "settling", label: "정산중", bg: "#e0f0f1", fg: "#0e7490" };
+  if (d.status === "canceled") return { key: "canceled", label: "취소됨", bg: "#f3f4f6", fg: "#6b7280" };
   const left = d.end - now;
-  if (d.status !== "recruiting" || left <= 0) return { key: "closed", label: "마감", bg: "#f5f3f0", fg: "#57534e" };
+  if (d.status !== "recruiting" || left <= 0) return { key: "closed", label: "마감", bg: "#eceff0", fg: "#64748b" };
   if (left < 3_600_000) return { key: "closing", label: "마감임박", bg: "#fdf0dc", fg: "#b45309" };
   return { key: "recruiting", label: "모집중", bg: "#e9f6ec", fg: "#166b3a" };
 }
@@ -68,24 +68,37 @@ export function remainLabel(d: Deal, now: number) {
   return (dd > 0 ? dd + "일 " : "") + p(h) + ":" + p(m) + ":" + p(ss);
 }
 
-/** 상세 화면 카운트다운 표시 — 상태별로 텍스트·캡션·색상 다르게 */
-export function countdownDisplay(d: Deal, now: number): { text: string; caption: string; color: string } {
-  if (d.status === "settling") {
-    return { text: "정산 진행 중", caption: "정산 진행 중", color: "#0e7490" };
-  }
-  if (d.status === "canceled") {
-    return { text: "취소됨", caption: "공구 취소", color: "#dc2626" };
-  }
-  const left = d.end - now;
-  if (d.status !== "recruiting" || left <= 0) {
-    return { text: "마감됨", caption: "모집 종료", color: "#64748b" };
-  }
-  return { text: remainLabel(d, now), caption: "남은 시간 · 실시간", color: "#1f8a4c" };
+/**
+ * 1인당 예상 금액 — 정산 확정 전 미리보기용 추정치. 참여자 수는 목표가 아니라 현재 joined
+ * 기준(실시간 갱신, docs/PLANNING.md 4.2).
+ *
+ * 배달음식은 사람마다 메뉴·금액이 달라 총액을 나눠 보여줄 수 없다 — 다 같이 내는 건 배달비뿐이라
+ * 배달비만 엔빵해서 보여준다(핵심 규칙 4). 그 외 카테고리는 총액을 다 같이 부담하는 공동구매라
+ * (총 금액 + 배달비) 전체를 나눈다.
+ */
+/**
+ * 상세 카운트다운 표기 (#87) — 마감·정산중·취소된 공구까지 "남은 시간 · 실시간" 초록 카운트다운을
+ * 그대로 보여주면 아직 모집 중인 것처럼 읽힌다. 문구는 statusOf 의 배지 문구를 그대로 쓴다.
+ */
+export function countdownDisplay(d: Deal, now: number) {
+  const st = statusOf(d, now);
+  if (st.key === "recruiting")
+    return { text: remainLabel(d, now), caption: "남은 시간 · 실시간", color: "#1f8a4c" };
+  if (st.key === "closing")
+    return { text: remainLabel(d, now), caption: "곧 마감돼요 · 실시간", color: "#b45309" };
+  if (st.key === "settling") return { text: st.label, caption: "정산 진행 중", color: st.fg };
+  if (st.key === "canceled") return { text: st.label, caption: "주최자가 취소했어요", color: st.fg };
+  return { text: st.label, caption: "모집 종료", color: st.fg };
 }
 
-/** 1인당 금액 = 총 금액 ÷ 현재 참여자 수 (목표 인원이 아니라 joined) — docs/PLANNING.md 4.2 */
+/** "1인" 라벨 — 배달음식은 배달비만 나눈 값이라 그대로 쓰면 음식값까지 포함된 걸로 읽힌다 (#95) */
+export function perLabel(d: Deal) {
+  return d.cat === "배달음식" ? "1인 배달비" : "1인";
+}
+
 export function perAmount(d: Deal) {
-  return Math.ceil(d.total / Math.max(1, d.joined));
+  const shared = d.cat === "배달음식" ? (d.deliveryFee ?? 0) : d.total + (d.deliveryFee ?? 0);
+  return Math.ceil(shared / Math.max(1, d.joined));
 }
 
 /** 입금 유예 — 마감 후 하루까지는 미납이어도 신뢰도를 깎지 않는다 */
