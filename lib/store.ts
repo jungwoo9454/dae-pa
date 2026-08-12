@@ -204,6 +204,8 @@ interface StoreState {
 
   setAuth: (patch: Partial<AuthForm>) => void;
   switchAuthMode: () => void;
+  /** bfcache 복원 등으로 남은 authBusy 를 푼다 — 안 풀면 로그인 버튼이 죽는다 (#82) */
+  resetAuthBusy: () => void;
   verifyDong: () => void;
   /** 세션 구독 시작. 정리 함수를 돌려준다 */
   initAuth: () => () => void;
@@ -307,9 +309,17 @@ export const useStore = create<StoreState>((set, get) => ({
   msgs: seedMsgs,
   history: [], // 로그인 시 initAuth 가 실제 wallet_transactions 로 채운다
 
-  setAuth: (patch) => set((st) => ({ auth: { ...st.auth, ...patch }, authError: "" })),
+  // 입력·모드 전환은 "다시 해보겠다"는 신호라 authBusy 도 같이 푼다 — 소셜 로그인으로 나갔다가
+  // 돌아온 뒤 authBusy 가 true 로 남아 로그인 버튼이 굳는 걸 여기서도 빠져나올 수 있게 (#82).
+  setAuth: (patch) =>
+    set((st) => ({ auth: { ...st.auth, ...patch }, authError: "", authBusy: false })),
   switchAuthMode: () =>
-    set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup", authError: "" })),
+    set((st) => ({
+      authMode: st.authMode === "signup" ? "login" : "signup",
+      authError: "",
+      authBusy: false,
+    })),
+  resetAuthBusy: () => set({ authBusy: false }),
   verifyDong: () => set({ dongOk: true }),
 
   initAuth: () => {
