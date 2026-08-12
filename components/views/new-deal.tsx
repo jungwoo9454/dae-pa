@@ -41,6 +41,7 @@ export default function NewDealView() {
       body: JSON.stringify({
         title: f.title,
         cat: f.cat,
+        description: f.description,
         total: totalN,
         goal: goalN,
         mins: parseInt(f.mins) || 60,
@@ -65,6 +66,7 @@ export default function NewDealView() {
       form: {
         cat: "식료품",
         title: "",
+        description: "",
         total: "",
         goal: "",
         mins: "",
@@ -127,6 +129,13 @@ export default function NewDealView() {
             onChange={(e) => setForm({ title: e.target.value })}
             placeholder="제목 — 예: 제주 감귤 10kg 같이 사요"
             className="input-base"
+          />
+          <textarea
+            value={form.description}
+            onChange={(e) => setForm({ description: e.target.value })}
+            placeholder={"설명 (선택) — 품목·수량도 줄바꿈으로 적어주세요\n예: 대파 5단 · 감자 3kg"}
+            rows={3}
+            className="input-base resize-none"
           />
           {isDelivery && (
             <>

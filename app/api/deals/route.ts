@@ -10,13 +10,14 @@ const emojiOf = (cat: string) => CAT_EMOJI[cat as Category] ?? CAT_EMOJI.기타;
  * POST /api/deals
  * 새로운 공구를 생성합니다
  *
- * body: { title, cat, total, goal, mins, place, store_link?, image_url?, min_order_amount?, delivery_fee? }
+ * body: { title, cat, description?, total, goal, mins, place, store_link?, image_url?, min_order_amount?, delivery_fee? }
  * response: { id, title, cat, emoji, ... }
  */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { title, cat, total, goal, mins, place, store_link, image_url, min_order_amount, delivery_fee } = body;
+    const { title, cat, description, total, goal, mins, place, store_link, image_url, min_order_amount, delivery_fee } =
+      body;
 
     // ✅ 1. 유효성 검증
     if (!title || !title.trim()) {
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
       .insert({
         host_id: user.id,
         title: title,
-        description: "",
+        description: (description ?? "").trim() || null,
         category: cat,
         total_amount: totalN,
         delivery_fee: deliveryFeeN,
@@ -132,6 +133,7 @@ export async function POST(req: Request) {
       emoji: emojiOf(newDeal.category),
       title: newDeal.title,
       cat: newDeal.category,
+      description: newDeal.description ?? undefined,
       total: newDeal.total_amount,
       goal: newDeal.goal,
       joined: newDeal.joined,
