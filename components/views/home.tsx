@@ -61,13 +61,13 @@ export default function HomeView() {
   const dealKey = deals.map((d) => d.id).join(",");
 
   /**
-   * 삭제된 카드는 잠깐 더 들고 있다가 파쇄 애니메이션을 끝내고 버린다 (#174).
-   * 있던 자리에서 갈려야 해서 사라지기 직전 index 를 같이 기억한다.
+   * 삭제된 카드는 잠깐 더 들고 있다가 떨어지는 애니메이션을 끝내고 버린다 (#174).
+   * 있던 자리에서 떨어져야 해서 사라지기 직전 index 를 같이 기억한다.
    *
    * 판정 기준은 화면 목록(cards)이 아니라 **원본 목록(deals)** 이다 — 카테고리 필터를 바꿔서
-   * 화면에서 빠진 것뿐인데 파쇄기를 돌리면 안 된다.
+   * 화면에서 빠진 것뿐인데 카드를 떨어뜨리면 안 된다.
    */
-  const [shredding, setShredding] = useState<{ deal: Deal; index: number }[]>([]);
+  const [leaving, setLeaving] = useState<{ deal: Deal; index: number }[]>([]);
   const prevCards = useRef<Deal[]>([]);
   const prevDealIds = useRef<number[] | null>(null);
   useEffect(() => {
@@ -79,9 +79,9 @@ export default function HomeView() {
       .map((deal, index) => ({ deal, index }))
       .filter(({ deal }) => removed.includes(deal.id));
     if (!gone.length) return;
-    setShredding((s) => [...s, ...gone]);
+    setLeaving((s) => [...s, ...gone]);
     const t = setTimeout(
-      () => setShredding((s) => s.filter((x) => !gone.some((g) => g.deal.id === x.deal.id))),
+      () => setLeaving((s) => s.filter((x) => !gone.some((g) => g.deal.id === x.deal.id))),
       560,
     );
     return () => clearTimeout(t);
@@ -99,15 +99,15 @@ export default function HomeView() {
     prevDealIds.current = deals.map((d) => d.id);
   });
 
-  // 파쇄 중인 카드를 원래 자리에 도로 끼워 넣는다
+  // 떨어지는 중인 카드를 원래 자리에 도로 끼워 넣는다
   const display = useMemo(() => {
-    if (!shredding.length) return cards.map((deal) => ({ deal, shred: false }));
-    const list = cards.map((deal) => ({ deal, shred: false }));
-    for (const { deal, index } of shredding) {
-      list.splice(Math.min(index, list.length), 0, { deal, shred: true });
+    if (!leaving.length) return cards.map((deal) => ({ deal, gone: false }));
+    const list = cards.map((deal) => ({ deal, gone: false }));
+    for (const { deal, index } of leaving) {
+      list.splice(Math.min(index, list.length), 0, { deal, gone: true });
     }
     return list;
-  }, [cards, shredding]);
+  }, [cards, leaving]);
 
   return (
     <div className="flex-1 overflow-auto px-10 pb-12">
@@ -171,14 +171,14 @@ export default function HomeView() {
         </div>
       ) : (
         <div className="grid gap-[26px]" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(330px,1fr))" }}>
-          {display.map(({ deal, shred }, i) => (
+          {display.map(({ deal, gone }, i) => (
             // 새로 붙는 카드만 인쇄된다 — 이미 있던 카드는 다시 mount 되지 않아 애니메이션이 재생되지 않는다.
             // 첫 진입에는 전부 mount 되므로 index 만큼 시차를 줘 차례로 인쇄되는 것처럼 보인다.
             // 바깥 칸(card-slot)은 종이가 나오는 출구다 — 위로 넘친 부분을 여기서 자른다.
             <div key={deal.id} className="card-slot">
               <div
-                className={shred ? "card-shred" : "card-print"}
-                style={shred ? undefined : { animationDelay: `${Math.min(i, 11) * 55}ms` }}
+                className={gone ? "card-drop" : "card-print"}
+                style={gone ? undefined : { animationDelay: `${Math.min(i, 11) * 55}ms` }}
               >
                 <DealCard deal={deal} now={now} />
               </div>

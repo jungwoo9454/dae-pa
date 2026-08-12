@@ -325,13 +325,13 @@ button {
 /**
  * 종이가 나오는 슬롯 — **위쪽으로 넘친 부분만** 잘라낸다.
  * overflow:hidden 은 네 방향을 다 자르고 카드 그림자까지 먹는다. 그래서 마스크 상자를
- * 좌우·아래로만 넓혀 둔다 — 위는 정확히 카드 윗변, 나머지 세 방향은 그림자(0 12px 26px)가
- * 살 자리를 남긴다. padding·margin 을 안 쓰니 그리드 배치도 그대로다.
+ * 좌우·아래로만 넓혀 둔다 — 위는 정확히 카드 윗변, 나머지 세 방향은 그림자(0 12px 26px)와
+ * 떨어지는 카드가 지나갈 자리를 남긴다. padding·margin 을 안 쓰니 그리드 배치도 그대로다.
  */
 .card-slot {
   mask-image: linear-gradient(#000, #000);
   mask-repeat: no-repeat;
-  mask-size: calc(100% + 80px) calc(100% + 50px);
+  mask-size: calc(100% + 80px) calc(100% + 260px);
   mask-position: -40px 0;
 }
 .card-print {
@@ -339,43 +339,43 @@ button {
 }
 
 /**
- * 파쇄 — 세로 조각으로 갈리면서 아래로 빨려 들어간다.
- * mask 로 세로 줄무늬를 입혀 조각처럼 보이게 하고, 아래를 축으로 scaleY 를 0 으로 접는다.
+ * 삭제 — 전표가 데스크에서 떨어져 아래로 사라진다 (#177).
+ *
+ * 인쇄 모션을 거꾸로 돌리면 종이가 슬롯으로 되들어가는데, 축도 리듬도 인쇄와 같아서
+ * 들어오는 카드인지 나가는 카드인지 순간적으로 헷갈린다. 그래서 방향을 아예 다르게 잡았다 —
+ * 떼어질 때 살짝 들렸다가, 중력처럼 가속하며 기울어져 떨어진다.
  */
-@keyframes shred-down {
+@keyframes paper-drop {
   0% {
-    transform: translateY(0) scaleY(1);
+    transform: translateY(0) rotate(0deg);
     opacity: 1;
   }
-  35% {
-    transform: translateY(4px) scaleY(0.96);
+  12% {
+    transform: translateY(-7px) rotate(-1.5deg);
     opacity: 1;
+  }
+  55% {
+    opacity: 0.9;
   }
   100% {
-    transform: translateY(18px) scaleY(0);
+    transform: translateY(200px) rotate(5deg);
     opacity: 0;
   }
 }
-.card-shred {
-  transform-origin: bottom center;
+.card-drop {
+  transform-origin: top center;
   pointer-events: none;
-  animation: shred-down 0.55s cubic-bezier(0.6, 0, 0.9, 0.4) forwards;
-  -webkit-mask-image: repeating-linear-gradient(
-    90deg,
-    #000 0 7px,
-    rgba(0, 0, 0, 0.25) 7px 9px
-  );
-  mask-image: repeating-linear-gradient(90deg, #000 0 7px, rgba(0, 0, 0, 0.25) 7px 9px);
+  animation: paper-drop 0.55s cubic-bezier(0.45, 0.02, 0.9, 0.35) forwards;
 }
 
 /* 움직임을 줄이도록 설정한 사용자에게는 애니메이션을 걸지 않는다 */
 @media (prefers-reduced-motion: reduce) {
   .card-print,
-  .card-shred,
+  .card-drop,
   .mark-pulse {
     animation: none;
   }
-  .card-shred {
+  .card-drop {
     opacity: 0;
   }
 }
