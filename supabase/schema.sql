@@ -292,6 +292,8 @@ end $$;
 
 -- 2-0-1. 참여 취소(공구 나가기) RPC (#94) — 정산 전(모집중)까지만 허용한다.
 -- 정원 도달로 settling 전환된 뒤 나가면 recruiting 복귀 처리가 복잡해지므로 1차는 범위 밖.
+-- 마감 5분 전부터도 막는다 — 직전에 빠지면 남은 사람 1인당 금액이 뛰는데 주최자가 대응할 시간이 없다.
+-- 이 5분은 lib/deal.ts 의 LEAVE_CUTOFF_MS 와 같은 값이어야 한다.
 -- group_buys 행을 for update 로 잠가 join_group_buy/cancel_group_buy 와의 동시 전이를 직렬화한다.
 create or replace function public.leave_group_buy(p_group_buy_id bigint) returns void
 language plpgsql security definer set search_path = public as $$
@@ -313,6 +315,9 @@ begin
   end if;
   if g.status <> 'recruiting' then
     raise exception '정산이 시작된 공구는 나갈 수 없습니다';
+  end if;
+  if g.deadline - interval '5 minutes' <= now() then
+    raise exception '마감 5분 전부터는 나갈 수 없어요';
   end if;
 
   delete from public.participations where group_buy_id = p_group_buy_id and user_id = v_user_id;

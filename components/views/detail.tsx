@@ -3,7 +3,17 @@
 import { Ban, Coins, MapPin, MessageCircle, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ProgressBar, StatusBadge } from "@/components/ui";
-import { countdownDisplay, fmt, joinLabel, joinable, perAmount, perLabel, statusOf } from "@/lib/deal";
+import {
+  LEAVE_CUTOFF_MS,
+  countdownDisplay,
+  fmt,
+  joinLabel,
+  joinable,
+  leavable,
+  perAmount,
+  perLabel,
+  statusOf,
+} from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
@@ -63,9 +73,13 @@ export default function DetailView() {
   }));
   // 취소는 주최자만, 모집중·정산중일 때만 (#29 — DB 의 cancel_group_buy 판정과 같다)
   const cancelable = deal.mine && (deal.status === "recruiting" || deal.status === "settling");
-  // 나가기는 주최자가 아닌 참여자만, 모집중일 때만 (#94 — DB 의 leave_group_buy 판정과 같다).
+  // 나가기는 주최자가 아닌 참여자만, 모집중이고 마감 5분 전까지만 (#94 — DB 의 leave_group_buy 판정과 같다).
   // 정산 시작 후엔 금액이 걸려있어 범위 밖 — 1차는 모집중에서만 허용.
-  const leavable = deal.me && !deal.mine && deal.status === "recruiting";
+  const canLeave = leavable(deal, now);
+  // 나갈 수 있었는데 마감이 임박해서 막힌 경우 — 버튼만 바뀌면 이유를 알 수 없어 따로 알려준다.
+  // 이미 마감된 공구는 배지가 '마감'이라 굳이 다시 알리지 않는다.
+  const leaveClosed =
+    deal.me && !deal.mine && deal.status === "recruiting" && !canLeave && deal.end > now;
   // 공구 채팅방은 참여자(주최자 포함)만 들어갈 수 있다 — store.rooms 는 내 participations 로만
   // 채워지므로, 미참여자를 들여보내면 방을 못 찾고 조용히 동네 라운지가 열렸다 (#93).
   // deal.me 는 "주최자이거나 참여 행이 있음" 이라 방 목록 판정과 정확히 같다.
@@ -73,7 +87,7 @@ export default function DetailView() {
 
   const onMainAction = () => {
     if (deal.status === "settling") openSettle(deal.id);
-    else if (leavable) setAskLeave(true);
+    else if (canLeave) setAskLeave(true);
     else join(deal.id);
   };
 
@@ -212,15 +226,20 @@ export default function DetailView() {
           <div
             onClick={onMainAction}
             className={`cursor-pointer rounded-xl p-[13px] text-center text-base font-extrabold hover:brightness-105 ${
-              leavable
+              canLeave
                 ? "border-[1.5px] border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#b3261e] hover:text-[#b3261e]"
                 : active || deal.status === "settling"
                   ? "bg-[#1f8a4c] text-white"
                   : "bg-[#e6efe4] text-[#6b8573]"
             }`}
           >
-            {leavable ? "나가기" : joinLabel(deal, now)}
+            {canLeave ? "나가기" : joinLabel(deal, now)}
           </div>
+          {leaveClosed && (
+            <div className="-mt-2.5 text-center text-[12px] text-[#8aa392]">
+              마감 {LEAVE_CUTOFF_MS / 60_000}분 전부터는 나갈 수 없어요
+            </div>
+          )}
           {askLeave && (
             <div className="flex flex-col gap-2 rounded-xl bg-[#fdecec] p-3">
               <div className="text-[13px] font-extrabold text-[#b3261e]">공구에서 나갈까요?</div>
