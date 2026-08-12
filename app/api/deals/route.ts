@@ -6,13 +6,13 @@ import type { Deal } from "@/lib/types";
  * POST /api/deals
  * 새로운 공고를 생성합니다
  *
- * body: { title, cat, total, goal, mins, place, store_link? }
+ * body: { title, cat, total, goal, mins, place, store_link?, image_url? }
  * response: { id, title, cat, emoji, ... }
  */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { title, cat, total, goal, mins, place, store_link } = body;
+    const { title, cat, total, goal, mins, place, store_link, image_url } = body;
 
     // ✅ 1. 유효성 검증
     if (!title || !title.trim()) {
@@ -77,6 +77,8 @@ export async function POST(req: Request) {
         deadline: new Date(Date.now() + minN * 60_000).toISOString(),
         store_link: store_link || "",
         place: place || "채팅방에서 협의",
+        // 대표 이미지 — /api/upload 가 돌려준 R2 공개 URL (#15). 없으면 UI 가 이모지를 쓴다
+        image_url: image_url || null,
         status: 'recruiting',
       })
       .select()
@@ -101,6 +103,7 @@ export async function POST(req: Request) {
       joined: newDeal.joined,
       end: new Date(newDeal.deadline).getTime(),
       place: newDeal.place,
+      imageUrl: newDeal.image_url,
       host: "나",
       status: newDeal.status,
       me: true,
@@ -154,6 +157,7 @@ export async function GET() {
       joined: row.joined,
       end: new Date(row.deadline).getTime(),
       place: row.place,
+      imageUrl: row.image_url,
       host: row.host_id === user?.id ? "나" : (row.profiles?.nickname ?? "주최자"),
       status: row.status,
       me: row.host_id === user?.id,

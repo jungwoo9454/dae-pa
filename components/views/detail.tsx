@@ -90,12 +90,21 @@ export default function DetailView() {
       </div>
       <div className="flex max-w-[980px] items-start gap-6">
         <div className="flex flex-[1.5] flex-col gap-3.5">
-          <div
-            className="flex h-[220px] items-center justify-center rounded-2xl border border-[#d8e7d6] text-[40px] text-[#8aa392]"
-            style={{ background: "repeating-linear-gradient(45deg,#e4efe2 0 14px,#eef5ec 14px 28px)" }}
-          >
-            {deal.emoji}
-          </div>
+          {deal.imageUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */
+            <img
+              src={deal.imageUrl}
+              alt=""
+              className="h-[220px] w-full rounded-2xl border border-[#d8e7d6] object-cover"
+            />
+          ) : (
+            <div
+              className="flex h-[220px] items-center justify-center rounded-2xl border border-[#d8e7d6] text-[40px] text-[#8aa392]"
+              style={{ background: "repeating-linear-gradient(45deg,#e4efe2 0 14px,#eef5ec 14px 28px)" }}
+            >
+              {deal.emoji}
+            </div>
+          )}
           <div>
             <div className="flex items-center gap-2.5">
               <span className="font-jua text-2xl">{deal.title}</span>

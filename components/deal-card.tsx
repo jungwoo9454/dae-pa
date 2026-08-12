@@ -28,8 +28,13 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
       className="flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-[#dbe9da] bg-white p-4 shadow-[0_1px_2px_rgba(18,49,30,.05)] transition-all duration-150 hover:-translate-y-0.5 hover:border-[#9fd4ae] hover:shadow-[0_8px_20px_rgba(18,70,38,.13)]"
     >
       <div className="flex items-center gap-2.5">
-        <div className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-[#e9f6ec] text-[22px]">
-          {deal.emoji}
+        <div className="flex h-11 w-11 flex-none items-center justify-center overflow-hidden rounded-xl bg-[#e9f6ec] text-[22px]">
+          {deal.imageUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */
+            <img src={deal.imageUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            deal.emoji
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-extrabold">

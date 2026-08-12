@@ -48,6 +48,8 @@ create table group_buys (
   joined        int  not null default 1 check (joined >= 0),  -- 주최자 포함
   deadline      timestamptz not null,
   place         text,
+  -- 대표 이미지 — Cloudflare R2 공개 URL (#15). 없으면 UI 가 카테고리 이모지를 보여준다
+  image_url     text,
   -- recruiting(모집중) → settling(정산중) → completed(마감), canceled
   -- '마감임박'은 상태가 아니라 deadline 1시간 전부터 UI에서 파생 (lib/deal.ts statusOf)
   status        text not null default 'recruiting' check (status in ('recruiting','settling','completed','canceled')),
@@ -875,7 +877,7 @@ grant select, insert, update, delete on all tables in schema public to authentic
 -- total_amount 도 뺀다 — 알림·시스템 메시지와 한 트랜잭션이어야 해서 change_total_amount RPC 전용 (#12)
 revoke update on group_buys from authenticated;
 grant update (title, description, category, store_link,
-              delivery_fee, deadline, place)
+              delivery_fee, deadline, place, image_url)
   on group_buys to authenticated;
 
 -- amount_due 는 정산 RPC(#16)가 쓴다. 클라이언트는 본인 메모·입금 체크만.
@@ -948,7 +950,9 @@ alter publication supabase_realtime add table wallets;
 alter publication supabase_realtime add table wallet_transactions;
 
 -- ─────────────────────────────────────────────
--- 7. Storage — 영수증 사진 버킷 (#15 증빙 첨부, 자동 인식은 없음)
+-- 7. Storage — 미사용
+--    이미지 업로드는 Cloudflare R2 로 간다 (app/api/upload, lib/server/r2.ts).
+--    아래 receipts 버킷은 쓰지 않지만, 이미 만들어진 프로젝트가 있어 그대로 둔다.
 -- ─────────────────────────────────────────────
 
 insert into storage.buckets (id, name, public) values ('receipts', 'receipts', true)
