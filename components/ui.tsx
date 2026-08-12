@@ -61,13 +61,27 @@ export function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 }
 
 /** 참여자 이니셜 — 전표에 찍힌 각진 인장 */
-export function Avatar({ ch, size = 26 }: { ch: string; size?: number }) {
+export function Avatar({
+  ch,
+  size = 26,
+  src,
+}: {
+  ch: string;
+  size?: number;
+  /** 프로필 사진 URL — 없으면 이름 첫 글자로 떨어진다 */
+  src?: string | null;
+}) {
   return (
     <span
-      className="inline-flex flex-none items-center justify-center border-[1.5px] border-[#1b1917] text-[12.5px] font-bold"
-      style={{ minWidth: size, height: size }}
+      className="inline-flex flex-none items-center justify-center overflow-hidden border-[1.5px] border-[#1b1917] text-[12.5px] font-bold"
+      style={{ minWidth: size, width: size, height: size }}
     >
-      {ch}
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element -- 소셜·R2 아바타는 외부 도메인이라 next/image 설정 없이 쓴다
+        <img src={src} alt="" className="h-full w-full object-cover" />
+      ) : (
+        ch
+      )}
     </span>
   );
 }

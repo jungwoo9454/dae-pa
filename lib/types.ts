@@ -97,8 +97,8 @@ export interface Deal {
 
 export type Msg =
   | { kind: "sys"; text: string; id?: number }
-  | { kind: "card"; cardOf: number; who: string; id?: number }
-  | { kind: "other"; who: string; text: string; id?: number; imageUrl?: string }
+  | { kind: "card"; cardOf: number; who: string; id?: number; avatarUrl?: string | null }
+  | { kind: "other"; who: string; text: string; id?: number; imageUrl?: string; avatarUrl?: string | null }
   | { kind: "mine"; text: string; id?: number; imageUrl?: string };
 
 /** 채팅방 한 개 (#7) — chat_rooms 행에서 만든다 */

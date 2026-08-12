@@ -50,10 +50,10 @@ export const roomLocked = (deals: Deal[], rooms: Room[], room: string) => {
 };
 
 /**
- * user_id → 닉네임. Realtime INSERT 페이로드에는 조인 결과가 없어서
+ * user_id → 닉네임·프로필 사진. Realtime INSERT 페이로드에는 조인 결과가 없어서
  * 처음 보는 사람만 한 번 조회하고 여기에 담아 둔다.
  */
-const nickCache = new Map<string, string>();
+const senderCache = new Map<string, { nickname: string | null; avatarUrl: string | null }>();
 
 /**
  * messages 행 — 카드 말풍선은 payload.group_buy_id 로 어떤 공구인지 담는다 (#7).
@@ -67,20 +67,26 @@ interface MsgRow {
   kind: "text" | "sys" | "card";
   content: string | null;
   payload: { group_buy_id?: number; image_url?: string } | null;
-  profiles?: { nickname: string | null } | null;
+  profiles?: { nickname: string | null; avatar_url?: string | null } | null;
 }
 
 /** messages 행 → 화면용 Msg. 내 메시지면 mine, 남이면 other, user_id 가 null 이면 시스템 */
 const toMsg = (r: MsgRow, myId: string | null): Msg => {
   if (r.kind === "sys") return { kind: "sys", text: r.content ?? "", id: r.id };
-  if (r.user_id && r.profiles?.nickname) nickCache.set(r.user_id, r.profiles.nickname);
+  if (r.user_id && r.profiles) {
+    senderCache.set(r.user_id, {
+      nickname: r.profiles.nickname,
+      avatarUrl: r.profiles.avatar_url ?? null,
+    });
+  }
   const who = r.profiles?.nickname ?? "이웃";
+  const avatarUrl = r.profiles?.avatar_url ?? null;
   if (r.kind === "card") {
-    return { kind: "card", cardOf: Number(r.payload?.group_buy_id ?? 0), who, id: r.id };
+    return { kind: "card", cardOf: Number(r.payload?.group_buy_id ?? 0), who, id: r.id, avatarUrl };
   }
   const imageUrl = r.payload?.image_url;
   if (r.user_id && r.user_id === myId) return { kind: "mine", text: r.content ?? "", id: r.id, imageUrl };
-  return { kind: "other", who, text: r.content ?? "", id: r.id, imageUrl };
+  return { kind: "other", who, text: r.content ?? "", id: r.id, imageUrl, avatarUrl };
 };
 
 /**
@@ -387,7 +393,7 @@ export const useStore = create<StoreState>((set, get) => ({
       if (!uid) {
         // 다음 사람이 남의 알림·대화·설정을 보지 않게 목록·중복 표시·토글을 비운다
         firedDeadlines.clear();
-        nickCache.clear();
+        senderCache.clear();
         unsubWallet?.();
         unsubWallet = null;
         set((st) => ({
@@ -608,7 +614,7 @@ export const useStore = create<StoreState>((set, get) => ({
         rooms.map(async (r) => {
           const { data } = await sb
             .from("messages")
-            .select("id, room_id, user_id, kind, content, payload, profiles(nickname)")
+            .select("id, room_id, user_id, kind, content, payload, profiles(nickname, avatar_url)")
             .eq("room_id", r.id)
             .order("id", { ascending: false })
             .limit(RECENT_LIMIT);
@@ -645,15 +651,22 @@ export const useStore = create<StoreState>((set, get) => ({
         if (!get().rooms.some((r) => r.id === row.room_id)) notMineRooms.add(row.room_id);
         return;
       }
-      if (row.user_id && row.user_id !== uid && !nickCache.has(row.user_id)) {
-        const { data } = await sb.from("profiles").select("nickname").eq("id", row.user_id).single();
-        if (data?.nickname) nickCache.set(row.user_id, data.nickname);
+      if (row.user_id && row.user_id !== uid && !senderCache.has(row.user_id)) {
+        const { data } = await sb
+          .from("profiles")
+          .select("nickname, avatar_url")
+          .eq("id", row.user_id)
+          .single();
+        if (data) senderCache.set(row.user_id, { nickname: data.nickname, avatarUrl: data.avatar_url });
       }
       const target = get().rooms.find((r) => r.id === row.room_id);
       if (!alive || !target) return;
       const key = roomKey(target);
-      const nickname = row.user_id ? (nickCache.get(row.user_id) ?? null) : null;
-      const msg = toMsg({ ...row, profiles: { nickname } }, uid);
+      const sender = row.user_id ? senderCache.get(row.user_id) : null;
+      const msg = toMsg(
+        { ...row, profiles: { nickname: sender?.nickname ?? null, avatar_url: sender?.avatarUrl ?? null } },
+        uid,
+      );
       set((st) => {
         const list = st.msgs[key] ?? [];
         if (list.some((m) => m.id === row.id)) return {}; // 내가 보낸 뒤 바로 붙인 것과 중복
@@ -854,10 +867,11 @@ export const useStore = create<StoreState>((set, get) => ({
 
     const target = st.rooms.find((r) => roomKey(r) === roomId);
     const nick = st.me?.nickname ?? "나";
+    const myAvatar = st.me?.avatarUrl ?? null;
     if (!target || !st.me) {
       // DB 연동 전(로컬 시드)에는 화면에만 남긴다
       set((s) => ({
-        msgs: { ...s.msgs, [roomId]: [...(s.msgs[roomId] ?? []), { kind: "card", cardOf: dealId, who: nick }] },
+        msgs: { ...s.msgs, [roomId]: [...(s.msgs[roomId] ?? []), { kind: "card", cardOf: dealId, who: nick, avatarUrl: myAvatar }] },
       }));
       return;
     }
@@ -866,7 +880,7 @@ export const useStore = create<StoreState>((set, get) => ({
       roomId,
       st.me.id,
       { kind: "card", payload: { group_buy_id: dealId } },
-      (id) => ({ kind: "card", cardOf: dealId, who: nick, id }),
+      (id) => ({ kind: "card", cardOf: dealId, who: nick, id, avatarUrl: myAvatar }),
     );
   },
 

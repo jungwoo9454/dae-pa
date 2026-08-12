@@ -72,6 +72,7 @@ export default function DetailView() {
     userId: p.user_id,
     nickname: p.profile?.nickname ?? "이웃",
     initials: (p.profile?.nickname ?? p.user_id).slice(0, 1).toUpperCase(),
+    avatarUrl: p.profile?.avatar_url ?? null,
     isHost: p.user_id === deal.host_id,
   }));
   // 취소는 주최자만, 모집중·정산중일 때만 (#29 — DB 의 cancel_group_buy 판정과 같다)
@@ -358,7 +359,7 @@ export default function DetailView() {
             <div className="mt-3 flex flex-col gap-2.5 text-[14.5px]">
               {participantAvatars.map((p) => (
                 <div key={p.userId} className="flex items-center gap-2.5">
-                  <Avatar ch={p.initials} />
+                  <Avatar ch={p.initials} src={p.avatarUrl} />
                   <span className="font-sans-ko truncate">{p.nickname}</span>
                   {p.isHost && <span className="ml-auto text-[11px] text-[#9c9ca3]">주최</span>}
                 </div>
