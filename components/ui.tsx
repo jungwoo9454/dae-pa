@@ -36,15 +36,22 @@ export function ProgressBar({ pct, color = "#1b1917", h = 8 }: { pct: number; co
   );
 }
 
-/** 단말 ON/OFF 키 — 스위치 대신 눌리는 키로 (#143) */
+/**
+ * 단말 ON/OFF 키 — 스위치 대신 눌리는 키로 (#143).
+ * 폭을 고정하고 두 상태 모두 같은 두께의 테두리를 둔다 — 안 그러면 ON(테두리 없음, 2자)과
+ * OFF(테두리 1.5px, 3자)의 박스 크기가 달라 누를 때마다 줄이 흔들린다 (#156).
+ * 색은 잉크/감열지 — 형광 초록은 대파페이 금고 LED 전용이라 여기선 안 쓴다.
+ */
 export function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={on}
-      className={`rounded-[4px] px-3.5 py-1.5 text-xs font-bold ${
-        on ? "bg-[#1b1917] text-[#7ce28c]" : "border-[1.5px] border-[#c9c9c4] text-[#9c9ca3]"
+      className={`w-[54px] rounded-[4px] border-[1.5px] py-1.5 text-center text-xs font-bold ${
+        on
+          ? "border-[#1b1917] bg-[#1b1917] text-[#fdfdfb]"
+          : "border-[#c9c9c4] text-[#9c9ca3] hover:border-[#1b1917] hover:text-[#1b1917]"
       }`}
     >
       {on ? "ON" : "OFF"}
