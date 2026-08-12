@@ -39,6 +39,8 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
     // 카드 높이는 제목 줄 수·바코드 유무로 제각각이었다 — 그리드 칸을 꽉 채우고
     // 아래 묶음(바코드·참여 키)을 바닥에 붙여 한 줄의 카드 높이를 맞춘다.
     <div onClick={() => openDeal(deal.id)} className="flex h-full cursor-pointer flex-col">
+      {/* 위아래로 뜯어낸 전표 한 장 — 인쇄될 때 뜯긴 윗변이 먼저 나온다 */}
+      <div className={`receipt-edge receipt-edge-top ${dead ? "receipt-edge-dead" : ""}`} />
       <div className={`receipt flex flex-1 flex-col px-[26px] pb-[22px] pt-6 ${dead ? "receipt-dead" : ""}`}>
         <div className="receipt-head">＊ 대파 공구 ＊</div>
         <div className="mt-[7px] text-center text-[12.5px] text-[#8b8478]">

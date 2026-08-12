@@ -174,12 +174,14 @@ export default function HomeView() {
           {display.map(({ deal, shred }, i) => (
             // 새로 붙는 카드만 인쇄된다 — 이미 있던 카드는 다시 mount 되지 않아 애니메이션이 재생되지 않는다.
             // 첫 진입에는 전부 mount 되므로 index 만큼 시차를 줘 차례로 인쇄되는 것처럼 보인다.
-            <div
-              key={deal.id}
-              className={shred ? "card-shred" : "card-print"}
-              style={shred ? undefined : { animationDelay: `${Math.min(i, 11) * 55}ms` }}
-            >
-              <DealCard deal={deal} now={now} />
+            // 바깥 칸(card-slot)은 종이가 나오는 출구다 — 위로 넘친 부분을 여기서 자른다.
+            <div key={deal.id} className="card-slot">
+              <div
+                className={shred ? "card-shred" : "card-print"}
+                style={shred ? undefined : { animationDelay: `${Math.min(i, 11) * 55}ms` }}
+              >
+                <DealCard deal={deal} now={now} />
+              </div>
             </div>
           ))}
         </div>
