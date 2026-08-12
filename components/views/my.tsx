@@ -1,7 +1,7 @@
 "use client";
 
 import { Ban } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { StatusBadge } from "@/components/ui";
 import { fmt, perAmount, perLabel, profileStats, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
@@ -61,14 +61,14 @@ export default function MyView() {
 
           return (
             <div key={m.id}>
+              {/* 상태 색은 인라인 style 대신 CSS 변수(--bc)로 넘긴다 — 인라인 borderColor 는
+                  hover:border-* 를 항상 이겨서 호버 테두리가 죽는다 */}
               <div
                 onClick={() => openDeal(m.id)}
-                className={`flex cursor-pointer items-center gap-3.5 rounded-[14px] border px-4 py-3.5 ${
-                  dimmed
-                    ? "border-[#e3e7e6] bg-[#f4f6f5]"
-                    : "border-[#dbe9da] bg-white hover:border-[#1f8a4c] hover:bg-[#f9fdf9]"
+                className={`flex cursor-pointer items-center gap-3.5 rounded-[14px] border border-[var(--bc)] px-4 py-3.5 ${
+                  dimmed ? "bg-[#f4f6f5]" : "bg-white hover:border-[#1f8a4c] hover:bg-[#f9fdf9]"
                 }`}
-                style={{ borderColor: st.fg }}
+                style={{ "--bc": st.fg } as CSSProperties}
               >
                 <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] text-xl" style={{ backgroundColor: st.bg }}>
                   {m.emoji}

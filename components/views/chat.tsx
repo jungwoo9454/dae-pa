@@ -1,7 +1,7 @@
 "use client";
 import { Home, ImagePlus, LoaderCircle, MessageCircleOff, ShoppingCart, Timer } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { uploadImage } from "@/components/image-upload";
 import { Avatar } from "@/components/ui";
 import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, statusOf, type StatusView } from "@/lib/deal";
@@ -23,17 +23,16 @@ function RoomItem({ room, active, onPick }: { room: RoomDef; active: boolean; on
   const st = room.st;
   const dimmed = st?.key === "closed";
 
+  // 상태 색은 CSS 변수(--bc)로 넘긴다 — 인라인 borderColor 는 hover:border-* 를 이겨서 호버가 죽는다
+  const borderColor = active ? "#1f8a4c" : (st?.fg ?? "transparent");
+
   return (
     <div
       onClick={onPick}
-      className={`flex cursor-pointer items-center gap-[9px] rounded-[11px] border-[1.5px] px-[11px] py-[9px] ${
-        active
-          ? "border-[#1f8a4c] bg-[#e9f6ec]"
-          : dimmed
-          ? "border-[#e3e7e6] bg-[#f4f6f5] hover:border-[#d0d6d5]"
-          : "border-transparent hover:border-[#9fd4ae]"
+      className={`flex cursor-pointer items-center gap-[9px] rounded-[11px] border-[1.5px] border-[var(--bc)] px-[11px] py-[9px] ${
+        active ? "bg-[#e9f6ec]" : dimmed ? "bg-[#f4f6f5] hover:border-[#d0d6d5]" : "hover:border-[#9fd4ae]"
       }`}
-      style={st && !active ? { borderColor: st.fg } : undefined}
+      style={{ "--bc": borderColor } as CSSProperties}
     >
       {room.icon ? (
         <room.icon aria-hidden className="h-[17px] w-[17px] flex-none text-[#4d6d58]" />
