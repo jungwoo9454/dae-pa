@@ -1,6 +1,7 @@
 "use client";
 
 import { Coins, Timer } from "lucide-react";
+import ImageUpload from "@/components/image-upload";
 import { CAT_EMOJI, fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Category } from "@/lib/types";
@@ -34,6 +35,7 @@ export default function NewDealView() {
         mins: parseInt(f.mins) || 60,
         place: f.place,
         store_link: f.store_link,
+        image_url: f.imageUrl || null,
       }),
     });
 
@@ -47,7 +49,7 @@ export default function NewDealView() {
     useStore.setState((st) => ({
       deals: [newDeal, ...st.deals],
       page: "home",
-      form: { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "",store_link: "", },
+      form: { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "", store_link: "", imageUrl: "" },
     }));
 
   } catch (error) {
@@ -130,6 +132,16 @@ export default function NewDealView() {
               onChange={(e) => setForm({ place: e.target.value })}
               placeholder="수령 장소/방법"
               className="input-base flex-[1.4]"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <div className="text-[12.5px] text-[#4d6d58]">대표 사진 (선택) — 없으면 카테고리 이모지로 보여요</div>
+            <ImageUpload
+              kind="deals"
+              value={form.imageUrl || null}
+              onChange={(url) => setForm({ imageUrl: url ?? "" })}
+              label="대표 사진 첨부"
+              height={140}
             />
           </div>
         <div className="flex gap-2">

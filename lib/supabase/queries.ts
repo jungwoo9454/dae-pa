@@ -216,6 +216,7 @@ export function subscribeToSettlement(
       id: row.id,
       finalTotal: row.total_amount,
       hasReceipt: !!row.receipt_url,
+      receiptUrl: row.receipt_url,
       confirmed: row.status === "confirmed",
       votes: Object.fromEntries((voteRows ?? []).map((v) => [v.user_id as string, v.agree as boolean])),
     });
@@ -264,6 +265,7 @@ function rowToDeal(
     joined: participations ? participations.length : row.joined,
     end: new Date(row.deadline).getTime(),
     place: row.place || "채팅방에서 협의",
+    imageUrl: row.image_url,
     store_link: row.store_link || undefined,
     status: row.status,
     created_at: row.created_at,
