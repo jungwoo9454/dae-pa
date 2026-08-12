@@ -1047,9 +1047,18 @@ create policy participations_own_update on participations for update to authenti
 create policy chat_rooms_read on chat_rooms for select to authenticated using (true);
 
 create policy messages_read on messages for select to authenticated using (true);
--- 시스템 메시지(kind='sys')는 클라이언트가 직접 못 넣는다 — 서버 함수만
+-- 시스템 메시지(kind='sys')는 클라이언트가 직접 못 넣는다 — 서버 함수만.
+-- 마감(completed)·취소(canceled)된 공구방도 막는다 (#129) — 클라이언트만 막으면 UI 처리로 남는다.
+-- 정산중(settling)은 입금 조율 대화가 필요해 열어두고, 라운지는 group_buy_id 가 없어 항상 통과한다.
 create policy messages_own_insert on messages for insert to authenticated
-  with check (user_id = auth.uid() and kind in ('text','card'));
+  with check (
+    user_id = auth.uid() and kind in ('text','card')
+    and not exists (
+      select 1 from public.chat_rooms r
+      join public.group_buys g on g.id = r.group_buy_id
+      where r.id = messages.room_id and g.status in ('completed', 'canceled')
+    )
+  );
 
 create policy settlements_read on settlements for select to authenticated using (true);
 create policy settlements_host_write on settlements for all to authenticated

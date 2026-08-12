@@ -6,7 +6,7 @@ import { uploadImage } from "@/components/image-upload";
 import { Avatar } from "@/components/ui";
 import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, statusOf, type StatusView } from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
-import { RECENT_LIMIT, useStore } from "@/lib/store";
+import { RECENT_LIMIT, roomLocked, useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
 
 interface RoomDef {
@@ -136,6 +136,8 @@ export default function ChatView() {
   const current = [...loungeRooms, ...dealRooms].find((r) => r.id === room) ?? null;
   const missingDeal = current ? null : (deals.find((d) => "d" + d.id === room) ?? null);
   const CurrentIcon = current?.icon;
+  // 마감·취소된 공구방은 기록만 본다 (#129). 라운지는 항상 열려 있다.
+  const locked = current ? roomLocked(deals, rooms, current.id) : false;
   const allMsgs = current ? (msgs[current.id] ?? []) : [];
   const roomMsgs = allMsgs.slice(-RECENT_LIMIT);
 
@@ -346,7 +348,13 @@ export default function ChatView() {
           })}
         </div>
         {/* 못 연 방에서는 입력창을 감춘다 — sendMsg 가 조용히 아무 일도 안 하는 게 더 헷갈린다 */}
-        {current && (
+        {current && locked && (
+          <div className="flex items-center justify-center gap-1.5 border-t border-[#e6efe4] bg-[#f4f6f5] px-4 py-4 text-[13px] text-[#8aa392]">
+            <MessageCircleOff aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+            마감된 공구방이에요 · 대화 기록만 볼 수 있어요
+          </div>
+        )}
+        {current && !locked && (
           <div className="flex items-center gap-2 border-t border-[#e6efe4] px-4 py-3">
             <input
               ref={photoRef}

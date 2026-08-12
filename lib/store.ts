@@ -38,6 +38,18 @@ interface RoomRow {
 const roomKey = (r: Room) => (r.type === "lounge" ? "lounge" : "d" + r.dealId);
 
 /**
+ * 마감(정산 완료)·취소된 공구방은 기록만 남기고 입력을 닫는다 (#129).
+ * 정산중(settling)은 입금 조율 대화가 필요해서 열어두고, 동네 라운지는 공구와 무관하니 항상 열려 있다.
+ */
+export const roomLocked = (deals: Deal[], rooms: Room[], room: string) => {
+  const target = rooms.find((r) => roomKey(r) === room);
+  const dealId = target ? target.dealId : Number(room.replace(/^d/, "")) || null;
+  if (target?.type === "lounge" || dealId == null) return false;
+  const status = deals.find((d) => d.id === dealId)?.status;
+  return status === "completed" || status === "canceled";
+};
+
+/**
  * user_id → 닉네임. Realtime INSERT 페이로드에는 조인 결과가 없어서
  * 처음 보는 사람만 한 번 조회하고 여기에 담아 둔다.
  */
@@ -868,6 +880,8 @@ export const useStore = create<StoreState>((set, get) => ({
     const st = get();
     const text = st.chatInput.trim();
     if (!text) return;
+    // 엔터 전송·붙여넣기까지 한 곳에서 막는다 (#129)
+    if (roomLocked(st.deals, st.rooms, st.room)) return;
     set({ chatInput: "" });
 
     const target = st.rooms.find((r) => roomKey(r) === st.room);
@@ -884,6 +898,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
   sendImageMsg: (imageUrl) => {
     const st = get();
+    if (roomLocked(st.deals, st.rooms, st.room)) return;
     const target = st.rooms.find((r) => roomKey(r) === st.room);
     if (!target || !st.me) {
       // 사진은 이미 올라간 뒤라 여기서 조용히 사라지면 사용자는 아무 일도 안 일어난 걸로 본다
