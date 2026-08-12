@@ -3,7 +3,7 @@
 import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, settleStartable, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Deal } from "@/lib/types";
-import { Barcode, ProgressBar, StatusBadge, receiptNo } from "./ui";
+import { Barcode, ProgressBar, StatusStamp, receiptNo } from "./ui";
 
 /**
  * 공구 카드 = 감열지 전표 한 장 (#143).
@@ -50,19 +50,9 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
           >
             {deal.title}
           </div>
-          {/* 상태 태그는 전표 안 우측 상단에 — 종이 밖에 두면 카드마다 높이가 달라 붕 뜬다 */}
-          <div className="ml-auto flex flex-none flex-col items-end gap-2">
-            <StatusBadge s={st} />
-            {/* 도장은 실제로 초가 흐를 때만 (정산중·마감이면 '마감됨' 만 찍혀 의미가 없다) */}
-            {deal.status === "recruiting" && deal.end > now && (
-              <div
-                className="stamp h-[70px] w-[70px] flex-col"
-                style={{ borderColor: st.fg, color: st.fg }}
-              >
-                <span className="text-[10px] font-bold">마감까지</span>
-                <span className="tnum mt-0.5 text-[13.5px] font-bold">{remainLabel(deal, now)}</span>
-              </div>
-            )}
+          {/* 상태는 도장 하나로 말한다 — 태그까지 붙이면 같은 걸 두 번 말하게 된다 (#169) */}
+          <div className="ml-auto">
+            <StatusStamp s={st} countdown={remainLabel(deal, now)} />
           </div>
         </div>
 
@@ -88,28 +78,11 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
           </div>
         </div>
 
-        {dead ? (
-          <div className="relative mt-6 h-2 rounded-full bg-[#dad4c8]">
-            {/* .stamp 이 border/color 를 직접 잡고 있어(레이어 밖 CSS) 유틸리티로는 안 덮인다 — 인라인으로 */}
-            <span
-              className="stamp absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-5 py-1 text-base tracking-[.4em]"
-              style={{
-                borderWidth: 2.5,
-                borderColor: "rgba(140,133,120,.55)",
-                color: "rgba(140,133,120,.7)",
-                background: "rgba(241,239,232,.85)",
-              }}
-            >
-              {st.label}
-            </span>
-          </div>
-        ) : (
-          <div className="mt-4">
-            <ProgressBar pct={pct} color={st.fg} />
-          </div>
-        )}
+        <div className="mt-4">
+          <ProgressBar pct={pct} color={dead ? "#dad4c8" : st.fg} />
+        </div>
 
-        <div className={`flex items-baseline ${dead ? "mt-[30px]" : "mt-[18px]"}`}>
+        <div className="mt-[18px] flex items-baseline">
           <span className="text-[14.5px] text-[#8b8478]">{perLabel(deal)}</span>
           <span className={`tnum ml-auto text-[30px] font-black ${dead ? "text-[#8b8478]" : ""}`}>
             {fmt(perAmount(deal))}
