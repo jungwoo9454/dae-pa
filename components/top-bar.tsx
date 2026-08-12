@@ -8,7 +8,7 @@ import type { PageKey } from "@/lib/types";
 const TITLES: Record<PageKey, string> = {
   login: "로그인",
   home: "홈",
-  detail: "공고 상세",
+  detail: "공구 상세",
   my: "내 공구",
   chat: "채팅",
   pay: "대파페이",

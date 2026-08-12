@@ -1,18 +1,22 @@
 // app/api/deals/route.ts
 import { createClient } from "@/lib/supabase/server"; //SUPERBASE추가후
-import type { Deal } from "@/lib/types";
+import { CAT_EMOJI } from "@/lib/deal";
+import type { Category } from "@/lib/types";
+
+/** 카테고리 이모지는 lib/deal.ts 의 CAT_EMOJI 한 벌만 쓴다 (#90) — DB 값이 정해진 카테고리를 벗어나면 기타 */
+const emojiOf = (cat: string) => CAT_EMOJI[cat as Category] ?? CAT_EMOJI.기타;
 
 /**
  * POST /api/deals
- * 새로운 공고를 생성합니다
+ * 새로운 공구를 생성합니다
  *
- * body: { title, cat, total, goal, mins, place, store_link?, image_url? }
+ * body: { title, cat, total, goal, mins, place, store_link?, image_url?, min_order_amount?, delivery_fee? }
  * response: { id, title, cat, emoji, ... }
  */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { title, cat, total, goal, mins, place, store_link, image_url } = body;
+    const { title, cat, total, goal, mins, place, store_link, image_url, min_order_amount, delivery_fee } = body;
 
     // ✅ 1. 유효성 검증
     if (!title || !title.trim()) {
@@ -22,16 +26,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const totalN = parseInt(total) || 0;
     const goalN = parseInt(goal) || 0;
-
-    if (totalN <= 0) {
-      return Response.json(
-        { error: "총 금액은 0보다 커야 합니다" },
-        { status: 400 }
-      );
-    }
-
     if (goalN < 2) {
       return Response.json(
         { error: "목표 인원은 2명 이상이어야 합니다" },
@@ -39,10 +34,48 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ 2. 배달음식 카테고리 검증
-    if (cat === "배달음식" && !store_link) {
+    // ✅ 2. 배달음식 카테고리 검증 — 가게 링크·최소 주문 금액·배달비가 필수, 총 금액은 선택 (#95)
+    // 채팅에서 메뉴를 취합해야 총액을 알 수 있어서, 올릴 때는 최소 주문 금액으로 시작하고
+    // 나중에 "총 금액 수정"으로 실제 금액으로 바꾼다.
+    const isDelivery = cat === "배달음식";
+    let totalN = parseInt(total) || 0;
+    let minOrderN = 0;
+    let deliveryFeeN = 0;
+
+    if (isDelivery) {
+      if (!store_link) {
+        return Response.json(
+          { error: "배달음식은 가게 링크가 필수입니다" },
+          { status: 400 }
+        );
+      }
+      minOrderN = parseInt(min_order_amount) || 0;
+      if (minOrderN <= 0) {
+        return Response.json(
+          { error: "최소 주문 금액은 0보다 커야 합니다" },
+          { status: 400 }
+        );
+      }
+      if (delivery_fee === undefined || delivery_fee === null || String(delivery_fee).trim() === "") {
+        return Response.json(
+          { error: "배달비를 입력해주세요" },
+          { status: 400 }
+        );
+      }
+      deliveryFeeN = parseInt(delivery_fee) || 0;
+      if (deliveryFeeN < 0) {
+        return Response.json(
+          { error: "배달비는 0 이상이어야 합니다" },
+          { status: 400 }
+        );
+      }
+      // 총 금액을 안 적으면 최소 주문 금액 + 배달비로 시작한다 — total_amount 는 DB에서 not null.
+      // 배달비를 더하는 건 정산식이 total_amount 에 배달비가 포함돼 있다고 보기 때문이다
+      // (supabase/schema.sql apply_settlement_split: 항목비 = total_amount - delivery_fee).
+      if (totalN <= 0) totalN = minOrderN + deliveryFeeN;
+    } else if (totalN <= 0) {
       return Response.json(
-        { error: "배달음식은 가게 링크가 필수입니다" },
+        { error: "총 금액은 0보다 커야 합니다" },
         { status: 400 }
       );
     }
@@ -71,7 +104,8 @@ export async function POST(req: Request) {
         description: "",
         category: cat,
         total_amount: totalN,
-        delivery_fee: 0,
+        delivery_fee: deliveryFeeN,
+        min_order_amount: isDelivery ? minOrderN : null,
         goal: goalN,
         joined: 1,
         deadline: new Date(Date.now() + minN * 60_000).toISOString(),
@@ -95,7 +129,7 @@ export async function POST(req: Request) {
 
     const dealForClient = {
       id: Number(newDeal.id),
-      emoji: getCategoryEmoji(newDeal.category),
+      emoji: emojiOf(newDeal.category),
       title: newDeal.title,
       cat: newDeal.category,
       total: newDeal.total_amount,
@@ -109,13 +143,14 @@ export async function POST(req: Request) {
       me: true,
       mine: true,
       deliveryFee: newDeal.delivery_fee,
+      minOrderAmount: newDeal.min_order_amount,
     };
 
     return Response.json(dealForClient, { status: 201 });
   } catch (error) {
     console.error("[POST /api/deals]", error);
     return Response.json(
-      { error: "공고 생성 중 오류 발생" },
+      { error: "공구 생성 중 오류 발생" },
       { status: 500 }
     );
    }
@@ -127,7 +162,7 @@ export async function POST(req: Request) {
  * ⚠️ 사용 안 함 — home.tsx는 lib/supabase/queries.ts의 fetchDeals()를 직접 호출한다
  * (Task 3, #4). 이 핸들러를 고쳐도 화면엔 반영되지 않는다 — 로직을 바꿔야 하면
  * fetchDeals() 쪽을 고치는 게 맞다. 삭제하지 않고 남겨둔 이유는 POST가 같은 파일에
- * 있어서(app/api/deals/route.ts) — POST /api/deals(공고 생성, new-deal.tsx가 씀)는 계속 쓴다.
+ * 있어서(app/api/deals/route.ts) — POST /api/deals(공구 생성, new-deal.tsx가 씀)는 계속 쓴다.
  */
 export async function GET() {
   try {
@@ -149,7 +184,7 @@ export async function GET() {
 
     const deals = (data ?? []).map((row:any) => ({
       id: Number(row.id),
-      emoji: getCategoryEmoji(row.category),
+      emoji: emojiOf(row.category),
       title: row.title,
       cat: row.category,
       total: row.total_amount,
@@ -169,23 +204,9 @@ export async function GET() {
   } catch (error) {
     console.error("[GET /api/deals]", error);
     return Response.json(
-      { error: "공고 목록 조회 중 오류 발생" },
+      { error: "공구 목록 조회 중 오류 발생" },
       { status: 500 }
     );
   }   
   
-}
-
-/**
- * 카테고리에 맞는 이모지 반환
- */
-function getCategoryEmoji(cat: string): string {
-  const emojiMap: Record<string, string> = {
-    식료품: "🧅",
-    배달음식: "🍗",
-    생활용품: "🧻",
-    대량구매: "📦",
-    기타: "🎁",
-  };
-  return emojiMap[cat] || "🧅";
 }

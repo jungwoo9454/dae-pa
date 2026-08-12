@@ -165,7 +165,8 @@ profiles            id(=auth.users.id), nickname, avatar_url, dong, bank_account
                     trust_score, created_at
 wallets             user_id, balance
 group_buys          id, host_id, title, description, category, store_link,
-                    total_amount, delivery_fee, goal, joined, deadline, place,
+                    total_amount, delivery_fee, min_order_amount(배달음식 전용),
+                    goal, joined, deadline, place,
                     status(recruiting|settling|completed|canceled), created_at
 participations      id, group_buy_id, user_id, note, amount_due, is_paid,
                     paid_at, joined_at            -- unique(group_buy_id, user_id)

@@ -155,7 +155,18 @@ const seedMsgs: Record<string, Msg[]> = {
   d5: [{ kind: "sys", text: "공구방이 열렸어요 · 목표 2명" }],
 };
 
-const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "", store_link: "", imageUrl: "" };
+const EMPTY_FORM: DealForm = {
+  cat: "식료품",
+  title: "",
+  total: "",
+  goal: "",
+  mins: "",
+  place: "",
+  store_link: "",
+  imageUrl: "",
+  minOrderAmount: "",
+  deliveryFee: "",
+};
 
 interface AuthForm {
   nick: string;
@@ -179,6 +190,8 @@ interface StoreState {
   search: string;
   mySearch: string;
   filter: string;
+  statusFilter: string;
+  myDealsOnly: boolean;
   profileOpen: boolean;
   notiOpen: boolean;
   notis: Noti[];
@@ -204,6 +217,8 @@ interface StoreState {
 
   setAuth: (patch: Partial<AuthForm>) => void;
   switchAuthMode: () => void;
+  /** bfcache 복원 등으로 남은 authBusy 를 푼다 — 안 풀면 로그인 버튼이 죽는다 (#82) */
+  resetAuthBusy: () => void;
   verifyDong: () => void;
   /** 세션 구독 시작. 정리 함수를 돌려준다 */
   initAuth: () => () => void;
@@ -230,6 +245,8 @@ interface StoreState {
   setSearch: (v: string) => void;
   setMySearch: (v: string) => void;
   setFilter: (v: string) => void;
+  setStatusFilter: (v: string) => void;
+  setMyDealsOnly: (v: boolean) => void;
   setForm: (patch: Partial<DealForm>) => void;
   /** 공구 참여 (#5) — join_group_buy RPC 호출. 서버가 정원/마감/중복을 원자적으로 거부한다 */
   join: (id: number) => Promise<void>;
@@ -249,6 +266,8 @@ interface StoreState {
   remindUnpaid: (dealId: number) => Promise<void>;
   /** 주최자 취소 (#29) — 모집중·정산중이면 canceled 로 보낸다. 실패하면 사유 문구를 돌려준다 */
   cancelDeal: (dealId: number) => Promise<string | null>;
+  /** 주최자 삭제 — 모집중이면 DB에서 삭제한다. 실패하면 사유 문구를 돌려준다 */
+  deleteDeal: (dealId: number) => Promise<string | null>;
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => Promise<void>;
@@ -285,6 +304,8 @@ export const useStore = create<StoreState>((set, get) => ({
   search: "",
   mySearch: "",
   filter: "전체",
+  statusFilter: "전체",
+  myDealsOnly: false,
   profileOpen: false,
   notiOpen: false,
   notis: [],
@@ -310,6 +331,7 @@ export const useStore = create<StoreState>((set, get) => ({
   setAuth: (patch) => set((st) => ({ auth: { ...st.auth, ...patch }, authError: "" })),
   switchAuthMode: () =>
     set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup", authError: "" })),
+  resetAuthBusy: () => set({ authBusy: false }),
   verifyDong: () => set({ dongOk: true }),
 
   initAuth: () => {
@@ -322,6 +344,8 @@ export const useStore = create<StoreState>((set, get) => ({
     }
     const { data } = sb.auth.onAuthStateChange((_event, session) => {
       const uid = session?.user.id;
+      // 가입 수단 표시용 (#81) — profiles 에는 없고 auth user 메타에만 있다
+      const provider = session?.user.app_metadata?.provider ?? null;
       if (!uid) {
         // 다음 사람이 남의 알림·대화·설정을 보지 않게 목록·중복 표시·토글을 비운다
         firedDeadlines.clear();
@@ -375,6 +399,7 @@ export const useStore = create<StoreState>((set, get) => ({
             nickname: p?.nickname ?? "파티원",
             avatarUrl: p?.avatar_url ?? null,
             dong: p?.dong ?? null,
+            provider,
             bankAccount: p?.bank_account ?? null,
             transferApp: p?.transfer_app ?? null,
           },
@@ -685,6 +710,8 @@ export const useStore = create<StoreState>((set, get) => ({
   setSearch: (v) => set({ search: v }),
   setMySearch: (v) => set({ mySearch: v }),
   setFilter: (v) => set({ filter: v }),
+  setStatusFilter: (v) => set({ statusFilter: v }),
+  setMyDealsOnly: (v) => set({ myDealsOnly: v }),
   setForm: (patch) => set((st) => ({ form: { ...st.form, ...patch } })),
 
   // 정원 검사 + joined 증가 + 정원 도달 시 settling 전환을 서버가 한 트랜잭션으로
@@ -723,8 +750,8 @@ export const useStore = create<StoreState>((set, get) => ({
 
   // 서버가 주최자+모집중 여부를 재확인하고(RLS와 별개로 RPC 안에서 명시 체크), 통과하면
   // "알림 + 시스템 메시지"까지 한 트랜잭션 안에서 같이 처리한다(CLAUDE.md 규칙 3의 3종 세트).
-  // 1인당 금액 재계산은 lib/deal.ts의 perAmount가 deal.total/deal.joined로 매번 다시
-  // 계산하므로 여기서 따로 할 일이 없다 — total만 반영하면 화면은 자동으로 맞는다.
+  // 1인당 금액 재계산은 lib/deal.ts의 perAmount가 (deal.total+deliveryFee)/deal.joined로 매번
+  // 다시 계산하므로 여기서 따로 할 일이 없다 — total만 반영하면 화면은 자동으로 맞는다.
   changeTotalAmount: async (dealId, newTotal) => {
     if (newTotal <= 0) return;
     const { data, error } = await createClient().rpc("change_total_amount", {
@@ -833,6 +860,18 @@ export const useStore = create<StoreState>((set, get) => ({
     if (error) return error.message;
     set((st) => ({
       deals: st.deals.map((d) => (d.id === dealId ? { ...d, status: "canceled" as const } : d)),
+    }));
+    return null;
+  },
+
+  deleteDeal: async (dealId) => {
+    const deal = get().deals.find((d) => d.id === dealId);
+    if (!deal || !deal.mine) return "주최자만 삭제할 수 있어요";
+    if (deal.status !== "recruiting") return "모집중인 공구만 삭제할 수 있어요";
+    const { error } = await createClient().rpc("delete_group_buy", { p_group_buy_id: dealId });
+    if (error) return error.message;
+    set((st) => ({
+      deals: st.deals.filter((d) => d.id !== dealId),
     }));
     return null;
   },
