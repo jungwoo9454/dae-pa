@@ -73,6 +73,49 @@ export function Avatar({ ch, size = 26 }: { ch: string; size?: number }) {
 }
 
 /**
+ * 상태 도장 — 카드에서 상태 태그를 대신한다 (#169).
+ * 모집중·마감임박은 윗줄에 상태, 아랫줄에 카운트다운을 찍고, 나머지는 상태만 찍는다.
+ * 색·테두리는 statusOf() 가 준 값을 그대로 쓴다 (CLAUDE.md — 임의 팔레트 금지).
+ */
+export function StatusStamp({
+  s,
+  countdown,
+  size = 70,
+}: {
+  s: StatusView;
+  /** 모집중·마감임박일 때만 쓰인다 */
+  countdown?: string;
+  size?: number;
+}) {
+  const live = !!countdown && (s.key === "recruiting" || s.key === "closing");
+  return (
+    <div
+      className="stamp flex-none flex-col"
+      style={{
+        width: size,
+        height: size,
+        borderColor: s.bd,
+        color: s.fg,
+        borderStyle: s.dashed ? "dashed" : "solid",
+      }}
+    >
+      {live ? (
+        <>
+          <span className={`text-[10px] font-bold ${s.key === "closing" ? "mark-pulse" : ""}`}>
+            {s.key === "closing" ? "마감임박" : "마감까지"}
+          </span>
+          <span className="tnum mt-0.5 text-[13.5px] font-bold">{countdown}</span>
+        </>
+      ) : (
+        <span className={s.label.length > 2 ? "text-[13px] font-bold" : "text-[15px] font-bold"}>
+          {s.label}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
  * 전표 바코드 — 공구마다 다른 막대 패턴 (#166).
  *
  * 난수를 그때그때 뽑으면 카운트다운이 1초마다 다시 그릴 때 바코드가 춤춘다. 그래서 공구 id 를
