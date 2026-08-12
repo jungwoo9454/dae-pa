@@ -188,6 +188,11 @@ notifications       id, user_id, type, payload(jsonb), is_read, created_at
 - **참여는 `join_group_buy(id)` RPC 로만** 한다. 원자적 `UPDATE ... WHERE joined < goal` 로
   정원 초과·중복·마감을 서버에서 차단하고, 정원 도달 시 `settling` 자동 전환 + 시스템 메시지 + 전원 알림.
   `participations` 에는 INSERT RLS 정책이 없어 클라이언트 직접 삽입이 불가능하다. **RPC 구현은 이슈 #5**.
+- **정원 미달로 마감된 공구는 `start_settlement(id)` RPC** 로 주최자가 모인 인원 그대로 정산에 넣는다 (#131).
+  마감 크론이 없어 마감돼도 DB `status` 는 `recruiting` 이라, 이 RPC 가 없으면 정원을 못 채운 공구는
+  정산 경로가 아예 없다(취소만 가능). 주최자 본인 + `status='recruiting'` + `deadline <= now()` +
+  `joined >= 2` 를 확인하고 `settling` 전환 + 시스템 메시지 + 참여자 전원 알림(`type='settle_start'`)을 넣는다.
+  주최자 혼자면(1/N 할 게 없음) 거부하고 취소를 안내한다. 마감된 공구의 취소는 그대로 가능하다.
 - 자동 생성 트리거: 가입 시 `profiles`+`wallets` (#2 구현 완료).
   공구 생성 시 채팅방·주최자 참여·개설 시스템 메시지는 **이슈 #8·#9** 에서 추가한다
   (`chat_rooms` 에도 INSERT RLS 정책이 없다).

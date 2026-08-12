@@ -145,8 +145,19 @@ export function leavable(d: Deal, now: number) {
   return d.me && !d.mine && d.status === "recruiting" && d.end - now > LEAVE_CUTOFF_MS;
 }
 
+/**
+ * 정원 미달로 마감된 공구를 주최자가 모인 인원 그대로 정산 시작할 수 있는지 (#131).
+ * settling 으로 가는 다른 경로(정원 도달)는 join_group_buy 가 자동 처리하므로 여기 안 걸린다.
+ * 마감돼도 DB status 는 recruiting 그대로라(마감 크론 없음) deadline 을 같이 본다.
+ * 주최자 혼자(joined < 2)면 1/N 할 게 없어 정산 대신 취소 — DB 의 start_settlement 판정과 같다.
+ */
+export function settleStartable(d: Deal, now: number) {
+  return d.mine && d.status === "recruiting" && d.end - now <= 0 && d.joined >= 2;
+}
+
 export function joinLabel(d: Deal, now: number) {
   if (d.status === "settling") return "정산 보기";
+  if (settleStartable(d, now)) return "정산 시작";
   if (d.me) return "참여중 ✓";
   if (!joinable(d, now)) return "마감됨";
   return "참여하기";
