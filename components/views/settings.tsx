@@ -155,30 +155,26 @@ export default function SettingsView() {
             </div>
           </div>
           {edit === "account" && (
-            <div className="rule-dash flex flex-col gap-3 border-b border-t-0 py-4">
-              <div className="flex items-center gap-3">
-                <ImageUpload
-                  kind="avatars"
-                  value={me?.avatarUrl}
-                  onChange={(url) => saveProfile({ avatarUrl: url })}
-                  height={64}
-                  round
-                />
-                <div className="text-xs text-[#8b8478]">프로필 사진</div>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  value={nick}
-                  onChange={(e) => setNick(e.target.value)}
-                  onKeyDown={(e) => isSubmitEnter(e) && saveNick()}
-                  placeholder="닉네임"
-                  className={INPUT}
-                  autoFocus
-                />
-                <button onClick={saveNick} className={BTN}>
-                  저장
-                </button>
-              </div>
+            // 사진·닉네임·저장을 한 줄에 — 계정 정보 하나를 고치는 것이라 줄을 나눌 이유가 없다
+            <div className="rule-dash flex items-center gap-3 border-b border-t-0 py-4">
+              <ImageUpload
+                kind="avatars"
+                value={me?.avatarUrl}
+                onChange={(url) => saveProfile({ avatarUrl: url })}
+                height={56}
+                round
+              />
+              <input
+                value={nick}
+                onChange={(e) => setNick(e.target.value)}
+                onKeyDown={(e) => isSubmitEnter(e) && saveNick()}
+                placeholder="닉네임"
+                className="field min-w-0 flex-1 text-[15px]"
+                autoFocus
+              />
+              <button onClick={saveNick} className={BTN}>
+                저장
+              </button>
             </div>
           )}
 
