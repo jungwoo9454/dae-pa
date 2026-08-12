@@ -92,10 +92,11 @@ grant update (title, description, category, store_link,
 
 ## 5. Docker / sharp
 
-`node:22-alpine`(musl). sharp 는 musl prebuilt(`@img/sharp-linuxmusl-x64`)를 내지만
-lockfile 이 개발 머신(glibc) 기준이면 `--frozen-lockfile` 에서 musl 변형이 누락될 수 있다.
-빌드가 깨지면 대응은 `node:22-slim`(glibc) 으로 교체. Next 15 는 `sharp` 를 기본
-external 로 취급하므로 `next.config.ts` 변경은 불필요하다.
+`node:22-alpine`(musl) 에서 lockfile 이 개발 머신(glibc) 기준이라 musl prebuilt 가
+누락될 수 있다고 봤는데, **실제로 `docker build` 를 돌려 확인한 결과 문제 없다** —
+standalone 출력 안에서 `sharp` 가 webp 를 정상 생성했다. Dockerfile 변경 불필요.
+Next 15 는 `sharp` 를 기본 external 로 취급하므로 `next.config.ts` 도 그대로 둔다.
+(깨졌다면 `node:22-slim`(glibc) 교체가 대응책이었다.)
 
 Caddy `reverse_proxy` 는 기본 body 크기 제한이 없어 10MB 업로드가 그대로 통과한다.
 
@@ -112,9 +113,17 @@ Caddy `reverse_proxy` 는 기본 body 크기 제한이 없어 10MB 업로드가 
 
 테스트 인프라가 없는 프로젝트라 수동 3개로 대신한다.
 
-1. jpg 를 올려 R2 에 `.webp` 가 생기고 화면에 출력되는지
-2. `.txt` 를 `.jpg` 로 rename 해 올렸을 때 400 이 나는지 (신뢰 경계)
-3. iOS 세로 사진이 눕지 않는지 (EXIF `.rotate()`)
+1. jpg 를 올려 R2 에 `.webp` 가 생기고 화면에 출력되는지 — **R2 자격증명이 있어야 해서 미검증**
+2. `.txt` 를 `.jpg` 로 rename 해 올렸을 때 400 이 나는지 (신뢰 경계) — **검증 완료**
+3. iOS 세로 사진이 눕지 않는지 (EXIF `.rotate()`) — **실물 사진 필요, 미검증**
+
+2번은 라우트와 같은 sharp 판정 로직을 직접 돌려 확인했다:
+
+| 입력 | 결과 |
+| --- | --- |
+| 텍스트를 `.jpg` 로 위장 | 400 `Input buffer contains unsupported image format` |
+| 진짜 PNG 2400x900 | 통과 → 1600px 이내 webp 로 변환 |
+| SVG | 400 (화이트리스트 밖 — 래스터화 시 SSRF) |
 
 ## 8. 알아둘 것
 
