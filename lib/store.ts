@@ -100,9 +100,17 @@ async function insertOwnMsg(
   });
 }
 
-/** profiles 본인 행 갱신 (#20) — RLS·컬럼 GRANT 가 본인 행의 허용 컬럼만 열어준다 */
-const patchProfile = (uid: string, patch: Record<string, unknown>) =>
-  createClient().from("profiles").update(patch).eq("id", uid);
+/**
+ * profiles 본인 행 갱신 (#20) — RLS·컬럼 GRANT 가 본인 행의 허용 컬럼만 열어준다.
+ *
+ * ⚠️ 반드시 await 한다. supabase-js 쿼리 빌더는 thenable 이라 .then() 이 불릴 때 비로소
+ * fetch 한다 — 예전처럼 `void createClient()...update()` 로 두면 HTTP 요청이 아예 안 나가고
+ * 낙관적 로컬 상태만 바뀌어서, 새로고침 전까지 저장된 것처럼 보인다.
+ */
+async function patchProfile(uid: string, patch: Record<string, unknown>) {
+  const { error } = await createClient().from("profiles").update(patch).eq("id", uid);
+  if (error) alert(error.message);
+}
 
 /** Me 필드 → profiles 컬럼 */
 const PROFILE_COL: Record<string, string> = {
