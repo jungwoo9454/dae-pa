@@ -48,7 +48,9 @@ export default function HomeView() {
     return true;
   });
   return (
-    <div className="flex-1 overflow-auto px-6 py-5">
+    <div className="flex-1 overflow-auto px-6 pb-5">
+      {/* 카드가 길어져서 스크롤해도 필터는 남아 있게 한다 (#89) */}
+      <div className="sticky top-0 z-10 -mx-6 bg-[#eef4ec] px-6 pb-1 pt-5">
       <div className="mb-4 flex flex-wrap gap-2">
         {CATS.map((c) => (
           <div
@@ -88,13 +90,14 @@ export default function HomeView() {
           내 공구만 보기
         </label>
       </div>
+      </div>
       {cards.length === 0 ? (
         <div className="mt-16 text-center text-[13.5px] text-[#8aa392]">
           조건에 맞는 공구가 없어요
           <div className="mt-1 text-xs">필터를 바꾸거나 직접 공구를 올려보세요</div>
         </div>
       ) : (
-        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(272px,1fr))" }}>
+        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))" }}>
           {cards.map((d) => (
             <DealCard key={d.id} deal={d} now={now} />
           ))}
