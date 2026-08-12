@@ -341,9 +341,15 @@ export const useStore = create<StoreState>((set, get) => ({
     // onAuthStateChange 콜백은 setTimeout 으로 이어진다. 그 사이 로그아웃/재로그인/정리가 일어나면
     // 뒤늦게 도착한 예전 세션의 응답으로 남의 잔액을 쓰거나 채널을 열면 안 된다 (#107)
     let gen = 0;
-    // 소셜 로그인 콜백이 실패하면 /?auth_error=1 로 돌아온다
-    if (new URLSearchParams(window.location.search).has("auth_error")) {
-      set({ authError: "소셜 로그인에 실패했어요. 다시 시도해주세요" });
+    // 인증 콜백이 실패하면 /?auth_error=email|oauth 로 돌아온다
+    const authErrorKind = new URLSearchParams(window.location.search).get("auth_error");
+    if (authErrorKind) {
+      set({
+        authError:
+          authErrorKind === "email"
+            ? "이메일 인증 링크가 만료됐거나 이미 사용됐어요. 가입한 브라우저에서 다시 열어주세요"
+            : "소셜 로그인에 실패했어요. 다시 시도해주세요",
+      });
       window.history.replaceState(null, "", window.location.pathname);
     }
     const { data } = sb.auth.onAuthStateChange((_event, session) => {
@@ -501,7 +507,11 @@ export const useStore = create<StoreState>((set, get) => ({
     }
     // 대시보드에서 Confirm email 이 켜져 있으면 세션 없이 끝난다
     if (!data.session) {
-      set({ authBusy: false, authError: "메일로 보낸 인증 링크를 확인한 뒤 로그인해주세요" });
+      set({
+        authBusy: false,
+        authError:
+          "메일로 보낸 인증 링크를 확인한 뒤 로그인해주세요 — 링크는 가입한 이 브라우저에서 열어야 해요",
+      });
     }
   },
 
