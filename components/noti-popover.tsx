@@ -1,6 +1,6 @@
 "use client";
 
-import { AlarmClock, Ban, Coins, PartyPopper, ReceiptText, Send } from "lucide-react";
+import { AlarmClock, Ban, Coins, LogOut, PartyPopper, ReceiptText, Send } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { Noti } from "@/lib/types";
@@ -12,6 +12,7 @@ const ICON: Record<Noti["type"], LucideIcon> = {
   settle_start: ReceiptText,
   join: PartyPopper,
   cancel: Ban,
+  leave: LogOut,
 };
 
 function ago(ms: number) {

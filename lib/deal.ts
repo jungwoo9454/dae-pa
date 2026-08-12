@@ -126,8 +126,23 @@ export function profileStats(deals: Deal[], now: number, meId: string | null) {
   return { hosted, joined, trust };
 }
 
+/** 공구 마감까지 최소로 잡을 수 있는 시간(분) — 올리기 폼과 API 가 같은 값을 본다 */
+export const MIN_DEADLINE_MIN = 5;
+
+/** 마감 몇 ms 전부터 나가기를 막는지 — DB 의 leave_group_buy 판정과 같은 값이어야 한다 */
+export const LEAVE_CUTOFF_MS = 5 * 60_000;
+
 export function joinable(d: Deal, now: number) {
   return d.status === "recruiting" && !d.me && d.end - now > 0;
+}
+
+/**
+ * 나가기(참여 취소) 가능 여부 (#94) — 주최자가 아닌 참여자가, 모집중이고, 마감 5분 전까지만.
+ * 마감 직전에 빠지면 남은 사람 1인당 금액이 갑자기 뛰는데 주최자가 대응할 시간이 없다.
+ * 서버(leave_group_buy RPC)도 같은 기준으로 거부하므로 화면 판정은 안내용이다.
+ */
+export function leavable(d: Deal, now: number) {
+  return d.me && !d.mine && d.status === "recruiting" && d.end - now > LEAVE_CUTOFF_MS;
 }
 
 export function joinLabel(d: Deal, now: number) {

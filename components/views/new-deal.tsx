@@ -2,7 +2,7 @@
 
 import { Coins, Timer } from "lucide-react";
 import ImageUpload from "@/components/image-upload";
-import { CAT_EMOJI, CAT_ICON, commaFmt, digits, fmt } from "@/lib/deal";
+import { CAT_EMOJI, CAT_ICON, MIN_DEADLINE_MIN, commaFmt, digits, fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Category } from "@/lib/types";
 
@@ -20,6 +20,8 @@ export default function NewDealView() {
     const totalN = parseInt(f.total) || 0;
     const goalN = parseInt(f.goal) || 0;
     const minOrderN = parseInt(f.minOrderAmount) || 0;
+    // 비워두면 60분이 기본값 — 적었다면 최소 마감 시간을 지켜야 한다
+    const minsN = parseInt(f.mins) || 60;
 
     // 배달음식은 예상 총 금액이 선택(#95) — 대신 최소주문금액·배달비가 필수.
     // 총액을 안 적으면 서버가 최소주문금액으로 채운다.
@@ -29,6 +31,10 @@ export default function NewDealView() {
 
     if (!f.title || goalN <= 1 || !requiredOk) {
       alert("필수 입력값을 확인하세요");
+      return;
+    }
+    if (minsN < MIN_DEADLINE_MIN) {
+      alert(`마감 시간은 최소 ${MIN_DEADLINE_MIN}분이에요`);
       return;
     }
 
@@ -41,7 +47,7 @@ export default function NewDealView() {
         description: f.description,
         total: totalN,
         goal: goalN,
-        mins: parseInt(f.mins) || 60,
+        mins: minsN,
         place: f.place,
         store_link: f.store_link,
         image_url: f.imageUrl || null,
@@ -90,9 +96,12 @@ export default function NewDealView() {
   // 배달음식은 메뉴가 사람마다 달라 총액을 안 나누고 배달비만 엔빵해서 보여준다 (lib/deal.ts perAmount 와 동일 기준).
   // 그 외 카테고리는 다 같이 부담하는 공동구매라 총액을 그대로 나눈다.
   const previewShared = isDelivery ? deliveryFeeN : totalN;
+  // 비워두면 기본 60분이라 통과, 적었다면 최소 마감 시간(5분) 아래로는 못 올린다
+  const minsTooShort = form.mins !== "" && (parseInt(form.mins) || 0) < MIN_DEADLINE_MIN;
   const canSubmit =
     !!form.title &&
     goalN > 1 &&
+    !minsTooShort &&
     (isDelivery ? minOrderN > 0 && form.deliveryFee.trim() !== "" && !!form.store_link : totalN > 0);
 
   return (
@@ -183,7 +192,7 @@ export default function NewDealView() {
             <input
               value={form.mins}
               onChange={(e) => setForm({ mins: digits(e.target.value) })}
-              placeholder="마감까지 (분)"
+              placeholder={`마감까지 (분) — 최소 ${MIN_DEADLINE_MIN}분`}
               className="input-base flex-1"
             />
             <input
@@ -193,6 +202,11 @@ export default function NewDealView() {
               className="input-base flex-[1.4]"
             />
           </div>
+          {minsTooShort && (
+            <div className="text-[11.5px] font-bold text-[#b3261e]">
+              마감은 최소 {MIN_DEADLINE_MIN}분 뒤로 잡아주세요 — 이웃이 보고 참여할 시간이 필요해요
+            </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <div className="text-[12.5px] text-[#4d6d58]">대표 사진 (선택) — 없으면 카테고리 이모지로 보여요</div>
             <ImageUpload
@@ -204,7 +218,7 @@ export default function NewDealView() {
             />
           </div>
         <div className="flex gap-2">
-          {[15, 30, 60].map((m) => (
+          {[MIN_DEADLINE_MIN, 15, 30, 60].map((m) => (
             <button
               key={m}
               type="button"

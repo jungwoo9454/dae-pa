@@ -293,6 +293,53 @@ begin
   return g;
 end $$;
 
+-- 2-0-1. 참여 취소(공구 나가기) RPC (#94) — 정산 전(모집중)까지만 허용한다.
+-- 정원 도달로 settling 전환된 뒤 나가면 recruiting 복귀 처리가 복잡해지므로 1차는 범위 밖.
+-- 마감 5분 전부터도 막는다 — 직전에 빠지면 남은 사람 1인당 금액이 뛰는데 주최자가 대응할 시간이 없다.
+-- 이 5분은 lib/deal.ts 의 LEAVE_CUTOFF_MS 와 같은 값이어야 한다.
+-- group_buys 행을 for update 로 잠가 join_group_buy/cancel_group_buy 와의 동시 전이를 직렬화한다.
+create or replace function public.leave_group_buy(p_group_buy_id bigint) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_user_id  uuid := auth.uid();
+  v_nickname text;
+  g          public.group_buys%rowtype;
+begin
+  if v_user_id is null then
+    raise exception '로그인이 필요합니다';
+  end if;
+
+  select * into g from public.group_buys where id = p_group_buy_id for update;
+  if g.id is null then
+    raise exception '공구를 찾을 수 없습니다';
+  end if;
+  if g.host_id = v_user_id then
+    raise exception '주최자는 나갈 수 없습니다 — 공구 취소를 이용해주세요';
+  end if;
+  if g.status <> 'recruiting' then
+    raise exception '정산이 시작된 공구는 나갈 수 없습니다';
+  end if;
+  if g.deadline - interval '5 minutes' <= now() then
+    raise exception '마감 5분 전부터는 나갈 수 없어요';
+  end if;
+
+  delete from public.participations where group_buy_id = p_group_buy_id and user_id = v_user_id;
+  if not found then
+    raise exception '참여 중인 공구가 아닙니다';
+  end if;
+
+  update public.group_buys set joined = joined - 1 where id = p_group_buy_id;
+
+  select nickname into v_nickname from public.profiles where id = v_user_id;
+
+  -- 문구는 lib/sys-messages.ts 의 sysText.left() 와 맞춘다.
+  perform public.post_system_message(p_group_buy_id, v_nickname || '님이 나갔어요');
+
+  insert into public.notifications (user_id, type, payload)
+  values (g.host_id, 'leave',
+    jsonb_build_object('dealId', p_group_buy_id, 'text', v_nickname || '님이 ' || g.title || ' 공구에서 나갔어요'));
+end $$;
+
 -- 2-1. 총 금액 변경 RPC (#12)
 -- 주최자만 모집중·마감 전 총액을 수정할 수 있으며, 서버에서 권한과 상태를 검증한다.
 create or replace function public.change_total_amount(
@@ -962,6 +1009,10 @@ revoke execute on function public.post_system_message(bigint, text) from public,
 revoke execute on function public.join_group_buy(bigint) from public, anon;
 grant  execute on function public.join_group_buy(bigint) to authenticated;
 
+-- 참여 취소(공구 나가기) RPC (#94)
+revoke execute on function public.leave_group_buy(bigint) from public, anon;
+grant  execute on function public.leave_group_buy(bigint) to authenticated;
+
 -- 정산·지갑 RPC (#15~18) — apply_settlement_split·complete_group_buy_if_all_paid 는
 -- 다른 RPC 안에서만 쓰는 내부 함수라 authenticated 에도 안 연다.
 revoke execute on function public.apply_settlement_split(bigint, int, int, jsonb) from public, anon, authenticated;
@@ -1006,6 +1057,10 @@ grant  execute on function public.withdraw_wallet(int) to authenticated;
 -- ─────────────────────────────────────────────
 -- 6. Realtime 구독 대상
 -- ─────────────────────────────────────────────
+
+-- DELETE 이벤트에 filter(user_id=eq.uid)를 걸려면 old row에 user_id가 실려야 한다 —
+-- 기본 REPLICA IDENTITY(기본키만)로는 DELETE payload에 안 실려서 필터가 안 걸린다 (#94 나가기 알림).
+alter table participations replica identity full;
 
 alter publication supabase_realtime add table group_buys;
 alter publication supabase_realtime add table participations;

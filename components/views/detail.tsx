@@ -3,7 +3,17 @@
 import { Ban, Coins, MapPin, MessageCircle, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ProgressBar, StatusBadge } from "@/components/ui";
-import { countdownDisplay, fmt, joinLabel, joinable, perAmount, perLabel, statusOf } from "@/lib/deal";
+import {
+  LEAVE_CUTOFF_MS,
+  countdownDisplay,
+  fmt,
+  joinLabel,
+  joinable,
+  leavable,
+  perAmount,
+  perLabel,
+  statusOf,
+} from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
@@ -19,11 +29,15 @@ export default function DetailView() {
   const goRoom = useStore((s) => s.goRoom);
   const shareDeal = useStore((s) => s.shareDeal);
   const join = useStore((s) => s.join);
+  const leave = useStore((s) => s.leave);
   const openSettle = useStore((s) => s.openSettle);
   const cancelDeal = useStore((s) => s.cancelDeal);
   const [askCancel, setAskCancel] = useState(false);
   const [cancelErr, setCancelErr] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
+  const [askLeave, setAskLeave] = useState(false);
+  const [leaveErr, setLeaveErr] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const changeTotalAmount = useStore((s) => s.changeTotalAmount);
   const [editingTotal, setEditingTotal] = useState(false);
   const [totalInput, setTotalInput] = useState("");
@@ -59,13 +73,21 @@ export default function DetailView() {
   }));
   // 취소는 주최자만, 모집중·정산중일 때만 (#29 — DB 의 cancel_group_buy 판정과 같다)
   const cancelable = deal.mine && (deal.status === "recruiting" || deal.status === "settling");
+  // 나가기는 주최자가 아닌 참여자만, 모집중이고 마감 5분 전까지만 (#94 — DB 의 leave_group_buy 판정과 같다).
+  // 정산 시작 후엔 금액이 걸려있어 범위 밖 — 1차는 모집중에서만 허용.
+  const canLeave = leavable(deal, now);
+  // 나갈 수 있었는데 마감이 임박해서 막힌 경우 — 버튼만 바뀌면 이유를 알 수 없어 따로 알려준다.
+  // 이미 마감된 공구는 배지가 '마감'이라 굳이 다시 알리지 않는다.
+  const leaveClosed =
+    deal.me && !deal.mine && deal.status === "recruiting" && !canLeave && deal.end > now;
   // 공구 채팅방은 참여자(주최자 포함)만 들어갈 수 있다 — store.rooms 는 내 participations 로만
   // 채워지므로, 미참여자를 들여보내면 방을 못 찾고 조용히 동네 라운지가 열렸다 (#93).
   // deal.me 는 "주최자이거나 참여 행이 있음" 이라 방 목록 판정과 정확히 같다.
   const canChat = deal.me;
 
-  const onJoin = () => {
+  const onMainAction = () => {
     if (deal.status === "settling") openSettle(deal.id);
+    else if (canLeave) setAskLeave(true);
     else join(deal.id);
   };
 
@@ -202,15 +224,58 @@ export default function DetailView() {
             </span>
           </div>
           <div
-            onClick={onJoin}
+            onClick={onMainAction}
             className={`cursor-pointer rounded-xl p-[13px] text-center text-base font-extrabold hover:brightness-105 ${
-              active || deal.status === "settling"
-                ? "bg-[#1f8a4c] text-white"
-                : "bg-[#e6efe4] text-[#6b8573]"
+              canLeave
+                ? "border-[1.5px] border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#b3261e] hover:text-[#b3261e]"
+                : active || deal.status === "settling"
+                  ? "bg-[#1f8a4c] text-white"
+                  : "bg-[#e6efe4] text-[#6b8573]"
             }`}
           >
-            {joinLabel(deal, now)}
+            {canLeave ? "나가기" : joinLabel(deal, now)}
           </div>
+          {leaveClosed && (
+            <div className="-mt-2.5 text-center text-[12px] text-[#8aa392]">
+              마감 {LEAVE_CUTOFF_MS / 60_000}분 전부터는 나갈 수 없어요
+            </div>
+          )}
+          {askLeave && (
+            <div className="flex flex-col gap-2 rounded-xl bg-[#fdecec] p-3">
+              <div className="text-[13px] font-extrabold text-[#b3261e]">공구에서 나갈까요?</div>
+              <div className="text-[12px] text-[#8a6a6a]">참여가 취소되고 채팅방에 나갔다는 메시지가 남아요.</div>
+              {leaveErr && (
+                <div className="rounded-[8px] bg-white px-2.5 py-1.5 text-[12px] font-bold text-[#b3261e]">
+                  {leaveErr}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <div
+                  onClick={async () => {
+                    if (leaving) return;
+                    setLeaving(true);
+                    setLeaveErr(null);
+                    const err = await leave(deal.id);
+                    setLeaving(false);
+                    if (err) setLeaveErr(err);
+                    else setAskLeave(false);
+                  }}
+                  className="flex-1 cursor-pointer rounded-[10px] bg-[#b3261e] p-2 text-center text-[13px] font-extrabold text-white hover:brightness-110"
+                >
+                  {leaving ? "나가는 중…" : "나가기"}
+                </div>
+                <div
+                  onClick={() => {
+                    setAskLeave(false);
+                    setLeaveErr(null);
+                  }}
+                  className="flex-1 cursor-pointer rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white p-2 text-center text-[13px] font-bold text-[#4d6d58] hover:border-[#1f8a4c]"
+                >
+                  그만두기
+                </div>
+              </div>
+            </div>
+          )}
           <div
             onClick={() => canChat && goRoom("d" + deal.id)}
             title={canChat ? undefined : "참여 후 이용할 수 있어요"}

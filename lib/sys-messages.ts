@@ -9,6 +9,8 @@ import { fmt } from "./deal";
 export const sysText = {
   roomOpened: (goal: number) => `공구방이 열렸어요 · 목표 ${goal}명`,
   joined: (who: string, joined: number, goal: number) => `${who}님이 참여했어요 (${joined}/${goal})`,
+  /** 참여 취소 — 모집중 상태에서만 가능 (#94). DB 의 leave_group_buy RPC 도 같은 문구를 넣는다 */
+  left: (who: string) => `${who}님이 나갔어요`,
   goalReached: () => "목표 달성! 정산이 시작돼요 🎉",
   deadlineClosed: () => "마감 시간이 지나 모집이 종료됐어요",
   /** 금액 변경 — 규칙 3의 3종 세트 중 채팅 기록 담당 (#12에서 호출) */
