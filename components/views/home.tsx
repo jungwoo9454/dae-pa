@@ -58,65 +58,67 @@ export default function HomeView() {
     return true;
   });
   return (
-    <div className="flex-1 overflow-auto px-6 pb-5">
-      {/* 카드가 길어져서 스크롤해도 필터는 남아 있게 한다 (#89) */}
-      <div className="sticky top-0 z-10 -mx-6 bg-[#eef4ec] px-6 pb-1 pt-5">
-      <div className="mb-4 flex flex-wrap gap-2">
-        {CATS.map((c) => (
-          <div
-            key={c}
-            onClick={() => setFilter(c)}
-            className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
-              filter === c
-                ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
-                : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
-            }`}
-          >
-            {c}
+    <div className="flex-1 overflow-auto px-10 pb-12">
+      <div className="flex items-center gap-6 pb-6 pt-8">
+        <div className="font-sans-ko text-[51.5px] font-black leading-[1.15] tracking-[-.03em]">
+          오늘의 <span className="text-[#e14e2b]">특가</span> 공구
+        </div>
+        <div className="ml-auto flex items-center gap-5">
+          <input
+            type="text"
+            placeholder="공구 검색_"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="field h-11 w-[240px] text-[14.5px]"
+          />
+          <div className="border-[1.5px] border-dashed border-[#b9b9b4] px-5 py-3 text-left text-[#8b8478]">
+            <div className="text-[14.5px] font-semibold tracking-[.18em]">DAEPA MARKET</div>
+            <div className="tnum mt-1.5 text-[12.5px]">
+              {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })}
+            </div>
           </div>
-        ))}
+        </div>
       </div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <div className="h-px bg-[#c9c9c4]" />
+
+      {/* 카드가 길어져서 스크롤해도 필터는 남아 있게 한다 (#89) */}
+      <div className="sticky top-0 z-10 -mx-10 bg-[#e4e4e0] px-10 pb-3 pt-5">
         <div className="flex flex-wrap items-center gap-2">
+          {CATS.map((c) => (
+            <div key={c} onClick={() => setFilter(c)} className={`chip ${filter === c ? "chip-on" : ""}`}>
+              {c}
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {STATUS_FILTERS.map((s) => (
             <div
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`cursor-pointer rounded-full border-[1.5px] px-[15px] py-[7px] text-[13px] font-bold ${
-                statusFilter === s
-                  ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
-                  : "border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#1f8a4c]"
-              }`}
+              className={`chip px-4 py-1.5 text-[13.5px] ${statusFilter === s ? "chip-on" : ""}`}
             >
               {s}
             </div>
           ))}
-          <label className="flex cursor-pointer items-center gap-1.5 text-[13px] font-bold text-[#4d6d58]">
+          <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-[14px] font-bold text-[#6e675e]">
             <input
               type="checkbox"
               checked={myDealsOnly}
               onChange={(e) => setMyDealsOnly(e.target.checked)}
-              className="h-[15px] w-[15px] cursor-pointer accent-[#1f8a4c]"
+              className="h-[15px] w-[15px] cursor-pointer accent-[#e14e2b]"
             />
             내 공구만 보기
           </label>
         </div>
-        <input
-          type="text"
-          placeholder="공구 검색"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs rounded-[8px] border-[1.5px] border-[#d5e6d6] bg-white px-3 py-1.5 text-[13px] outline-none focus:border-[#1f8a4c]"
-        />
       </div>
-      </div>
+
       {cards.length === 0 ? (
-        <div className="mt-16 text-center text-[13.5px] text-[#8aa392]">
-          조건에 맞는 공구가 없어요
-          <div className="mt-1 text-xs">필터를 바꾸거나 직접 공구를 올려보세요</div>
+        <div className="receipt mx-auto mt-10 max-w-[420px] px-8 py-10 text-center text-[15px] text-[#8b8478]">
+          <div className="receipt-head">＊ 출력할 전표 없음 ＊</div>
+          <div className="mt-4">조건에 맞는 공구가 없어요</div>
         </div>
       ) : (
-        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))" }}>
+        <div className="grid gap-[26px]" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(330px,1fr))" }}>
           {cards.map((d) => (
             <DealCard key={d.id} deal={d} now={now} />
           ))}
