@@ -5,6 +5,7 @@ import { ProgressBar, StatusBadge, receiptNo } from "@/components/ui";
 import { fmt, perAmount, perLabel, profileStats, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { fetchDeals } from "@/lib/supabase/queries";
+import { useLeaving } from "@/lib/use-leaving";
 import { useNow } from "@/lib/use-now";
 
 export default function MyView() {
@@ -31,6 +32,8 @@ export default function MyView() {
 
   const { hosted, joined } = profileStats(deals, now, me?.id ?? null);
   const myDeals = deals.filter((x) => x.me && (!mySearch || x.title.includes(mySearch)));
+  // 삭제한 줄은 떨어지면서 자리를 닫는다 (#181) — 검색을 바꿔 빠진 줄은 그냥 사라진다
+  const rows = useLeaving(myDeals, mySearch);
 
   return (
     <div className="flex-1 overflow-auto px-9 py-8">
@@ -53,19 +56,19 @@ export default function MyView() {
             ＊ {me?.nickname ?? "파티원"} 님의 공구 기록 ＊
           </div>
 
-          {myDeals.length === 0 && (
+          {rows.length === 0 && (
             <div className="py-10 text-center text-[14.5px] text-[#8b8478]">기록된 공구가 없어요</div>
           )}
 
-          {myDeals.map((m) => {
+          {rows.map(({ item: m, gone }) => {
             const deletable = m.mine && m.status === "recruiting";
             const showDeleteDialog = askDeleteId === m.id;
             const st = statusOf(m, now);
             const dead = st.key === "closed" || st.key === "canceled";
             const pct = Math.min(100, Math.round((m.joined / m.goal) * 100));
 
-            return (
-              <div key={m.id} className="rule-dash border-b border-t-0 py-[18px] last:border-b-0">
+            const row = (
+              <div className="py-[18px]">
                 <div className="flex items-center gap-2 text-xs">
                   <span
                     className={`px-2.5 py-[3px] font-bold ${
@@ -160,9 +163,21 @@ export default function MyView() {
                 )}
               </div>
             );
+
+            // 나가는 줄은 자리를 닫는 껍데기 안에서 떨어뜨린다
+            const line = "rule-dash border-b border-t-0 last:border-b-0";
+            return gone ? (
+              <div key={m.id} className={`${line} row-close`}>
+                <div className="card-drop">{row}</div>
+              </div>
+            ) : (
+              <div key={m.id} className={line}>
+                {row}
+              </div>
+            );
           })}
 
-          {myDeals.length > 0 && <div className="barcode mt-4" />}
+          {rows.length > 0 && <div className="barcode mt-4" />}
         </div>
         <div className="receipt-edge" />
       </div>
