@@ -205,6 +205,8 @@ interface StoreState {
 
   setAuth: (patch: Partial<AuthForm>) => void;
   switchAuthMode: () => void;
+  /** bfcache 복원 등으로 남은 authBusy 를 푼다 — 안 풀면 로그인 버튼이 죽는다 (#82) */
+  resetAuthBusy: () => void;
   verifyDong: () => void;
   /** 세션 구독 시작. 정리 함수를 돌려준다 */
   initAuth: () => () => void;
@@ -315,6 +317,7 @@ export const useStore = create<StoreState>((set, get) => ({
   setAuth: (patch) => set((st) => ({ auth: { ...st.auth, ...patch }, authError: "" })),
   switchAuthMode: () =>
     set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup", authError: "" })),
+  resetAuthBusy: () => set({ authBusy: false }),
   verifyDong: () => set({ dongOk: true }),
 
   initAuth: () => {
