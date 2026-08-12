@@ -102,12 +102,29 @@ export default function PayView() {
                   </div>
                 ))}
               </div>
-              <div
-                onClick={doTopup}
-                className="cursor-pointer rounded-[10px] bg-[#1f8a4c] p-2.5 text-center font-extrabold text-white hover:bg-[#187741]"
-              >
-                {fmt(topupAmt)} 충전하기
+              <div className="flex items-center gap-1.5 rounded-[9px] border-[1.5px] border-[#d5e6d6] px-2.5 py-1.5 focus-within:border-[#1f8a4c]">
+                <input
+                  type="number"
+                  min={0}
+                  value={topupAmt || ""}
+                  onChange={(e) => setTopupAmt(parseInt(e.target.value) || 0)}
+                  placeholder="직접 입력"
+                  className="w-full text-[13px] font-extrabold text-[#17301f] outline-none"
+                />
+                <span className="text-[13px] font-bold text-[#8aa392]">원</span>
               </div>
+              {topupAmt <= 0 ? (
+                <div className="rounded-[10px] bg-[#fdf0dc] p-2.5 text-center text-[13px] font-bold text-[#b45309]">
+                  충전 금액을 입력해주세요
+                </div>
+              ) : (
+                <div
+                  onClick={doTopup}
+                  className="cursor-pointer rounded-[10px] bg-[#1f8a4c] p-2.5 text-center font-extrabold text-white hover:bg-[#187741]"
+                >
+                  {fmt(topupAmt)} 충전하기
+                </div>
+              )}
               <div className="text-[11.5px] text-[#8aa392]">
                 충전 수단 · 토스페이먼츠 (테스트 결제 · 실제 출금 없음)
               </div>

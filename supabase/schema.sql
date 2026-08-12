@@ -42,8 +42,10 @@ create table group_buys (
   description   text,
   category      text not null check (category in ('식료품','배달음식','생활용품','대량구매','기타')),
   store_link    text,
-  total_amount  int  not null check (total_amount > 0),   -- 원 단위 정수
+  total_amount  int  not null check (total_amount > 0),   -- 원 단위 정수. 배달음식은 최소주문금액으로 시작해 채팅 취합 후 수정
   delivery_fee  int  not null default 0 check (delivery_fee >= 0),
+  -- 배달음식 카테고리 전용 — 가게 최소 주문 금액 (#95). 다른 카테고리는 null
+  min_order_amount int check (min_order_amount is null or min_order_amount > 0),
   goal          int  not null check (goal > 1),           -- 목표 인원 = 정원
   joined        int  not null default 1 check (joined >= 0),  -- 주최자 포함
   deadline      timestamptz not null,
@@ -341,7 +343,12 @@ begin
    where id = p_group_buy_id
    returning * into g;
 
-  v_per_person := ceil(g.total_amount::numeric / greatest(g.joined, 1))::integer;
+  -- 배달음식은 메뉴가 사람마다 달라 총액을 안 나누고 배달비만 엔빵해서 보여준다 (#95, lib/deal.ts perAmount 와 동일 기준)
+  if g.category = '배달음식' then
+    v_per_person := ceil(g.delivery_fee::numeric / greatest(g.joined, 1))::integer;
+  else
+    v_per_person := ceil((g.total_amount + g.delivery_fee)::numeric / greatest(g.joined, 1))::integer;
+  end if;
 
   insert into public.notifications (user_id, type, payload)
   select p.user_id,
@@ -686,7 +693,9 @@ begin
   if p_amount <= 0 then
     raise exception '충전 금액은 0보다 커야 합니다';
   end if;
-  update public.wallets set balance = balance + p_amount where user_id = v_user_id;
+  -- wallets 행이 없으면 UPDATE 가 조용히 0행 갱신으로 끝나 잔액이 반영 안 된다 (#85) — upsert 로 방어
+  insert into public.wallets (user_id, balance) values (v_user_id, p_amount)
+    on conflict (user_id) do update set balance = public.wallets.balance + excluded.balance;
   insert into public.wallet_transactions (user_id, kind, amount, title)
   values (v_user_id, 'charge', p_amount, '충전');
 end $$;
@@ -780,6 +789,28 @@ begin
   where pt.group_buy_id = p_group_buy_id and pt.user_id <> v_host_id
     and not exists (select 1 from public.wallet_transactions w
                     where w.group_buy_id = p_group_buy_id and w.kind = 'pay' and w.user_id = pt.user_id);
+end $$;
+
+create or replace function public.delete_group_buy(p_group_buy_id bigint) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_host_id uuid;
+  v_status  text;
+begin
+  select host_id, status into v_host_id, v_status
+  from public.group_buys where id = p_group_buy_id for update;
+
+  if v_host_id is null then
+    raise exception '공구를 찾을 수 없습니다';
+  end if;
+  if v_host_id <> auth.uid() then
+    raise exception '주최자만 공구를 삭제할 수 있습니다';
+  end if;
+  if v_status <> 'recruiting' then
+    raise exception '모집중인 공구만 삭제할 수 있습니다';
+  end if;
+
+  delete from public.group_buys where id = p_group_buy_id;
 end $$;
 
 -- ─────────────────────────────────────────────
@@ -926,6 +957,9 @@ grant  execute on function public.remind_unpaid(bigint) to authenticated;
 revoke execute on function public.cancel_group_buy(bigint) from public, anon;
 grant  execute on function public.cancel_group_buy(bigint) to authenticated;
 
+revoke execute on function public.delete_group_buy(bigint) from public, anon;
+grant  execute on function public.delete_group_buy(bigint) to authenticated;
+
 revoke execute on function public.topup_wallet(int) from public, anon;
 grant  execute on function public.topup_wallet(int) to authenticated;
 
@@ -948,6 +982,8 @@ alter publication supabase_realtime add table messages;
 alter publication supabase_realtime add table notifications;
 alter publication supabase_realtime add table wallets;
 alter publication supabase_realtime add table wallet_transactions;
+alter publication supabase_realtime add table settlements;
+alter publication supabase_realtime add table settlement_votes;
 
 -- ─────────────────────────────────────────────
 -- 7. Storage — 미사용

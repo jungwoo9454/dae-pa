@@ -3,7 +3,7 @@
 import { Ban, Coins, MapPin, MessageCircle, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ProgressBar, StatusBadge } from "@/components/ui";
-import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { countdownDisplay, fmt, joinLabel, joinable, perAmount, perLabel, statusOf } from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
@@ -49,6 +49,7 @@ export default function DetailView() {
   const st = statusOf(deal, now);
   const pct = Math.min(100, Math.round((deal.joined / deal.goal) * 100));
   const closing = st.key === "closing";
+  const cd = countdownDisplay(deal, now);
   const active = joinable(deal, now);
   // 참여자 아바타 — participations.user_id → profiles.id embed로 받은 닉네임 첫 글자를 쓴다.
   // profile을 못 찾은 경우(고아 user_id 등)에만 user_id로 폴백한다.
@@ -58,6 +59,10 @@ export default function DetailView() {
   }));
   // 취소는 주최자만, 모집중·정산중일 때만 (#29 — DB 의 cancel_group_buy 판정과 같다)
   const cancelable = deal.mine && (deal.status === "recruiting" || deal.status === "settling");
+  // 공구 채팅방은 참여자(주최자 포함)만 들어갈 수 있다 — store.rooms 는 내 participations 로만
+  // 채워지므로, 미참여자를 들여보내면 방을 못 찾고 조용히 동네 라운지가 열렸다 (#93).
+  // deal.me 는 "주최자이거나 참여 행이 있음" 이라 방 목록 판정과 정확히 같다.
+  const canChat = deal.me;
 
   const onJoin = () => {
     if (deal.status === "settling") openSettle(deal.id);
@@ -169,8 +174,10 @@ export default function DetailView() {
         </div>
         <div className="flex w-[300px] flex-none flex-col gap-3.5 rounded-[18px] border border-[#cfe4d0] bg-white p-5 shadow-[0_6px_18px_rgba(18,70,38,.08)]">
           <div className="text-center">
-            <div className="font-jua tnum text-[30px] text-[#1f8a4c]">{remainLabel(deal, now)}</div>
-            <div className="text-xs text-[#6b8573]">남은 시간 · 실시간</div>
+            <div className="font-jua tnum text-[30px]" style={{ color: cd.color }}>
+              {cd.text}
+            </div>
+            <div className="text-xs text-[#6b8573]">{cd.caption}</div>
           </div>
           <ProgressBar pct={pct} color={closing ? "#d97706" : "#1f8a4c"} h={11} />
           <div className="flex justify-between text-sm">
@@ -178,7 +185,7 @@ export default function DetailView() {
               참여 <b>{deal.joined}</b>/{deal.goal}명
             </span>
             <span>
-              1인 <b className="text-base">{fmt(perAmount(deal))}</b>
+              {perLabel(deal)} <b className="text-base">{fmt(perAmount(deal))}</b>
             </span>
           </div>
           <div className="flex">
@@ -205,11 +212,21 @@ export default function DetailView() {
             {joinLabel(deal, now)}
           </div>
           <div
-            onClick={() => goRoom("d" + deal.id)}
-            className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#1f8a4c] p-2.5 font-extrabold text-[#1f8a4c] hover:bg-[#e9f6ec]"
+            onClick={() => canChat && goRoom("d" + deal.id)}
+            title={canChat ? undefined : "참여 후 이용할 수 있어요"}
+            className={`flex items-center justify-center gap-1.5 rounded-xl border-[1.5px] p-2.5 font-extrabold ${
+              canChat
+                ? "cursor-pointer border-[#1f8a4c] text-[#1f8a4c] hover:bg-[#e9f6ec]"
+                : "cursor-default border-[#e0eadf] text-[#a8bdb0]"
+            }`}
           >
             <MessageCircle aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 공구 채팅방
           </div>
+          {!canChat && (
+            <div className="-mt-2.5 text-center text-[12px] text-[#8aa392]">
+              참여 후 이용할 수 있어요
+            </div>
+          )}
           {/* 라운지에 카드 말풍선으로 공유 → 대화 중 바로 참여로 이어진다 (#10) */}
           <div
             onClick={() => shareDeal(deal.id, "lounge")}

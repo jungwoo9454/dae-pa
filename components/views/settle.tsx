@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Bike, Landmark, Lock, ReceiptText, Send, Vote, Wallet } from "lucide-react";
+import { Bell, Bike, Landmark, Lock, ReceiptText, Vote, Wallet } from "lucide-react";
 import { useEffect } from "react";
 import ImageUpload from "@/components/image-upload";
 import { Avatar, ProgressBar } from "@/components/ui";
@@ -50,7 +50,9 @@ export default function SettleView() {
   }
 
   const mem = sd.participations ?? [];
-  const paidN = mem.filter((p) => p.is_paid).length;
+  // 주최자는 나머지를 자동 부담하는 쪽이라 "n빵 입금" 진행률에서는 뺀다
+  const guestMem = mem.filter((p) => p.user_id !== sd.host_id);
+  const paidGuestN = guestMem.filter((p) => p.is_paid).length;
   const mine = mem.find((p) => p.user_id === me?.id);
   const insufficient = !!mine && balance < (mine.amount_due ?? 0);
   const settlement = sd.settlement;
@@ -234,11 +236,11 @@ export default function SettleView() {
               );
             })}
           </div>
-          <ProgressBar pct={Math.round((paidN / Math.max(1, mem.length)) * 100)} h={11} />
+          <ProgressBar pct={Math.round((paidGuestN / Math.max(1, guestMem.length)) * 100)} h={11} />
           <div className="text-center text-[13px] text-[#4d6d58]">
-            {paidN}/{mem.length}명 입금 완료 — 전원 완료 시 자동으로 마감돼요
+            {paidGuestN}/{guestMem.length}명 입금 완료 — 전원 완료 시 자동으로 마감돼요
           </div>
-          {isHost && sd.status === "settling" && paidN < mem.length && (
+          {isHost && sd.status === "settling" && paidGuestN < guestMem.length && (
             <div
               onClick={() => remindUnpaid(sd.id)}
               className="flex cursor-pointer items-center gap-1.5 self-center rounded-lg border-[1.5px] border-[#f0dca0] bg-[#fdf8ec] px-3.5 py-2 text-[12.5px] font-bold text-[#8a6d1f] hover:border-[#d9b64a]"
@@ -279,16 +281,10 @@ export default function SettleView() {
                 onClick={() => confirmSelfPaid(mine.id, "account")}
                 className="flex cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-[13.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
               >
-                <Landmark aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 계좌로 보내기 · 초록은행 1104-04
+                <Landmark aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 계좌로 보내기
                 <span className="rounded-md bg-[#e9f6ec] px-[7px] py-px text-[11px] text-[#166b3a]">
                   복사
                 </span>
-              </div>
-              <div
-                onClick={() => confirmSelfPaid(mine.id, "toss")}
-                className="flex cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-[13.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
-              >
-                <Send aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 토스 송금 링크 열기
               </div>
               <div className="text-center text-[11.5px] text-[#8aa392]">
                 {insufficient

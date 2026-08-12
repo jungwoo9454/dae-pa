@@ -1,7 +1,7 @@
 "use client";
 
 import { Timer } from "lucide-react";
-import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Deal } from "@/lib/types";
 import { ProgressBar, StatusBadge } from "./ui";
@@ -13,8 +13,10 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
 
   const st = statusOf(deal, now);
   const pct = Math.min(100, Math.round((deal.joined / deal.goal) * 100));
-  const closing = st.key === "closing";
   const active = joinable(deal, now);
+  // 마감·취소 카드는 배경까지 죽여서 모집중 카드와 한눈에 구분한다 (#89).
+  // 색은 statusOf 가 이미 쓰는 bg/fg 만 재사용한다 (CLAUDE.md — 임의 팔레트 금지).
+  const dimmed = st.key === "closed" || st.key === "canceled";
 
   const onJoin = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -25,19 +27,23 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
   return (
     <div
       onClick={() => openDeal(deal.id)}
-      className="flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-[#dbe9da] bg-white p-4 shadow-[0_1px_2px_rgba(18,49,30,.05)] transition-all duration-150 hover:-translate-y-0.5 hover:border-[#9fd4ae] hover:shadow-[0_8px_20px_rgba(18,70,38,.13)]"
+      className={`flex cursor-pointer flex-col gap-2.5 rounded-2xl border p-5 shadow-[0_1px_2px_rgba(18,49,30,.05)] transition-all duration-150 ${
+        dimmed
+          ? "border-[#e3e7e6] bg-[#f4f6f5]"
+          : "border-[#dbe9da] bg-white hover:-translate-y-0.5 hover:border-[#9fd4ae] hover:shadow-[0_8px_20px_rgba(18,70,38,.13)]"
+      }`}
     >
       <div className="flex items-center gap-2.5">
-        <div className="flex h-11 w-11 flex-none items-center justify-center overflow-hidden rounded-xl bg-[#e9f6ec] text-[22px]">
+        <div className="flex h-11 w-11 flex-none items-center justify-center overflow-hidden rounded-xl text-[22px]" style={{ backgroundColor: st.bg }}>
           {deal.imageUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */
-            <img src={deal.imageUrl} alt="" className="h-full w-full object-cover" />
+            <img src={deal.imageUrl} alt="" className={`h-full w-full object-cover ${dimmed ? "grayscale" : ""}`} />
           ) : (
             deal.emoji
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-extrabold">
+          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[17px] font-extrabold">
             {deal.title}
           </div>
           <div className="text-xs text-[#6b8573]">
@@ -46,19 +52,19 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
         </div>
         <StatusBadge s={st} />
       </div>
-      <ProgressBar pct={pct} color={closing ? "#d97706" : "#1f8a4c"} />
+      <ProgressBar pct={pct} color={st.fg} />
       <div className="flex items-center justify-between text-[13px]">
         <span className="whitespace-nowrap">
           <b>{deal.joined}</b>
           <span className="text-[#6b8573]">/{deal.goal}명</span>
         </span>
-        <span className="tnum inline-flex items-center gap-1 font-extrabold" style={{ color: closing ? "#b45309" : "#1f8a4c" }}>
+        <span className="tnum inline-flex items-center gap-1 font-extrabold" style={{ color: st.fg }}>
           <Timer aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> {remainLabel(deal, now)}
         </span>
       </div>
       <div className="flex items-center justify-between">
         <div className="text-[13px] text-[#6b8573]">
-          1인 <b className="text-[15px] text-[#17301f]">{fmt(perAmount(deal))}</b>
+          {perLabel(deal)} <b className="text-[15px] text-[#17301f]">{fmt(perAmount(deal))}</b>
         </div>
         <div
           onClick={onJoin}
