@@ -10,17 +10,19 @@
 -- ─────────────────────────────────────────────
 
 -- 이미 스키마를 돌린 프로젝트는 이 파일 전체 대신 아래 줄만 실행한다
---   alter table profiles add column if not exists dong text;                                        -- #2 동네
+--   alter table profiles add column if not exists dong text default '크래프톤 정글';                  -- #2 동네 (고정)
+--   update profiles set dong = '크래프톤 정글';                                                      -- 기존 행도 고정값으로
 --   alter table profiles add column if not exists notify_deadline boolean not null default true;    -- #20 알림 토글
 --   alter table profiles add column if not exists notify_payment  boolean not null default true;
 --   alter table profiles add column if not exists auto_pay        boolean not null default true;    -- #14 정산 요청 자동 결제
---   grant update (nickname, avatar_url, dong, bank_account, transfer_app,
+--   -- dong 은 고정값이라 클라이언트가 못 바꾼다
+--   grant update (nickname, avatar_url, bank_account, transfer_app,
 --                 notify_deadline, notify_payment, auto_pay) on profiles to authenticated;
 create table profiles (
   id            uuid primary key references auth.users(id) on delete cascade,
   nickname      text not null,
   avatar_url    text,
-  dong          text,          -- 회원가입 동네 인증 결과 (예: '역삼동')
+  dong          text default '크래프톤 정글',   -- 동네는 크래프톤 정글 고정 (사용자 변경 불가)
   bank_account  text,          -- 정산 받을 계좌 (예: '초록은행 1104-04')
   transfer_app  text,          -- 기본 송금 앱 (예: '토스')
   notify_deadline boolean not null default true,  -- 마감 임박 알림 수신 (#20)
@@ -161,7 +163,7 @@ begin
       '이웃' || left(new.id::text, 4)
     ),
     coalesce(nullif(m->>'avatar_url', ''), nullif(m->>'picture', '')),
-    nullif(m->>'dong', '')             -- 이메일 회원가입 폼의 동네 인증 (소셜은 null)
+    '크래프톤 정글'                     -- 동네 고정 — 가입 경로와 무관하게 항상 같다
   );
   insert into public.wallets (user_id) values (new.id);
   return new;
@@ -1111,7 +1113,8 @@ grant update (note, is_paid, paid_at) on participations to authenticated;
 
 -- trust_score 는 정산 완료 RPC(#17)가 쓴다.
 revoke update on profiles from authenticated;
-grant update (nickname, avatar_url, dong, bank_account, transfer_app,
+-- dong 은 고정값이라 클라이언트가 못 바꾼다
+grant update (nickname, avatar_url, bank_account, transfer_app,
               notify_deadline, notify_payment, auto_pay) on profiles to authenticated;
 
 -- 트리거 함수는 /rest/v1/rpc/ 로 노출될 이유가 없다. EXECUTE 권한은 CREATE TRIGGER 시점에만

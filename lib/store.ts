@@ -126,7 +126,6 @@ async function patchProfile(uid: string, patch: Record<string, unknown>) {
 const PROFILE_COL: Record<string, string> = {
   nickname: "nickname",
   avatarUrl: "avatar_url",
-  dong: "dong",
   bankAccount: "bank_account",
   transferApp: "transfer_app",
 };
@@ -196,9 +195,6 @@ interface StoreState {
   authReady: boolean;
   authBusy: boolean;
   authError: string;
-  dongOk: boolean;
-  /** 사용자가 적은 동네 이름 — 확정 시 profiles.dong 으로 간다 (#83) */
-  dongValue: string;
   room: string;
   chatInput: string;
   search: string;
@@ -235,9 +231,6 @@ interface StoreState {
   switchAuthMode: () => void;
   /** bfcache 복원 등으로 남은 authBusy 를 푼다 — 안 풀면 로그인 버튼이 죽는다 (#82) */
   resetAuthBusy: () => void;
-  setDongValue: (v: string) => void;
-  /** 동네 확정 — 가입 전이면 dongOk 만 켜고, 로그인 상태면 profiles.dong 까지 저장한다 (#83) */
-  confirmDong: () => void;
   /** 세션 구독 시작. 정리 함수를 돌려준다 */
   initAuth: () => () => void;
   signIn: () => Promise<void>;
@@ -317,10 +310,13 @@ interface StoreState {
   toggleN2: () => void;
   /** 닉네임·아바타·계좌·송금 앱 저장 (#20, #15) — 화면은 즉시 바꾸고 profiles 에 반영한다 */
   saveProfile: (
-    patch: Partial<Pick<Me, "nickname" | "avatarUrl" | "bankAccount" | "transferApp" | "dong">>,
+    patch: Partial<Pick<Me, "nickname" | "avatarUrl" | "bankAccount" | "transferApp">>,
   ) => void;
   submitNew: () => void;
 }
+
+/** 동네는 크래프톤 정글 고정 — 사용자가 고르거나 바꾸지 못한다 */
+export const FIXED_DONG = "크래프톤 정글";
 
 export const useStore = create<StoreState>((set, get) => ({
   page: "login",
@@ -331,8 +327,6 @@ export const useStore = create<StoreState>((set, get) => ({
   authReady: false,
   authBusy: false,
   authError: "",
-  dongOk: false,
-  dongValue: "",
   room: "lounge",
   chatInput: "",
   search: "",
@@ -367,16 +361,6 @@ export const useStore = create<StoreState>((set, get) => ({
   switchAuthMode: () =>
     set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup", authError: "" })),
   resetAuthBusy: () => set({ authBusy: false }),
-  setDongValue: (v) => set({ dongValue: v }),
-
-  confirmDong: () => {
-    const dong = get().dongValue.trim();
-    if (!dong) return;
-    set({ dongOk: true, dongValue: dong });
-    // 이미 로그인한 사용자(소셜 가입 등)는 바로 profiles 에 저장한다. 가입 폼에서는
-    // 아직 계정이 없으니 signUp 이 raw_user_meta_data 로 넘긴다
-    if (get().me) get().saveProfile({ dong });
-  },
 
   initAuth: () => {
     const sb = createClient();
@@ -454,7 +438,7 @@ export const useStore = create<StoreState>((set, get) => ({
             id: uid,
             nickname: p?.nickname ?? "파티원",
             avatarUrl: p?.avatar_url ?? null,
-            dong: p?.dong ?? null,
+            dong: p?.dong ?? FIXED_DONG,
             provider,
             bankAccount: p?.bank_account ?? null,
             transferApp: p?.transfer_app ?? null,
@@ -539,8 +523,9 @@ export const useStore = create<StoreState>((set, get) => ({
       email,
       password: pw,
       options: {
-        // 닉네임·동네는 raw_user_meta_data 로 들어가 handle_new_user 트리거가 profiles 에 넣는다
-        data: { nickname: nick, dong: get().dongOk ? get().dongValue : null },
+        // 닉네임은 raw_user_meta_data 로 들어가 handle_new_user 트리거가 profiles 에 넣는다.
+        // 동네는 서버가 크래프톤 정글로 고정한다
+        data: { nickname: nick },
         // 없으면 확인 링크가 항상 Site URL(프로덕션)로 가서 로컬 테스트가 막힌다
         emailRedirectTo: `${location.origin}/auth/callback`,
       },

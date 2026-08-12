@@ -1,7 +1,7 @@
 "use client";
 
 import { isSubmitEnter } from "@/lib/keys";
-import { useStore } from "@/lib/store";
+import { FIXED_DONG, useStore } from "@/lib/store";
 
 /** 구글 공식 4색 마크 — lucide 에는 브랜드 아이콘이 없어서 SVG 로 둔다 (#81) */
 function GoogleMark({ className }: { className?: string }) {
@@ -39,10 +39,6 @@ function GithubMark({ className }: { className?: string }) {
 export default function AuthView() {
   const authMode = useStore((s) => s.authMode);
   const auth = useStore((s) => s.auth);
-  const dongOk = useStore((s) => s.dongOk);
-  const dongValue = useStore((s) => s.dongValue);
-  const setDongValue = useStore((s) => s.setDongValue);
-  const confirmDong = useStore((s) => s.confirmDong);
   const authBusy = useStore((s) => s.authBusy);
   const authError = useStore((s) => s.authError);
   const setAuth = useStore((s) => s.setAuth);
@@ -54,7 +50,7 @@ export default function AuthView() {
   const isSignup = authMode === "signup";
   const authOk =
     !authBusy &&
-    (isSignup ? !!(auth.nick && auth.email && auth.pw && dongOk) : !!(auth.email && auth.pw));
+    (isSignup ? !!(auth.nick && auth.email && auth.pw) : !!(auth.email && auth.pw));
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#e4e4e0] p-8 text-[15.5px] text-[#1b1917]">
@@ -127,22 +123,7 @@ export default function AuthView() {
           {isSignup && (
             <div className="mt-2.5 border-[1.5px] border-dashed border-[#e14e2b] p-3.5">
               <div className="text-[12.5px] font-bold tracking-[.1em] text-[#e14e2b]">동네 인증</div>
-              {dongOk ? (
-                <div className="font-sans-ko mt-2 text-[14.5px] font-bold">{dongValue} 인증 완료 ✓</div>
-              ) : (
-                <div className="mt-2.5 flex gap-2">
-                  <input
-                    value={dongValue}
-                    onChange={(e) => setDongValue(e.target.value)}
-                    onKeyDown={(e) => isSubmitEnter(e) && confirmDong()}
-                    placeholder="동네 이름 — 예: 역삼동"
-                    className="field field-sub font-sans-ko min-w-0 flex-1 py-2 text-[14.5px]"
-                  />
-                  <div onClick={confirmDong} className="key key-ink flex-none px-3.5 py-2 text-xs">
-                    [확정]
-                  </div>
-                </div>
-              )}
+              <div className="font-sans-ko mt-2 text-[14.5px] font-bold">{FIXED_DONG} 인증 완료 ✓</div>
             </div>
           )}
 
