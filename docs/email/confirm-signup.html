@@ -1,0 +1,61 @@
+<!-- Supabase Dashboard → Authentication → Emails → Confirm signup
+     Subject: [대파] 이메일 인증하고 공구 시작하기 -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">인증 링크는 24시간 동안 유효해요. 가입한 브라우저에서 열어주세요.</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef4ec;margin:0;padding:40px 12px;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;">
+  <tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:432px;background:#ffffff;border:1px solid #dfe9e1;border-radius:18px;overflow:hidden;">
+
+      <!-- 헤더 -->
+      <tr><td style="background:#12311e;padding:22px 30px;">
+        <span style="color:#ffffff;font-size:19px;font-weight:800;letter-spacing:-0.6px;">대파</span>
+        <span style="color:#7fa78d;font-size:12px;letter-spacing:-0.2px;padding-left:9px;">대용량 파티원</span>
+      </td></tr>
+
+      <!-- 본문 -->
+      <tr><td style="padding:36px 30px 0;">
+        <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.6px;color:#1f8a4c;">이메일 인증</p>
+        <h1 style="margin:0 0 14px;font-size:23px;line-height:1.42;letter-spacing:-0.6px;color:#12311e;font-weight:800;">
+          가입까지<br>딱 한 걸음 남았어요
+        </h1>
+        <p style="margin:0;font-size:15px;line-height:1.75;letter-spacing:-0.2px;color:#59695f;">
+          아래 버튼을 누르면 인증이 끝나요.<br>
+          바로 우리 동네 공구에 참여할 수 있어요.
+        </p>
+      </td></tr>
+
+      <!-- CTA -->
+      <tr><td style="padding:26px 30px 22px;">
+        <a href="{{ .ConfirmationURL }}"
+           style="display:block;background:#1f8a4c;color:#ffffff;text-decoration:none;text-align:center;padding:16px 0;border-radius:12px;font-size:16px;font-weight:700;letter-spacing:-0.3px;">
+          이메일 인증하기
+        </a>
+      </td></tr>
+
+      <!-- 주의 -->
+      <tr><td style="padding:0 30px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f8f3;border-radius:12px;">
+          <tr><td style="padding:15px 17px;font-size:13px;line-height:1.85;letter-spacing:-0.2px;color:#42604d;">
+            링크는 <b style="color:#12311e;">가입한 그 브라우저</b>에서 열어주세요.<br>
+            유효 시간은 <b style="color:#12311e;">24시간</b>이에요.
+          </td></tr>
+        </table>
+      </td></tr>
+
+      <!-- 대체 링크 -->
+      <tr><td style="padding:20px 30px 30px;">
+        <p style="margin:0 0 5px;font-size:12px;line-height:1.6;color:#94a29a;">버튼이 안 눌리면 아래 주소를 복사해 주세요</p>
+        <p style="margin:0;font-size:12px;line-height:1.65;color:#1f8a4c;word-break:break-all;">{{ .ConfirmationURL }}</p>
+      </td></tr>
+
+      <!-- 푸터 -->
+      <tr><td style="border-top:1px solid #eaf0eb;background:#fbfdfb;padding:18px 30px;">
+        <p style="margin:0;font-size:12px;line-height:1.7;color:#94a29a;letter-spacing:-0.2px;">
+          가입한 적이 없다면 이 메일은 무시하셔도 괜찮아요.<br>
+          <span style="color:#6f8377;font-weight:600;">대파</span> · 공고부터 정산까지 한 번에
+        </p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
