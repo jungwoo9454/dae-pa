@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="대파">
+  <defs>
+    <linearGradient id="i" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5fb84f"/>
+      <stop offset=".4" stop-color="#a8d878"/>
+      <stop offset=".7" stop-color="#eef8d4"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#12311e"/>
+  <!-- 심볼 viewBox(-8 -8 140 236)를 52px 높이로 맞춰 가운데 정렬 -->
+  <g transform="translate(19.7 7.8) scale(0.2203)" stroke="#7fdc95" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <path
+      d="M56 216
+         C30 216 8 200 8 176
+         C8 156 20 146 24 126
+         C18 96 8 62 6 42
+         C4 22 14 4 24 10
+         C34 16 42 22 46 28
+         C50 18 58 6 62 2
+         C64 -1 70 0 70 5
+         C74 22 78 42 80 56
+         C88 48 102 38 112 32
+         C118 28 122 35 117 41
+         C106 58 96 96 91 126
+         C94 146 104 156 104 176
+         C104 200 82 216 56 216 Z"
+      fill="url(#i)" stroke-width="13"/>
+    <path d="M46 28 C51 66 55 106 57 152" stroke-width="10"/>
+    <path d="M80 56 C76 82 70 110 67 138" stroke-width="10"/>
+  </g>
+</svg>

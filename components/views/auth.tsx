@@ -1,5 +1,6 @@
 "use client";
 
+import { MapPin, MessageCircle, ReceiptText, ShoppingBasket } from "lucide-react";
 import { isSubmitEnter } from "@/lib/keys";
 import { DONG, useStore } from "@/lib/store";
 
@@ -27,14 +28,26 @@ export default function AuthView() {
         className="flex w-[44%] min-w-[340px] flex-col justify-center gap-[18px] p-14 text-white"
         style={{ background: "linear-gradient(160deg,#12311e,#1f8a4c)" }}
       >
-        <div className="font-jua text-[64px] leading-none">
-          대<span className="text-[#7fdc95]">파</span>
+        <div className="flex items-center gap-4">
+          <img src="/logo-mark-light.svg" alt="" aria-hidden className="h-[74px] w-auto" />
+          <span className="font-jua text-[64px] leading-none">
+            대<span className="text-[#7fdc95]">파</span>
+          </span>
         </div>
         <div className="font-jua text-[22px] text-[#d7efdc]">대용량 파티원 — 같이 사면 이득</div>
         <div className="mt-2.5 flex flex-col gap-3 text-[14.5px] text-[#bfe3c8]">
-          <div>🧅 이웃과 대용량으로 나눠 사고</div>
-          <div>💬 공구별 채팅방에서 편하게 조율하고</div>
-          <div>🧾 영수증 인증으로 투명하게 1/N 정산</div>
+          <div className="flex items-center gap-2.5">
+            <ShoppingBasket aria-hidden className="h-[18px] w-[18px] flex-none" /> 이웃과 대용량으로
+            나눠 사고
+          </div>
+          <div className="flex items-center gap-2.5">
+            <MessageCircle aria-hidden className="h-[18px] w-[18px] flex-none" /> 공구별 채팅방에서
+            편하게 조율하고
+          </div>
+          <div className="flex items-center gap-2.5">
+            <ReceiptText aria-hidden className="h-[18px] w-[18px] flex-none" /> 영수증 인증으로
+            투명하게 1/N 정산
+          </div>
         </div>
       </div>
 
@@ -71,7 +84,7 @@ export default function AuthView() {
 
           {isSignup && (
             <div className="flex items-center gap-[9px] rounded-[11px] border-[1.5px] border-dashed border-[#9fd4ae] bg-[#f5faf4] px-3.5 py-[11px]">
-              <span className="text-lg">📍</span>
+              <MapPin aria-hidden className="h-[18px] w-[18px] flex-none text-[#1f8a4c]" />
               <div className="flex-1">
                 <div className="text-[13.5px] font-extrabold">동네 인증</div>
                 <div className="text-xs text-[#6b8573]">
@@ -116,7 +129,7 @@ export default function AuthView() {
 
           <div
             onClick={() => signInWithOAuth("github")}
-            className="cursor-pointer rounded-[11px] bg-[#24292f] p-[11px] text-center font-extrabold text-white hover:brightness-125"
+            className="flex cursor-pointer items-center justify-center rounded-[11px] bg-[#24292f] p-[11px] font-extrabold text-white hover:brightness-125"
           >
             깃허브로 3초 만에 시작
           </div>

@@ -1,4 +1,6 @@
 "use client";
+import { Home, ShoppingCart, Timer } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Avatar } from "@/components/ui";
 import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
@@ -8,7 +10,9 @@ import { useNow } from "@/lib/use-now";
 
 interface RoomDef {
   id: string;
+  /** 공구방은 카테고리 이모지를 그대로 쓰고, 라운지는 icon 을 쓴다 (#65) */
   emoji: string;
+  icon?: LucideIcon;
   name: string;
   sub: string;
 }
@@ -21,7 +25,11 @@ function RoomItem({ room, active, onPick }: { room: RoomDef; active: boolean; on
         active ? "border-[#1f8a4c] bg-[#e9f6ec]" : "border-transparent"
       }`}
     >
-      <span className="text-[17px]">{room.emoji}</span>
+      {room.icon ? (
+        <room.icon aria-hidden className="h-[17px] w-[17px] flex-none text-[#4d6d58]" />
+      ) : (
+        <span className="text-[17px]">{room.emoji}</span>
+      )}
       <div className="min-w-0 flex-1">
         <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] font-bold">
           {room.name}
@@ -53,8 +61,8 @@ export default function ChatView() {
   const loungeRooms: RoomDef[] = chatReady
     ? rooms
         .filter((r) => r.type === "lounge")
-        .map((r) => ({ id: "lounge", emoji: "🏘", name: r.name, sub: "이웃과 자유 수다" }))
-    : [{ id: "lounge", emoji: "🏘", name: "역삼동 라운지", sub: "이웃 128명 · 자유 수다" }];
+        .map((r) => ({ id: "lounge", emoji: "", icon: Home, name: r.name, sub: "이웃과 자유 수다" }))
+    : [{ id: "lounge", emoji: "", icon: Home, name: "역삼동 라운지", sub: "이웃 128명 · 자유 수다" }];
 
   const dealRooms: RoomDef[] = chatReady
     ? rooms
@@ -63,7 +71,8 @@ export default function ChatView() {
           const d = deals.find((x) => x.id === r.dealId);
           return {
             id: "d" + r.dealId,
-            emoji: d?.emoji ?? "🛒",
+            emoji: d?.emoji ?? "",
+            icon: d ? undefined : ShoppingCart,
             name: r.name,
             sub: d ? `${d.joined}명 · ${statusOf(d, now).label}` : "공구방",
           };
@@ -99,7 +108,7 @@ export default function ChatView() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="🔍 채팅방 검색"
+          placeholder="채팅방 검색"
           className="rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white px-3 py-2 text-[13px] outline-none"
         />
         {foundLounge.length > 0 && (
@@ -136,8 +145,13 @@ export default function ChatView() {
 
       <div className="flex min-w-0 flex-1 flex-col bg-white">
         <div className="flex items-center gap-2.5 border-b border-[#e6efe4] px-[18px] py-3">
-          <b className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[15px]">
-            {current.emoji} {current.name}
+          <b className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[15px]">
+            {current.icon ? (
+              <current.icon aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+            ) : (
+              current.emoji
+            )}
+            <span className="min-w-0 overflow-hidden text-ellipsis">{current.name}</span>
           </b>
           <span className="flex-none whitespace-nowrap text-xs text-[#6b8573]">{current.sub}</span>
         </div>
@@ -172,8 +186,14 @@ export default function ChatView() {
                     <div className="font-extrabold">
                       {cd.emoji} {cd.title}
                     </div>
-                    <div className="text-[12.5px] font-bold text-[#1f8a4c]">
-                      {cd.joined}/{cd.goal}명 · ⏱ {remainLabel(cd, now)} · 1인 {fmt(perAmount(cd))}
+                    <div className="flex flex-wrap items-center gap-x-1 text-[12.5px] font-bold text-[#1f8a4c]">
+                      <span>
+                        {cd.joined}/{cd.goal}명 ·
+                      </span>
+                      <Timer aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+                      <span>
+                        {remainLabel(cd, now)} · 1인 {fmt(perAmount(cd))}
+                      </span>
                     </div>
                     {/* 대화 중 카드에서 바로 참여 — 상세로 안 나가도 됨 (#10) */}
                     <div

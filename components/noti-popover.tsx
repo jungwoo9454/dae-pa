@@ -1,15 +1,17 @@
 "use client";
 
+import { AlarmClock, Ban, Coins, PartyPopper, ReceiptText, Send } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
 import type { Noti } from "@/lib/types";
 
-const ICON: Record<Noti["type"], string> = {
-  deadline_soon: "⏰",
-  total_changed: "💰",
-  payment_reminder: "💸",
-  settle_start: "🧾",
-  join: "🙌",
-  cancel: "🚫",
+const ICON: Record<Noti["type"], LucideIcon> = {
+  deadline_soon: AlarmClock,
+  total_changed: Coins,
+  payment_reminder: Send,
+  settle_start: ReceiptText,
+  join: PartyPopper,
+  cancel: Ban,
 };
 
 function ago(ms: number) {
@@ -38,7 +40,10 @@ export default function NotiPopover() {
                 n.dealId ? "cursor-pointer hover:bg-[#fbfdf9]" : ""
               } ${n.isRead ? "" : "bg-[#e9f6ec]"}`}
             >
-              <span className="flex-none text-[15px]">{ICON[n.type]}</span>
+              {(() => {
+                const Icon = ICON[n.type];
+                return <Icon aria-hidden className="mt-0.5 h-[17px] w-[17px] flex-none text-[#1f8a4c]" />;
+              })()}
               <div className="min-w-0">
                 <div className="text-[13.5px] leading-snug">{n.text}</div>
                 <div className="mt-0.5 text-[11.5px] text-[#8aa392]">{ago(n.createdAt)}</div>
