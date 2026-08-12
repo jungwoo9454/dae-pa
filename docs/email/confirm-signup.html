@@ -80,11 +80,10 @@
       </td></tr>
     </table>
 
-    <!-- 절취선 — 지그재그 gradient 대신 삼각 문자 한 줄 -->
+    <!-- 절취선 — 웹 .receipt-edge 와 같은 gradient 지그재그.
+         gradient 미지원(구 Outlook 등)이면 이 줄이 안 보일 뿐, 전표는 평평하게 잘린다. -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:432px;">
-      <tr><td style="font-family:'IBM Plex Mono',monospace;font-size:14px;line-height:14px;letter-spacing:0;color:#fdfdfb;overflow:hidden;white-space:nowrap;">
-        ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼
-      </td></tr>
+      <tr><td height="16" style="height:16px;font-size:0;line-height:0;background:linear-gradient(45deg,transparent 8px,#fdfdfb 0) left top/16px 16px repeat-x,linear-gradient(-45deg,transparent 8px,#fdfdfb 0) left top/16px 16px repeat-x;">&nbsp;</td></tr>
     </table>
 
   </td></tr>
