@@ -180,6 +180,7 @@ interface StoreState {
   mySearch: string;
   filter: string;
   statusFilter: string;
+  myDealsOnly: boolean;
   profileOpen: boolean;
   notiOpen: boolean;
   notis: Noti[];
@@ -234,6 +235,7 @@ interface StoreState {
   setMySearch: (v: string) => void;
   setFilter: (v: string) => void;
   setStatusFilter: (v: string) => void;
+  setMyDealsOnly: (v: boolean) => void;
   setForm: (patch: Partial<DealForm>) => void;
   /** 공구 참여 (#5) — join_group_buy RPC 호출. 서버가 정원/마감/중복을 원자적으로 거부한다 */
   join: (id: number) => Promise<void>;
@@ -292,6 +294,7 @@ export const useStore = create<StoreState>((set, get) => ({
   mySearch: "",
   filter: "전체",
   statusFilter: "전체",
+  myDealsOnly: false,
   profileOpen: false,
   notiOpen: false,
   notis: [],
@@ -697,6 +700,7 @@ export const useStore = create<StoreState>((set, get) => ({
   setMySearch: (v) => set({ mySearch: v }),
   setFilter: (v) => set({ filter: v }),
   setStatusFilter: (v) => set({ statusFilter: v }),
+  setMyDealsOnly: (v) => set({ myDealsOnly: v }),
   setForm: (patch) => set((st) => ({ form: { ...st.form, ...patch } })),
 
   // 정원 검사 + joined 증가 + 정원 도달 시 settling 전환을 서버가 한 트랜잭션으로

@@ -3,7 +3,7 @@
 import { Ban, Coins, MapPin, MessageCircle, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ProgressBar, StatusBadge } from "@/components/ui";
-import { countdownDisplay, fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
@@ -172,59 +172,32 @@ export default function DetailView() {
           </div>
         </div>
         <div className="flex w-[300px] flex-none flex-col gap-3.5 rounded-[18px] border border-[#cfe4d0] bg-white p-5 shadow-[0_6px_18px_rgba(18,70,38,.08)]">
-          {(() => {
-            const cd = countdownDisplay(deal, now);
-            const isClosed = deal.status !== "recruiting" || deal.end - now <= 0;
-            return (
-              <>
-                <div className="text-center">
-                  <div className="font-jua tnum text-[30px]" style={{ color: cd.color }}>
-                    {cd.text}
-                  </div>
-                  <div className="text-xs text-[#6b8573]">{cd.caption}</div>
-                </div>
-                <ProgressBar
-                  pct={pct}
-                  color={isClosed ? "#cbd5e1" : closing ? "#d97706" : "#1f8a4c"}
-                  h={11}
-                />
-                <div className={`flex justify-between text-sm ${isClosed ? "text-[#94a3b8]" : ""}`}>
-                  <span>
-                    참여 <b>{deal.joined}</b>/{deal.goal}명
-                  </span>
-                  <span>
-                    1인 <b className="text-base">{fmt(perAmount(deal))}</b>
-                  </span>
-                </div>
-              </>
-            );
-          })()}
-          {(() => {
-            const isClosed = deal.status !== "recruiting" || deal.end - now <= 0;
-            return (
-              <div className={isClosed ? "opacity-60" : ""}>
-                <div className="flex">
-                  {participantAvatars.map((avatar) => (
-                    <div
-                      key={avatar.userId}
-                      className={`-mr-[7px] flex h-[30px] w-[30px] items-center justify-center rounded-full border-2 border-white text-xs font-extrabold ${
-                        isClosed
-                          ? "bg-[#e2e8f0] text-[#cbd5e1]"
-                          : "bg-[#dceede] text-[#2f6d45]"
-                      }`}
-                    >
-                      {avatar.initials}
-                    </div>
-                  ))}
-                  <span className={`ml-3.5 self-center text-[12.5px] ${
-                    isClosed ? "text-[#cbd5e1]" : "text-[#6b8573]"
-                  }`}>
-                    {deal.joined > 4 ? `+${deal.joined - 4}명 참여중` : `${deal.joined}명 참여중`}
-                  </span>
-                </div>
+          <div className="text-center">
+            <div className="font-jua tnum text-[30px] text-[#1f8a4c]">{remainLabel(deal, now)}</div>
+            <div className="text-xs text-[#6b8573]">남은 시간 · 실시간</div>
+          </div>
+          <ProgressBar pct={pct} color={closing ? "#d97706" : "#1f8a4c"} h={11} />
+          <div className="flex justify-between text-sm">
+            <span>
+              참여 <b>{deal.joined}</b>/{deal.goal}명
+            </span>
+            <span>
+              1인 <b className="text-base">{fmt(perAmount(deal))}</b>
+            </span>
+          </div>
+          <div className="flex">
+            {participantAvatars.map((avatar) => (
+              <div
+                key={avatar.userId}
+                className="-mr-[7px] flex h-[30px] w-[30px] items-center justify-center rounded-full border-2 border-white bg-[#dceede] text-xs font-extrabold text-[#2f6d45]"
+              >
+                {avatar.initials}
               </div>
-            );
-          })()}
+            ))}
+            <span className="ml-3.5 self-center text-[12.5px] text-[#6b8573]">
+              {deal.joined > 4 ? `+${deal.joined - 4}명 참여중` : `${deal.joined}명 참여중`}
+            </span>
+          </div>
           <div
             onClick={onJoin}
             className={`cursor-pointer rounded-xl p-[13px] text-center text-base font-extrabold hover:brightness-105 ${
