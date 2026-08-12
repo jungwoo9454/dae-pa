@@ -2,6 +2,7 @@
 
 import { Coins, Timer } from "lucide-react";
 import ImageUpload from "@/components/image-upload";
+import { ProgressBar } from "@/components/ui";
 import { CAT_EMOJI, CAT_ICON, MIN_DEADLINE_MIN, commaFmt, digits, fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Category } from "@/lib/types";
@@ -267,9 +268,7 @@ export default function NewDealView() {
                 모집중
               </span>
             </div>
-            <div className="h-[9px] overflow-hidden rounded-full bg-[#e6efe4]">
-              <div className="h-full w-[4%] bg-[#1f8a4c]" />
-            </div>
+            <ProgressBar pct={goalN > 0 ? Math.min(100, Math.round(100 / goalN)) : 0} />
             <div className="flex justify-between text-[13px]">
               <span>
                 <b>1</b>
