@@ -1,10 +1,14 @@
 // app/api/deals/route.ts
 import { createClient } from "@/lib/supabase/server"; //SUPERBASE추가후
-import type { Deal } from "@/lib/types";
+import { CAT_EMOJI } from "@/lib/deal";
+import type { Category } from "@/lib/types";
+
+/** 카테고리 이모지는 lib/deal.ts 의 CAT_EMOJI 한 벌만 쓴다 (#90) — DB 값이 정해진 카테고리를 벗어나면 기타 */
+const emojiOf = (cat: string) => CAT_EMOJI[cat as Category] ?? CAT_EMOJI.기타;
 
 /**
  * POST /api/deals
- * 새로운 공고를 생성합니다
+ * 새로운 공구를 생성합니다
  *
  * body: { title, cat, total, goal, mins, place, store_link?, image_url?, min_order_amount?, delivery_fee? }
  * response: { id, title, cat, emoji, ... }
@@ -125,7 +129,7 @@ export async function POST(req: Request) {
 
     const dealForClient = {
       id: Number(newDeal.id),
-      emoji: getCategoryEmoji(newDeal.category),
+      emoji: emojiOf(newDeal.category),
       title: newDeal.title,
       cat: newDeal.category,
       total: newDeal.total_amount,
@@ -146,7 +150,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[POST /api/deals]", error);
     return Response.json(
-      { error: "공고 생성 중 오류 발생" },
+      { error: "공구 생성 중 오류 발생" },
       { status: 500 }
     );
    }
@@ -158,7 +162,7 @@ export async function POST(req: Request) {
  * ⚠️ 사용 안 함 — home.tsx는 lib/supabase/queries.ts의 fetchDeals()를 직접 호출한다
  * (Task 3, #4). 이 핸들러를 고쳐도 화면엔 반영되지 않는다 — 로직을 바꿔야 하면
  * fetchDeals() 쪽을 고치는 게 맞다. 삭제하지 않고 남겨둔 이유는 POST가 같은 파일에
- * 있어서(app/api/deals/route.ts) — POST /api/deals(공고 생성, new-deal.tsx가 씀)는 계속 쓴다.
+ * 있어서(app/api/deals/route.ts) — POST /api/deals(공구 생성, new-deal.tsx가 씀)는 계속 쓴다.
  */
 export async function GET() {
   try {
@@ -180,7 +184,7 @@ export async function GET() {
 
     const deals = (data ?? []).map((row:any) => ({
       id: Number(row.id),
-      emoji: getCategoryEmoji(row.category),
+      emoji: emojiOf(row.category),
       title: row.title,
       cat: row.category,
       total: row.total_amount,
@@ -200,23 +204,9 @@ export async function GET() {
   } catch (error) {
     console.error("[GET /api/deals]", error);
     return Response.json(
-      { error: "공고 목록 조회 중 오류 발생" },
+      { error: "공구 목록 조회 중 오류 발생" },
       { status: 500 }
     );
   }   
   
-}
-
-/**
- * 카테고리에 맞는 이모지 반환
- */
-function getCategoryEmoji(cat: string): string {
-  const emojiMap: Record<string, string> = {
-    식료품: "🧅",
-    배달음식: "🍗",
-    생활용품: "🧻",
-    대량구매: "📦",
-    기타: "🎁",
-  };
-  return emojiMap[cat] || "🧅";
 }

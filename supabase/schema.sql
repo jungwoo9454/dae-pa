@@ -789,6 +789,28 @@ begin
                     where w.group_buy_id = p_group_buy_id and w.kind = 'pay' and w.user_id = pt.user_id);
 end $$;
 
+create or replace function public.delete_group_buy(p_group_buy_id bigint) returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_host_id uuid;
+  v_status  text;
+begin
+  select host_id, status into v_host_id, v_status
+  from public.group_buys where id = p_group_buy_id for update;
+
+  if v_host_id is null then
+    raise exception '공구를 찾을 수 없습니다';
+  end if;
+  if v_host_id <> auth.uid() then
+    raise exception '주최자만 공구를 삭제할 수 있습니다';
+  end if;
+  if v_status <> 'recruiting' then
+    raise exception '모집중인 공구만 삭제할 수 있습니다';
+  end if;
+
+  delete from public.group_buys where id = p_group_buy_id;
+end $$;
+
 -- ─────────────────────────────────────────────
 -- 3. ⚠️ 설계 규약 — 상태 전이·타인 행 쓰기는 RPC로만
 --
@@ -932,6 +954,9 @@ grant  execute on function public.remind_unpaid(bigint) to authenticated;
 
 revoke execute on function public.cancel_group_buy(bigint) from public, anon;
 grant  execute on function public.cancel_group_buy(bigint) to authenticated;
+
+revoke execute on function public.delete_group_buy(bigint) from public, anon;
+grant  execute on function public.delete_group_buy(bigint) to authenticated;
 
 revoke execute on function public.topup_wallet(int) from public, anon;
 grant  execute on function public.topup_wallet(int) to authenticated;

@@ -1,12 +1,24 @@
+import { Carrot, Package, ShoppingBag, SprayCan, UtensilsCrossed } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { ParticipationWithProfile } from "./db-types";
 import type { Category, Deal } from "./types";
 
+/** 카테고리 이모지 — 화면·API 모두 이 한 벌만 쓴다 (예전엔 API 에 다른 맵이 하나 더 있었다, #90) */
 export const CAT_EMOJI: Record<Category, string> = {
   식료품: "🥬",
   배달음식: "🍗",
   생활용품: "🧻",
   대량구매: "📦",
   기타: "🛒",
+};
+
+/** 카테고리 아이콘 — 앱 전반이 lucide 체제(#65)라 칩·버튼은 이모지 대신 이걸 쓴다 (#90) */
+export const CAT_ICON: Record<Category, LucideIcon> = {
+  식료품: Carrot,
+  배달음식: UtensilsCrossed,
+  생활용품: SprayCan,
+  대량구매: Package,
+  기타: ShoppingBag,
 };
 
 export function fmt(n: number) {
@@ -27,7 +39,7 @@ export function relativeWhen(iso: string) {
 }
 
 export interface StatusView {
-  key: "settling" | "closed" | "closing" | "recruiting";
+  key: "settling" | "closed" | "closing" | "recruiting" | "canceled";
   label: string;
   bg: string;
   fg: string;
@@ -36,8 +48,8 @@ export interface StatusView {
 /** 마감임박은 DB 상태가 아니라 마감 1시간 전부터 파생 표시 */
 export function statusOf(d: Deal, now: number): StatusView {
   if (d.status === "settling") return { key: "settling", label: "정산중", bg: "#e0f0f1", fg: "#0e7490" };
+  if (d.status === "canceled") return { key: "canceled", label: "취소됨", bg: "#f3f4f6", fg: "#6b7280" };
   const left = d.end - now;
-  // completed/canceled 는 배지 문구가 '마감' 으로 같다 (CLAUDE.md 디자인 규칙)
   if (d.status !== "recruiting" || left <= 0) return { key: "closed", label: "마감", bg: "#eceff0", fg: "#64748b" };
   if (left < 3_600_000) return { key: "closing", label: "마감임박", bg: "#fdf0dc", fg: "#b45309" };
   return { key: "recruiting", label: "모집중", bg: "#e9f6ec", fg: "#166b3a" };

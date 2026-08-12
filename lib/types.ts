@@ -21,6 +21,8 @@ export interface Me {
   nickname: string;
   avatarUrl: string | null;
   dong: string | null;
+  /** 가입 수단 — auth user.app_metadata.provider ("email" | "google" | "github") (#81) */
+  provider: string | null;
   /** 정산 받을 계좌 (#20) */
   bankAccount: string | null;
   /** 기본 송금 앱 (#20) */
