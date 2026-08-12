@@ -174,6 +174,12 @@ export default function SettleView() {
               <div className="text-[12.5px] text-[#6b8573]">
                 제안 총액 {fmt(settlement.finalTotal)} · {agreeN}/{mem.length}명 동의
               </div>
+              {/* 동의 여부는 "내가 얼마 내는지"를 보고 정하는 것이라 예상 금액을 같이 보여준다 (#128) */}
+              {mine && (
+                <div className="text-[12.5px] font-bold text-[#4d6d58]">
+                  내가 낼 예상 금액 <b className="tnum text-[14px] text-[#17301f]">{fmt(previewAmount(mine))}</b>
+                </div>
+              )}
               {myVote === undefined ? (
                 <div className="flex gap-2">
                   <div
