@@ -536,6 +536,14 @@ begin
     raise exception '총액은 0보다 커야 합니다';
   end if;
 
+  -- 확정된 정산은 잠긴다 (#130, CLAUDE.md 핵심 규칙 2). 가드가 없으면 아래 upsert 가
+  -- confirmed 를 pending 으로 되돌리고 total_amount 만 바꿔서, amount_due 합계와 총액이
+  -- 안 맞는 상태가 만들어진다 (apply_settlement_split 은 confirmed 로 갈 때만 돈다).
+  if exists (select 1 from public.settlements
+              where group_buy_id = p_group_buy_id and status = 'confirmed') then
+    raise exception '이미 확정된 정산은 수정할 수 없습니다';
+  end if;
+
   v_status := case when p_receipt_url is not null then 'confirmed' else 'pending' end;
 
   insert into public.settlements (group_buy_id, total_amount, delivery_fee, receipt_url, overrides, status, confirmed_at)
