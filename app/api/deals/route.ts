@@ -6,13 +6,13 @@ import type { Deal } from "@/lib/types";
  * POST /api/deals
  * 새로운 공고를 생성합니다
  *
- * body: { title, cat, total, goal, mins, place, store_link?, image_url? }
+ * body: { title, cat, total, goal, mins, place, store_link?, image_url?, min_order_amount?, delivery_fee? }
  * response: { id, title, cat, emoji, ... }
  */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { title, cat, total, goal, mins, place, store_link, image_url } = body;
+    const { title, cat, total, goal, mins, place, store_link, image_url, min_order_amount, delivery_fee } = body;
 
     // ✅ 1. 유효성 검증
     if (!title || !title.trim()) {
@@ -22,16 +22,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const totalN = parseInt(total) || 0;
     const goalN = parseInt(goal) || 0;
-
-    if (totalN <= 0) {
-      return Response.json(
-        { error: "총 금액은 0보다 커야 합니다" },
-        { status: 400 }
-      );
-    }
-
     if (goalN < 2) {
       return Response.json(
         { error: "목표 인원은 2명 이상이어야 합니다" },
@@ -39,10 +30,46 @@ export async function POST(req: Request) {
       );
     }
 
-    // ✅ 2. 배달음식 카테고리 검증
-    if (cat === "배달음식" && !store_link) {
+    // ✅ 2. 배달음식 카테고리 검증 — 가게 링크·최소 주문 금액·배달비가 필수, 총 금액은 선택 (#95)
+    // 채팅에서 메뉴를 취합해야 총액을 알 수 있어서, 올릴 때는 최소 주문 금액으로 시작하고
+    // 나중에 "총 금액 수정"으로 실제 금액으로 바꾼다.
+    const isDelivery = cat === "배달음식";
+    let totalN = parseInt(total) || 0;
+    let minOrderN = 0;
+    let deliveryFeeN = 0;
+
+    if (isDelivery) {
+      if (!store_link) {
+        return Response.json(
+          { error: "배달음식은 가게 링크가 필수입니다" },
+          { status: 400 }
+        );
+      }
+      minOrderN = parseInt(min_order_amount) || 0;
+      if (minOrderN <= 0) {
+        return Response.json(
+          { error: "최소 주문 금액은 0보다 커야 합니다" },
+          { status: 400 }
+        );
+      }
+      if (delivery_fee === undefined || delivery_fee === null || String(delivery_fee).trim() === "") {
+        return Response.json(
+          { error: "배달비를 입력해주세요" },
+          { status: 400 }
+        );
+      }
+      deliveryFeeN = parseInt(delivery_fee) || 0;
+      if (deliveryFeeN < 0) {
+        return Response.json(
+          { error: "배달비는 0 이상이어야 합니다" },
+          { status: 400 }
+        );
+      }
+      // 총 금액을 안 적으면 최소 주문 금액으로 시작한다 — total_amount 는 DB에서 not null
+      if (totalN <= 0) totalN = minOrderN;
+    } else if (totalN <= 0) {
       return Response.json(
-        { error: "배달음식은 가게 링크가 필수입니다" },
+        { error: "총 금액은 0보다 커야 합니다" },
         { status: 400 }
       );
     }
@@ -71,7 +98,8 @@ export async function POST(req: Request) {
         description: "",
         category: cat,
         total_amount: totalN,
-        delivery_fee: 0,
+        delivery_fee: deliveryFeeN,
+        min_order_amount: isDelivery ? minOrderN : null,
         goal: goalN,
         joined: 1,
         deadline: new Date(Date.now() + minN * 60_000).toISOString(),
@@ -109,6 +137,7 @@ export async function POST(req: Request) {
       me: true,
       mine: true,
       deliveryFee: newDeal.delivery_fee,
+      minOrderAmount: newDeal.min_order_amount,
     };
 
     return Response.json(dealForClient, { status: 201 });

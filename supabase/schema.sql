@@ -42,8 +42,10 @@ create table group_buys (
   description   text,
   category      text not null check (category in ('식료품','배달음식','생활용품','대량구매','기타')),
   store_link    text,
-  total_amount  int  not null check (total_amount > 0),   -- 원 단위 정수
+  total_amount  int  not null check (total_amount > 0),   -- 원 단위 정수. 배달음식은 최소주문금액으로 시작해 채팅 취합 후 수정
   delivery_fee  int  not null default 0 check (delivery_fee >= 0),
+  -- 배달음식 카테고리 전용 — 가게 최소 주문 금액 (#95). 다른 카테고리는 null
+  min_order_amount int check (min_order_amount is null or min_order_amount > 0),
   goal          int  not null check (goal > 1),           -- 목표 인원 = 정원
   joined        int  not null default 1 check (joined >= 0),  -- 주최자 포함
   deadline      timestamptz not null,
@@ -341,7 +343,12 @@ begin
    where id = p_group_buy_id
    returning * into g;
 
-  v_per_person := ceil(g.total_amount::numeric / greatest(g.joined, 1))::integer;
+  -- 배달음식은 메뉴가 사람마다 달라 총액을 안 나누고 배달비만 엔빵해서 보여준다 (#95, lib/deal.ts perAmount 와 동일 기준)
+  if g.category = '배달음식' then
+    v_per_person := ceil(g.delivery_fee::numeric / greatest(g.joined, 1))::integer;
+  else
+    v_per_person := ceil((g.total_amount + g.delivery_fee)::numeric / greatest(g.joined, 1))::integer;
+  end if;
 
   insert into public.notifications (user_id, type, payload)
   select p.user_id,

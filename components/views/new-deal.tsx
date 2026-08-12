@@ -8,18 +8,29 @@ import type { Category } from "@/lib/types";
 
 const FORM_CATS: Category[] = ["식료품", "배달음식", "생활용품", "대량구매", "기타"];
 const digits = (v: string) => v.replace(/[^0-9]/g, "");
+/** 입력창에 천 단위 콤마로 보여준다 — 저장은 digits()가 걸러낸 원 단위 정수 문자열 그대로 (#95) */
+const commaFmt = (v: string) => (v ? Number(v).toLocaleString("ko-KR") : "");
 
 export default function NewDealView() {
   const form = useStore((s) => s.form);
   const setForm = useStore((s) => s.setForm);
   // const submitNew = useStore((s) => s.submitNew); //zustand 방식
+  const isDelivery = form.cat === "배달음식";
+
   const submitNew = async () => {
   try {
     const f = form;
     const totalN = parseInt(f.total) || 0;
     const goalN = parseInt(f.goal) || 0;
+    const minOrderN = parseInt(f.minOrderAmount) || 0;
 
-    if (!f.title || totalN <= 0 || goalN <= 1) {
+    // 배달음식은 예상 총 금액이 선택(#95) — 대신 최소주문금액·배달비가 필수.
+    // 총액을 안 적으면 서버가 최소주문금액으로 채운다.
+    const requiredOk = isDelivery
+      ? minOrderN > 0 && f.deliveryFee.trim() !== "" && !!f.store_link
+      : totalN > 0;
+
+    if (!f.title || goalN <= 1 || !requiredOk) {
       alert("필수 입력값을 확인하세요");
       return;
     }
@@ -36,6 +47,8 @@ export default function NewDealView() {
         place: f.place,
         store_link: f.store_link,
         image_url: f.imageUrl || null,
+        min_order_amount: isDelivery ? minOrderN : undefined,
+        delivery_fee: isDelivery ? parseInt(f.deliveryFee) || 0 : undefined,
       }),
     });
 
@@ -49,7 +62,18 @@ export default function NewDealView() {
     useStore.setState((st) => ({
       deals: [newDeal, ...st.deals],
       page: "home",
-      form: { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "", store_link: "", imageUrl: "" },
+      form: {
+        cat: "식료품",
+        title: "",
+        total: "",
+        goal: "",
+        mins: "",
+        place: "",
+        store_link: "",
+        imageUrl: "",
+        minOrderAmount: "",
+        deliveryFee: "",
+      },
     }));
 
   } catch (error) {
@@ -62,7 +86,15 @@ export default function NewDealView() {
 
   const goalN = parseInt(form.goal) || 0;
   const totalN = parseInt(form.total) || 0;
-  const canSubmit = !!form.title && totalN > 0 && goalN > 1;
+  const minOrderN = parseInt(form.minOrderAmount) || 0;
+  const deliveryFeeN = parseInt(form.deliveryFee) || 0;
+  // 배달음식은 메뉴가 사람마다 달라 총액을 안 나누고 배달비만 엔빵해서 보여준다 (lib/deal.ts perAmount 와 동일 기준).
+  // 그 외 카테고리는 다 같이 부담하는 공동구매라 총액을 그대로 나눈다.
+  const previewShared = isDelivery ? deliveryFeeN : totalN;
+  const canSubmit =
+    !!form.title &&
+    goalN > 1 &&
+    (isDelivery ? minOrderN > 0 && form.deliveryFee.trim() !== "" && !!form.store_link : totalN > 0);
 
   return (
     <div className="flex-1 overflow-auto px-7 py-5">
@@ -92,7 +124,7 @@ export default function NewDealView() {
             placeholder="제목 — 예: 제주 감귤 10kg 같이 사요"
             className="input-base"
           />
-          {form.cat === "배달음식" && (
+          {isDelivery && (
             <>
               <input
                 value={form.store_link}
@@ -100,6 +132,20 @@ export default function NewDealView() {
                 placeholder="가격/메뉴 링크"
                 className="input-base"
               />
+              <div className="flex gap-2.5">
+                <input
+                  value={commaFmt(form.minOrderAmount)}
+                  onChange={(e) => setForm({ minOrderAmount: digits(e.target.value) })}
+                  placeholder="최소 주문 금액 (원)"
+                  className="input-base flex-1"
+                />
+                <input
+                  value={commaFmt(form.deliveryFee)}
+                  onChange={(e) => setForm({ deliveryFee: digits(e.target.value) })}
+                  placeholder="배달비 (원)"
+                  className="input-base flex-1"
+                />
+              </div>
               <div className="rounded-[10px] bg-[#f0f7ee] px-3 py-[9px] text-[12.5px] text-[#4d6d58]">
                 배달음식 공구 · 배달비도 자동 1/N · 메뉴는 채팅방에서 취합 · 주문 후 실제 금액으로 수정
                 가능
@@ -108,9 +154,9 @@ export default function NewDealView() {
           )}
           <div className="flex gap-2.5">
             <input
-              value={form.total}
+              value={commaFmt(form.total)}
               onChange={(e) => setForm({ total: digits(e.target.value) })}
-              placeholder="예상 총 금액 (원)"
+              placeholder={isDelivery ? "예상 총 금액 (원) · 선택" : "예상 총 금액 (원)"}
               className="input-base flex-1"
             />
             <input
@@ -119,6 +165,9 @@ export default function NewDealView() {
               placeholder="목표 인원"
               className="input-base flex-1"
             />
+          </div>
+          <div className="text-[11.5px] text-[#8aa392]">
+            예상 총 금액이에요 — 정산을 시작할 때 실제 금액으로 확정돼요
           </div>
           <div className="flex gap-2.5">
             <input
@@ -209,12 +258,14 @@ export default function NewDealView() {
             <div className="text-[13px] text-[#6b8573]">
               1인{" "}
               <b className="text-[15px] text-[#17301f]">
-                {goalN > 0 && totalN > 0 ? fmt(Math.ceil(totalN / goalN)) : "— 원"}
+                {goalN > 0 && previewShared > 0 ? fmt(Math.ceil(previewShared / goalN)) : "— 원"}
               </b>
+              <span className="ml-1 text-[11px] text-[#8aa392]">· 목표 인원 기준 예상</span>
             </div>
           </div>
           <div className="text-xs leading-[1.6] text-[#8aa392]">
-            올리는 즉시 공구 채팅방이 생기고, 동네 라운지에 카드로 공유할 수 있어요.
+            올리는 즉시 공구 채팅방이 생기고, 동네 라운지에 카드로 공유할 수 있어요. 1인 금액은 실제
+            참여자 수에 맞춰 실시간으로 다시 계산돼요.
           </div>
         </div>
       </div>
