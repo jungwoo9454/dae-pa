@@ -251,6 +251,8 @@ interface StoreState {
   remindUnpaid: (dealId: number) => Promise<void>;
   /** 주최자 취소 (#29) — 모집중·정산중이면 canceled 로 보낸다. 실패하면 사유 문구를 돌려준다 */
   cancelDeal: (dealId: number) => Promise<string | null>;
+  /** 주최자 삭제 — 모집중이면 DB에서 삭제한다. 실패하면 사유 문구를 돌려준다 */
+  deleteDeal: (dealId: number) => Promise<string | null>;
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => Promise<void>;
@@ -839,6 +841,18 @@ export const useStore = create<StoreState>((set, get) => ({
     if (error) return error.message;
     set((st) => ({
       deals: st.deals.map((d) => (d.id === dealId ? { ...d, status: "canceled" as const } : d)),
+    }));
+    return null;
+  },
+
+  deleteDeal: async (dealId) => {
+    const deal = get().deals.find((d) => d.id === dealId);
+    if (!deal || !deal.mine) return "주최자만 삭제할 수 있어요";
+    if (deal.status !== "recruiting") return "모집중인 공구만 삭제할 수 있어요";
+    const { error } = await createClient().rpc("delete_group_buy", { p_group_buy_id: dealId });
+    if (error) return error.message;
+    set((st) => ({
+      deals: st.deals.filter((d) => d.id !== dealId),
     }));
     return null;
   },
