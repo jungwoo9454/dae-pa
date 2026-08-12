@@ -244,7 +244,7 @@ export default function SettleView() {
               const nickname = p.profile?.nickname ?? "탈퇴한 사용자";
               return (
                 <div key={p.id} className="rule-dot flex items-center gap-2.5 py-3 text-[15px]">
-                  <Avatar ch={nickname[0]} />
+                  <Avatar ch={nickname[0]} src={p.profile?.avatar_url} />
                   <span className="font-sans-ko truncate">
                     {nickname}
                     {isHostRow && (
