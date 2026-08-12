@@ -21,8 +21,8 @@ export default function NewDealView() {
     const totalN = parseInt(f.total) || 0;
     const goalN = parseInt(f.goal) || 0;
     const minOrderN = parseInt(f.minOrderAmount) || 0;
-    // 비워두면 60분이 기본값 — 적었다면 최소 마감 시간을 지켜야 한다
-    const minsN = parseInt(f.mins) || 60;
+    // 숨은 기본값 없음 — 안 고르면 0 이라 아래 최소 마감 시간 검사에서 걸린다 (#164)
+    const minsN = parseInt(f.mins) || 0;
 
     // 배달음식은 예상 총 금액이 선택(#95) — 대신 최소주문금액·배달비가 필수.
     // 총액을 안 적으면 서버가 최소주문금액으로 채운다.
@@ -100,14 +100,16 @@ export default function NewDealView() {
   // 배달음식은 메뉴가 사람마다 달라 총액을 안 나누고 배달비만 엔빵해서 보여준다 (lib/deal.ts perAmount 와 동일 기준).
   // 그 외 카테고리는 다 같이 부담하는 공동구매라 총액을 그대로 나눈다.
   const previewShared = isDelivery ? deliveryFeeN : totalN;
-  // 비워두면 기본 60분이라 통과, 적었다면 최소 마감 시간(5분) 아래로는 못 올린다
-  const minsTooShort = form.mins !== "" && (parseInt(form.mins) || 0) < MIN_DEADLINE_MIN;
+  // 적었는데 5분 미만이면 그 자리에서 빨간 글씨로 알린다. 아직 안 골랐으면(빈 칸)
+  // 경고 대신 발행 키를 잠가 둔다 — 처음 폼을 열자마자 빨간 문구가 뜨면 시끄럽다 (#164)
+  const minsN = parseInt(form.mins) || 0;
+  const minsTooShort = form.mins !== "" && minsN < MIN_DEADLINE_MIN;
   // 1/N 이 성립하려면 최소 2명 — 적었는데 1 이하면 그 자리에서 알려준다 (#148)
   const goalTooSmall = form.goal !== "" && goalN < 2;
   const canSubmit =
     !!form.title &&
     goalN > 1 &&
-    !minsTooShort &&
+    minsN >= MIN_DEADLINE_MIN &&
     (isDelivery ? minOrderN > 0 && form.deliveryFee.trim() !== "" && !!form.store_link : totalN > 0);
 
   return (
@@ -291,7 +293,7 @@ export default function NewDealView() {
               <div className="leader">
                 <span>마감까지</span>
                 <i />
-                <b className="tnum">{parseInt(form.mins) || 60}분</b>
+                <b className="tnum">{minsN}분</b>
               </div>
             </div>
             <div className="mt-3.5">
