@@ -1,7 +1,8 @@
 "use client";
-import { Home, ShoppingCart, Timer } from "lucide-react";
+import { Home, ImagePlus, LoaderCircle, MessageCircleOff, ShoppingCart, Timer } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { uploadImage } from "@/components/image-upload";
 import { Avatar } from "@/components/ui";
 import { countdownDisplay, fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
@@ -55,6 +56,22 @@ export default function ChatView() {
   const sendMsg = useStore((s) => s.sendMsg);
   const openDeal = useStore((s) => s.openDeal);
   const join = useStore((s) => s.join);
+  const sendImageMsg = useStore((s) => s.sendImageMsg);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  const sendPhoto = async (file?: File) => {
+    if (!file) return;
+    setPhotoBusy(true);
+    try {
+      sendImageMsg(await uploadImage(file, "chat"));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "업로드에 실패했어요");
+    } finally {
+      setPhotoBusy(false);
+      if (photoRef.current) photoRef.current.value = "";
+    }
+  };
 
   // 방 목록·메시지·구독은 store 의 initChat 이 DB 에서 채운다 (#7).
   // 로그인 전이거나 아직 못 읽었으면(chatReady=false) 로컬 시드로 그린다.
@@ -91,8 +108,12 @@ export default function ChatView() {
   const foundLounge = loungeRooms.filter(bySearch);
   const foundDeals = dealRooms.filter(bySearch);
   const noResult = q !== "" && foundLounge.length === 0 && foundDeals.length === 0;
-  const current = [...loungeRooms, ...dealRooms].find((r) => r.id === room) ?? loungeRooms[0];
-  const allMsgs = msgs[current.id] ?? [];
+  // 내 방 목록에 없는 방 id 로 들어온 경우(미참여 공구방 등) 예전엔 loungeRooms[0] 로 조용히
+  // 폴백해서 엉뚱하게 동네 라운지가 열렸다 (#93). 이제 못 연 이유를 안내한다.
+  const current = [...loungeRooms, ...dealRooms].find((r) => r.id === room) ?? null;
+  const missingDeal = current ? null : (deals.find((d) => "d" + d.id === room) ?? null);
+  const CurrentIcon = current?.icon;
+  const allMsgs = current ? (msgs[current.id] ?? []) : [];
   const roomMsgs = allMsgs.slice(-RECENT_LIMIT);
 
   // 방 전환·새 메시지 시 항상 최신 메시지가 보이도록 하단 고정
@@ -100,7 +121,7 @@ export default function ChatView() {
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [current.id, allMsgs.length]);
+  }, [current?.id, allMsgs.length]);
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -146,17 +167,50 @@ export default function ChatView() {
       <div className="flex min-w-0 flex-1 flex-col bg-white">
         <div className="flex items-center gap-2.5 border-b border-[#e6efe4] px-[18px] py-3">
           <b className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[15px]">
-            {current.icon ? (
-              <current.icon aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+            {CurrentIcon ? (
+              <CurrentIcon aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
             ) : (
-              current.emoji
+              current?.emoji
             )}
-            <span className="min-w-0 overflow-hidden text-ellipsis">{current.name}</span>
+            <span className="min-w-0 overflow-hidden text-ellipsis">
+              {current?.name ?? missingDeal?.title ?? "채팅방"}
+            </span>
           </b>
-          <span className="flex-none whitespace-nowrap text-xs text-[#6b8573]">{current.sub}</span>
+          <span className="flex-none whitespace-nowrap text-xs text-[#6b8573]">
+            {current?.sub ?? "참여 후 이용 가능"}
+          </span>
         </div>
         <div ref={scrollRef} className="flex flex-1 flex-col gap-2.5 overflow-auto bg-[#fbfdf9] px-[18px] py-4">
-          {roomMsgs.length === 0 && (
+          {!current && (
+            <div className="m-auto flex max-w-[320px] flex-col items-center gap-2.5 text-center">
+              <MessageCircleOff aria-hidden className="h-8 w-8 text-[#b7cbbd]" />
+              <div className="text-[14px] font-extrabold">
+                {missingDeal ? `‘${missingDeal.title}’ 채팅방` : "채팅방을 찾을 수 없어요"}
+              </div>
+              <div className="text-[13px] leading-relaxed text-[#8aa392]">
+                {missingDeal?.me
+                  ? "채팅방을 준비하고 있어요. 잠시만 기다려주세요"
+                  : "공구 채팅방은 참여자만 들어갈 수 있어요. 참여하면 바로 열려요"}
+              </div>
+              <div className="mt-1 flex gap-2">
+                {missingDeal && (
+                  <div
+                    onClick={() => openDeal(missingDeal.id)}
+                    className="cursor-pointer rounded-[10px] bg-[#1f8a4c] px-3.5 py-2 text-[13px] font-extrabold text-white hover:bg-[#187741]"
+                  >
+                    공구 보러가기
+                  </div>
+                )}
+                <div
+                  onClick={() => goRoom("lounge")}
+                  className="cursor-pointer rounded-[10px] border-[1.5px] border-[#cfe4d0] bg-white px-3.5 py-2 text-[13px] font-bold text-[#4d6d58] hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
+                >
+                  동네 라운지로 가기
+                </div>
+              </div>
+            </div>
+          )}
+          {current && roomMsgs.length === 0 && (
             <div className="m-auto text-center text-[13px] text-[#8aa392]">
               아직 대화가 없어요
               <div className="mt-1 text-xs">첫 메시지를 보내 이웃과 이야기를 시작해보세요</div>
@@ -249,11 +303,40 @@ export default function ChatView() {
                   <Avatar ch={mg.who[0] ?? "?"} />
                   <div className="min-w-0">
                     <div className="mb-[3px] ml-1 text-[11.5px] text-[#8aa392]">{mg.who}</div>
-                    <div className="whitespace-pre-wrap break-words rounded-[4px_16px_16px_16px] border border-[#e2eee2] bg-white px-[13px] py-[9px] leading-normal">
-                      {mg.text}
-                    </div>
+                    {mg.imageUrl ? (
+                      <a href={mg.imageUrl} target="_blank" rel="noreferrer" className="block">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */}
+                        <img
+                          src={mg.imageUrl}
+                          alt="보낸 사진"
+                          className="max-h-[260px] rounded-[4px_16px_16px_16px] border border-[#e2eee2] object-cover"
+                        />
+                      </a>
+                    ) : (
+                      <div className="whitespace-pre-wrap break-words rounded-[4px_16px_16px_16px] border border-[#e2eee2] bg-white px-[13px] py-[9px] leading-normal">
+                        {mg.text}
+                      </div>
+                    )}
                   </div>
                 </div>
+              );
+            }
+            if (mg.imageUrl) {
+              return (
+                <a
+                  key={i}
+                  href={mg.imageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="max-w-[72%] self-end"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */}
+                  <img
+                    src={mg.imageUrl}
+                    alt="보낸 사진"
+                    className="max-h-[260px] rounded-[16px_4px_16px_16px] object-cover"
+                  />
+                </a>
               );
             }
             return (
@@ -266,23 +349,44 @@ export default function ChatView() {
             );
           })}
         </div>
-        <div className="flex gap-2 border-t border-[#e6efe4] px-4 py-3">
-          <input
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (isSubmitEnter(e)) sendMsg();
-            }}
-            placeholder="메시지 입력…"
-            className="flex-1 rounded-xl border-[1.5px] border-[#d5e6d6] px-3.5 py-2.5 text-sm outline-none"
-          />
-          <div
-            onClick={sendMsg}
-            className="cursor-pointer rounded-xl bg-[#1f8a4c] px-[18px] py-2.5 font-extrabold text-white hover:bg-[#187741]"
-          >
-            전송
+        {/* 못 연 방에서는 입력창을 감춘다 — sendMsg 가 조용히 아무 일도 안 하는 게 더 헷갈린다 */}
+        {current && (
+          <div className="flex items-center gap-2 border-t border-[#e6efe4] px-4 py-3">
+            <input
+              ref={photoRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => void sendPhoto(e.target.files?.[0])}
+            />
+            <div
+              onClick={() => photoRef.current?.click()}
+              title="사진 보내기"
+              className="flex cursor-pointer items-center rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-[#4d6d58] hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
+            >
+              {photoBusy ? (
+                <LoaderCircle aria-hidden className="h-[18px] w-[18px] animate-spin" />
+              ) : (
+                <ImagePlus aria-hidden className="h-[18px] w-[18px]" />
+              )}
+            </div>
+            <input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (isSubmitEnter(e)) sendMsg();
+              }}
+              placeholder="메시지 입력…"
+              className="flex-1 rounded-xl border-[1.5px] border-[#d5e6d6] px-3.5 py-2.5 text-sm outline-none"
+            />
+            <div
+              onClick={sendMsg}
+              className="cursor-pointer rounded-xl bg-[#1f8a4c] px-[18px] py-2.5 font-extrabold text-white hover:bg-[#187741]"
+            >
+              전송
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

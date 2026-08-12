@@ -45,14 +45,18 @@ const roomKey = (r: Room) => (r.type === "lounge" ? "lounge" : "d" + r.dealId);
  */
 const nickCache = new Map<string, string>();
 
-/** messages 행 — 카드 말풍선은 payload.group_buy_id 로 어떤 공구인지 담는다 (#7) */
+/**
+ * messages 행 — 카드 말풍선은 payload.group_buy_id 로 어떤 공구인지 담는다 (#7).
+ * 사진 말풍선은 kind 를 그대로 'text' 로 두고 payload.image_url 에 R2 URL 을 담는다 (#15) —
+ * 새 kind 를 만들면 messages_own_insert 정책의 kind in ('text','card') 도 같이 고쳐야 한다.
+ */
 interface MsgRow {
   id: number;
   room_id: number;
   user_id: string | null;
   kind: "text" | "sys" | "card";
   content: string | null;
-  payload: { group_buy_id?: number } | null;
+  payload: { group_buy_id?: number; image_url?: string } | null;
   profiles?: { nickname: string | null } | null;
 }
 
@@ -64,8 +68,9 @@ const toMsg = (r: MsgRow, myId: string | null): Msg => {
   if (r.kind === "card") {
     return { kind: "card", cardOf: Number(r.payload?.group_buy_id ?? 0), who, id: r.id };
   }
-  if (r.user_id && r.user_id === myId) return { kind: "mine", text: r.content ?? "", id: r.id };
-  return { kind: "other", who, text: r.content ?? "", id: r.id };
+  const imageUrl = r.payload?.image_url;
+  if (r.user_id && r.user_id === myId) return { kind: "mine", text: r.content ?? "", id: r.id, imageUrl };
+  return { kind: "other", who, text: r.content ?? "", id: r.id, imageUrl };
 };
 
 /**
@@ -76,7 +81,7 @@ async function insertOwnMsg(
   roomId: number,
   key: string,
   userId: string,
-  row: { kind: "text" | "card"; content?: string; payload?: { group_buy_id: number } },
+  row: { kind: "text" | "card"; content?: string; payload?: { group_buy_id?: number; image_url?: string } },
   render: (id: number) => Msg,
 ) {
   const { data, error } = await createClient()
@@ -95,13 +100,22 @@ async function insertOwnMsg(
   });
 }
 
-/** profiles 본인 행 갱신 (#20) — RLS·컬럼 GRANT 가 본인 행의 허용 컬럼만 열어준다 */
-const patchProfile = (uid: string, patch: Record<string, unknown>) =>
-  createClient().from("profiles").update(patch).eq("id", uid);
+/**
+ * profiles 본인 행 갱신 (#20) — RLS·컬럼 GRANT 가 본인 행의 허용 컬럼만 열어준다.
+ *
+ * ⚠️ 반드시 await 한다. supabase-js 쿼리 빌더는 thenable 이라 .then() 이 불릴 때 비로소
+ * fetch 한다 — 예전처럼 `void createClient()...update()` 로 두면 HTTP 요청이 아예 안 나가고
+ * 낙관적 로컬 상태만 바뀌어서, 새로고침 전까지 저장된 것처럼 보인다.
+ */
+async function patchProfile(uid: string, patch: Record<string, unknown>) {
+  const { error } = await createClient().from("profiles").update(patch).eq("id", uid);
+  if (error) alert(error.message);
+}
 
 /** Me 필드 → profiles 컬럼 */
 const PROFILE_COL: Record<string, string> = {
   nickname: "nickname",
+  avatarUrl: "avatar_url",
   bankAccount: "bank_account",
   transferApp: "transfer_app",
 };
@@ -141,7 +155,7 @@ const seedMsgs: Record<string, Msg[]> = {
   d5: [{ kind: "sys", text: "공구방이 열렸어요 · 목표 2명" }],
 };
 
-const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "",store_link: "", };
+const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "", store_link: "", imageUrl: "" };
 
 interface AuthForm {
   nick: string;
@@ -176,7 +190,8 @@ interface StoreState {
   /** 토스 결제창에서 돌아온 결과 — 대파페이 화면 상단 띠로만 쓴다 (#14) */
   topupResult: "ok" | "fail" | null;
   settleTotalInput: string;
-  settleReceipt: boolean;
+  /** 첨부한 영수증 사진의 R2 공개 URL. null 이면 과반 동의 흐름으로 간다 (#15) */
+  settleReceiptUrl: string | null;
   withdrawOpen: boolean;
   withdrawAmt: number;
   balance: number;
@@ -226,6 +241,8 @@ interface StoreState {
   /** 총 금액 변경 (#12) — change_total_amount RPC 호출. 주최자+모집중일 때만 서버가 허용 */
   changeTotalAmount: (dealId: number, newTotal: number) => Promise<void>;
   sendMsg: () => void;
+  /** 사진 말풍선 — kind 는 'text' 그대로, payload.image_url 에 R2 URL 을 담는다 (#15) */
+  sendImageMsg: (imageUrl: string) => void;
   /** 대파페이 결제 (#18) — pay_with_wallet RPC. 잔액 검증→차감→입금 처리를 원자적으로 */
   payNow: (participationId: number) => Promise<void>;
   /** 계좌·토스 셀프 체크 (#17) — confirm_self_paid RPC */
@@ -241,7 +258,7 @@ interface StoreState {
   doTopup: () => Promise<void>;
   setTopupResult: (v: "ok" | "fail" | null) => void;
   setSettleTotalInput: (v: string) => void;
-  toggleSettleReceipt: () => void;
+  setSettleReceiptUrl: (v: string | null) => void;
   /** 정산 시작/총액 확정 (#15) — confirm_settlement RPC. 영수증 있으면 즉시 확정, 없으면 과반 동의 대기 */
   confirmSettlement: (dealId: number) => Promise<void>;
   /** 영수증 없을 때 동의 투표 (#15) — 본인 투표 insert 후 finalize_settlement_vote RPC 로 과반 판정 */
@@ -252,8 +269,8 @@ interface StoreState {
   toggleAutoPay: () => void;
   toggleN1: () => void;
   toggleN2: () => void;
-  /** 닉네임·계좌·송금 앱 저장 (#20) — 화면은 즉시 바꾸고 profiles 에 반영한다 */
-  saveProfile: (patch: Partial<Pick<Me, "nickname" | "bankAccount" | "transferApp">>) => void;
+  /** 닉네임·아바타·계좌·송금 앱 저장 (#20, #15) — 화면은 즉시 바꾸고 profiles 에 반영한다 */
+  saveProfile: (patch: Partial<Pick<Me, "nickname" | "avatarUrl" | "bankAccount" | "transferApp">>) => void;
   submitNew: () => void;
 }
 
@@ -282,7 +299,7 @@ export const useStore = create<StoreState>((set, get) => ({
   topupAmt: 10000,
   topupResult: null,
   settleTotalInput: "",
-  settleReceipt: false,
+  settleReceiptUrl: null,
   withdrawOpen: false,
   withdrawAmt: 10000,
   balance: 0, // 로그인 시 initAuth 가 실제 wallets.balance 로 채운다
@@ -310,6 +327,8 @@ export const useStore = create<StoreState>((set, get) => ({
     }
     const { data } = sb.auth.onAuthStateChange((_event, session) => {
       const uid = session?.user.id;
+      // 가입 수단 표시용 (#81) — profiles 에는 없고 auth user 메타에만 있다
+      const provider = session?.user.app_metadata?.provider ?? null;
       if (!uid) {
         // 다음 사람이 남의 알림·대화·설정을 보지 않게 목록·중복 표시·토글을 비운다
         firedDeadlines.clear();
@@ -363,6 +382,7 @@ export const useStore = create<StoreState>((set, get) => ({
             nickname: p?.nickname ?? "파티원",
             avatarUrl: p?.avatar_url ?? null,
             dong: p?.dong ?? null,
+            provider,
             bankAccount: p?.bank_account ?? null,
             transferApp: p?.transfer_app ?? null,
           },
@@ -476,7 +496,18 @@ export const useStore = create<StoreState>((set, get) => ({
 
   go: (page) => set({ page, profileOpen: false, notiOpen: false }),
   openDeal: (id) => set({ page: "detail", sel: id, profileOpen: false, notiOpen: false }),
-  openSettle: (id) => set({ page: "settle", sel: id, profileOpen: false, notiOpen: false }),
+  // 총액 입력과 영수증 첨부는 "이 공구" 의 것이다 — 초기화하지 않으면 A 공구에서 올린
+  // 영수증이 B 공구 확정에 그대로 붙고, receipt_url 이 있으면 서버가 투표 없이 즉시
+  // 확정하므로 과반 동의 절차까지 건너뛴다.
+  openSettle: (id) =>
+    set({
+      page: "settle",
+      sel: id,
+      profileOpen: false,
+      notiOpen: false,
+      settleTotalInput: "",
+      settleReceiptUrl: null,
+    }),
   goRoom: (roomId) => set({ page: "chat", room: roomId, profileOpen: false, notiOpen: false }),
   toggleProfile: () => set((st) => ({ profileOpen: !st.profileOpen, notiOpen: false })),
 
@@ -761,6 +792,23 @@ export const useStore = create<StoreState>((set, get) => ({
     }));
   },
 
+  sendImageMsg: (imageUrl) => {
+    const st = get();
+    const target = st.rooms.find((r) => roomKey(r) === st.room);
+    if (!target || !st.me) {
+      // 사진은 이미 올라간 뒤라 여기서 조용히 사라지면 사용자는 아무 일도 안 일어난 걸로 본다
+      alert("채팅방을 아직 불러오지 못했어요. 잠시 후 다시 보내주세요.");
+      return;
+    }
+    void insertOwnMsg(
+      target.id,
+      st.room,
+      st.me.id,
+      { kind: "text", content: "", payload: { image_url: imageUrl } },
+      (id) => ({ kind: "mine", text: "", imageUrl, id }),
+    );
+  },
+
   // 잔액 검증 → 차감 → is_paid → wallet_transactions 기록을 pay_with_wallet RPC 가 한
   // 트랜잭션으로 원자 처리한다. 성공하면 participations/wallets Realtime 구독이 화면을 갱신한다.
   payNow: async (participationId) => {
@@ -849,7 +897,7 @@ export const useStore = create<StoreState>((set, get) => ({
   setTopupResult: (v) => set({ topupResult: v }),
 
   setSettleTotalInput: (v) => set({ settleTotalInput: v }),
-  toggleSettleReceipt: () => set((st) => ({ settleReceipt: !st.settleReceipt })),
+  setSettleReceiptUrl: (v) => set({ settleReceiptUrl: v }),
 
   // 총액 확정은 confirm_settlement RPC 가 담당한다 — settlements upsert, 영수증 있으면
   // 즉시 확정 + amount_due 재분배(apply_settlement_split), 시스템 메시지까지 서버에서 처리한다.
@@ -860,9 +908,9 @@ export const useStore = create<StoreState>((set, get) => ({
     if (!deal || deal.settlement) return;
     const total = parseInt(st.settleTotalInput) || 0;
     if (total <= 0) return;
-    // 영수증 업로드는 범위 밖 — 체크박스는 "첨부함" 여부만 서버에 알린다 (즉시 확정 vs 투표 분기)
-    const receiptUrl = st.settleReceipt ? "manual" : null;
-    set({ settleTotalInput: "", settleReceipt: false });
+    // 영수증 사진이 있으면 그 R2 URL 이 곧 증빙 → 서버가 즉시 확정한다. 없으면 과반 동의 투표.
+    const receiptUrl = st.settleReceiptUrl;
+    set({ settleTotalInput: "", settleReceiptUrl: null });
     const { error } = await createClient().rpc("confirm_settlement", {
       p_group_buy_id: dealId,
       p_total_amount: total,

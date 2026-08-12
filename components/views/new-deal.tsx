@@ -1,7 +1,8 @@
 "use client";
 
 import { Coins, Timer } from "lucide-react";
-import { CAT_EMOJI, fmt } from "@/lib/deal";
+import ImageUpload from "@/components/image-upload";
+import { CAT_EMOJI, CAT_ICON, fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Category } from "@/lib/types";
 
@@ -34,20 +35,21 @@ export default function NewDealView() {
         mins: parseInt(f.mins) || 60,
         place: f.place,
         store_link: f.store_link,
+        image_url: f.imageUrl || null,
       }),
     });
 
     const newDeal = await res.json();
 
     if (!res.ok) {
-      alert(newDeal.error || "공고 작성 실패");
+      alert(newDeal.error || "공구 올리기에 실패했어요");
       return;
     }
 
     useStore.setState((st) => ({
       deals: [newDeal, ...st.deals],
       page: "home",
-      form: { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "",store_link: "", },
+      form: { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "", store_link: "", imageUrl: "" },
     }));
 
   } catch (error) {
@@ -69,19 +71,23 @@ export default function NewDealView() {
           <div>
             <div className="mb-2 font-extrabold">카테고리</div>
             <div className="flex flex-wrap gap-2">
-              {FORM_CATS.map((c) => (
-                <div
-                  key={c}
-                  onClick={() => setForm({ cat: c })}
-                  className={`cursor-pointer rounded-full border-[1.5px] px-4 py-2 text-[13.5px] font-bold hover:border-[#1f8a4c] ${
-                    form.cat === c
-                      ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
-                      : "border-[#d5e6d6] bg-white text-[#4d6d58]"
-                  }`}
-                >
-                  {c}
-                </div>
-              ))}
+              {FORM_CATS.map((c) => {
+                const Icon = CAT_ICON[c];
+                return (
+                  <div
+                    key={c}
+                    onClick={() => setForm({ cat: c })}
+                    className={`flex cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-4 py-2 text-[13.5px] font-bold hover:border-[#1f8a4c] ${
+                      form.cat === c
+                        ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
+                        : "border-[#d5e6d6] bg-white text-[#4d6d58]"
+                    }`}
+                  >
+                    <Icon aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+                    {c}
+                  </div>
+                );
+              })}
             </div>
           </div>
           <input
@@ -130,6 +136,16 @@ export default function NewDealView() {
               onChange={(e) => setForm({ place: e.target.value })}
               placeholder="수령 장소/방법"
               className="input-base flex-[1.4]"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <div className="text-[12.5px] text-[#4d6d58]">대표 사진 (선택) — 없으면 카테고리 이모지로 보여요</div>
+            <ImageUpload
+              kind="deals"
+              value={form.imageUrl || null}
+              onChange={(url) => setForm({ imageUrl: url ?? "" })}
+              label="대표 사진 첨부"
+              height={140}
             />
           </div>
         <div className="flex gap-2">
