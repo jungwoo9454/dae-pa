@@ -17,6 +17,17 @@ export default function Page() {
     return useStore.getState().initAuth();
   }, []);
 
+  // 소셜 로그인은 구글·깃허브로 전체 페이지 이동을 하는데, 거기서 뒤로가기로 돌아오면
+  // bfcache 가 authBusy=true 인 메모리를 그대로 복원해 로그인 버튼이 "잠시만요…" 로 굳는다 (#82).
+  // 복원(persisted)은 effect 를 다시 돌리지 않으므로 pageshow 로 직접 풀어준다.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) useStore.getState().resetAuthBusy();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
   // 토스 결제창에서 /api/payments/confirm 을 거쳐 ?topup=ok|fail 로 돌아온 경우 (#14).
   // 로그인 복원이 page 를 "home" 으로 덮어쓰기 때문에 authReady 이후에 실행한다.
   useEffect(() => {
