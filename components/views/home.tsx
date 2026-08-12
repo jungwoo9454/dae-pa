@@ -114,7 +114,7 @@ export default function HomeView() {
 
       {cards.length === 0 ? (
         <div className="receipt mx-auto mt-10 max-w-[420px] px-8 py-10 text-center text-[15px] text-[#8b8478]">
-          <div className="receipt-head">＊ 출력할 전표 없음 ＊</div>
+          <div className="receipt-head">＊ 공구 없음 ＊</div>
           <div className="mt-4">조건에 맞는 공구가 없어요</div>
         </div>
       ) : (
