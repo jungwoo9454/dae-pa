@@ -145,7 +145,7 @@ const toNoti = (r: NotiRow): Noti => ({
  */
 const seedMsgs: Record<string, Msg[]> = {
   lounge: [
-    { kind: "sys", text: "🏘 역삼동 이웃들이 함께하고 있어요" },
+    { kind: "sys", text: "🏘 크래프톤 정글 이웃들이 함께하고 있어요" },
     { kind: "other", who: "민지", text: "치킨 같이 시키실 분? 배달비 아까워요 😂" },
   ],
   d1: [
