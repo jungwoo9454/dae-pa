@@ -30,10 +30,13 @@ export default function NewDealView() {
       ? minOrderN > 0 && f.deliveryFee.trim() !== "" && !!f.store_link
       : totalN > 0;
 
-    if (!f.title || goalN <= 1 || !requiredOk) {
+    // 목표 인원이 1 이하인 건 "안 적었다"가 아니라 "규칙에 안 맞는다" — alert 로 뭉뚱그리지 않고
+    // 입력칸 아래 인라인으로 안내한다 (#148). 아예 비어 있는 경우만 필수값 alert 로 남긴다.
+    if (!f.title || !f.goal || !requiredOk) {
       alert("필수 입력값을 확인하세요");
       return;
     }
+    if (goalN < 2) return;
     if (minsN < MIN_DEADLINE_MIN) {
       alert(`마감 시간은 최소 ${MIN_DEADLINE_MIN}분이에요`);
       return;
@@ -99,6 +102,8 @@ export default function NewDealView() {
   const previewShared = isDelivery ? deliveryFeeN : totalN;
   // 비워두면 기본 60분이라 통과, 적었다면 최소 마감 시간(5분) 아래로는 못 올린다
   const minsTooShort = form.mins !== "" && (parseInt(form.mins) || 0) < MIN_DEADLINE_MIN;
+  // 1/N 이 성립하려면 최소 2명 — 적었는데 1 이하면 그 자리에서 알려준다 (#148)
+  const goalTooSmall = form.goal !== "" && goalN < 2;
   const canSubmit =
     !!form.title &&
     goalN > 1 &&
@@ -192,8 +197,16 @@ export default function NewDealView() {
                 value={form.goal}
                 onChange={(e) => setForm({ goal: digits(e.target.value) })}
                 placeholder="0"
-                className="field tnum mt-[7px] h-11 w-full text-base font-bold"
+                aria-invalid={goalTooSmall}
+                className={`field tnum mt-[7px] h-11 w-full text-base font-bold ${
+                  goalTooSmall ? "field-error" : ""
+                }`}
               />
+              {goalTooSmall && (
+                <div className="mt-1.5 text-[13px] font-bold text-[#e14e2b]">
+                  목표 인원은 2명 이상이어야 합니다
+                </div>
+              )}
             </div>
           </div>
 
