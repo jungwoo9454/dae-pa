@@ -60,7 +60,7 @@ export default function HomeView() {
   return (
     <div className="flex-1 overflow-auto px-10 pb-12">
       <div className="flex items-center gap-6 pb-6 pt-8">
-        <div className="font-sans-ko text-[46px] font-black leading-[1.15] tracking-[-.03em]">
+        <div className="font-sans-ko text-[51.5px] font-black leading-[1.15] tracking-[-.03em]">
           오늘의 <span className="text-[#e14e2b]">특가</span> 공구
         </div>
         <div className="ml-auto flex items-center gap-5">
@@ -69,11 +69,11 @@ export default function HomeView() {
             placeholder="공구 검색_"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="field h-11 w-[240px] text-[13px]"
+            className="field h-11 w-[240px] text-[14.5px]"
           />
           <div className="border-[1.5px] border-dashed border-[#b9b9b4] px-5 py-3 text-left text-[#8b8478]">
-            <div className="text-[13px] font-semibold tracking-[.18em]">DAEPA MARKET</div>
-            <div className="tnum mt-1.5 text-[11px]">
+            <div className="text-[14.5px] font-semibold tracking-[.18em]">DAEPA MARKET</div>
+            <div className="tnum mt-1.5 text-[12.5px]">
               {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })}
             </div>
           </div>
@@ -95,12 +95,12 @@ export default function HomeView() {
             <div
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`chip px-4 py-1.5 text-[12px] ${statusFilter === s ? "chip-on" : ""}`}
+              className={`chip px-4 py-1.5 text-[13.5px] ${statusFilter === s ? "chip-on" : ""}`}
             >
               {s}
             </div>
           ))}
-          <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-[12.5px] font-bold text-[#6e675e]">
+          <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-[14px] font-bold text-[#6e675e]">
             <input
               type="checkbox"
               checked={myDealsOnly}
@@ -113,7 +113,7 @@ export default function HomeView() {
       </div>
 
       {cards.length === 0 ? (
-        <div className="receipt mx-auto mt-10 max-w-[420px] px-8 py-10 text-center text-[13.5px] text-[#8b8478]">
+        <div className="receipt mx-auto mt-10 max-w-[420px] px-8 py-10 text-center text-[15px] text-[#8b8478]">
           <div className="receipt-head">＊ 출력할 전표 없음 ＊</div>
           <div className="mt-4">조건에 맞는 공구가 없어요</div>
         </div>

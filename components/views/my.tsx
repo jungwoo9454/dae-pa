@@ -44,17 +44,17 @@ export default function MyView() {
             value={mySearch}
             onChange={(e) => setMySearch(e.target.value)}
             placeholder="내 공구 검색_"
-            className="field ml-auto h-10 w-[220px] text-[13px]"
+            className="field ml-auto h-10 w-[220px] text-[14.5px]"
           />
         </div>
 
         <div className="receipt px-7 py-6">
-          <div className="rule-dash receipt-head border-b border-t-0 pb-3 text-[13px] tracking-[.4em]">
+          <div className="rule-dash receipt-head border-b border-t-0 pb-3 text-[14.5px] tracking-[.4em]">
             ＊ {me?.nickname ?? "파티원"} 님의 거래 기록 ＊
           </div>
 
           {myDeals.length === 0 && (
-            <div className="py-10 text-center text-[13px] text-[#8b8478]">기록된 거래가 없어요</div>
+            <div className="py-10 text-center text-[14.5px] text-[#8b8478]">기록된 거래가 없어요</div>
           )}
 
           {myDeals.map((m) => {
@@ -76,7 +76,7 @@ export default function MyView() {
                   </span>
                   <StatusBadge s={st} />
                   <span className="text-[#8b8478]">{receiptNo(m.id, m.created_at)}</span>
-                  <span className="tnum ml-auto text-[13px] text-[#6e675e]">
+                  <span className="tnum ml-auto text-[14.5px] text-[#6e675e]">
                     {m.joined}/{m.goal}명 · <span style={{ color: st.fg }}>{remainLabel(m, now)}</span> ·{" "}
                     <b className="text-[#1b1917]">{fmt(perAmount(m))}</b>
                     <span className="text-[#8b8478]"> {perLabel(m)}</span>
@@ -86,7 +86,7 @@ export default function MyView() {
                 <div className="mt-2.5 flex items-center gap-3">
                   <span
                     onClick={() => openDeal(m.id)}
-                    className={`font-sans-ko cursor-pointer text-[17px] font-extrabold hover:text-[#e14e2b] ${
+                    className={`font-sans-ko cursor-pointer text-[19px] font-extrabold hover:text-[#e14e2b] ${
                       dead ? "text-[#a29b8e] line-through" : ""
                     }`}
                   >
@@ -125,7 +125,7 @@ export default function MyView() {
 
                 {showDeleteDialog && (
                   <div className="mt-3 border-[1.5px] border-dashed border-[#e14e2b] p-3.5">
-                    <div className="text-[13px] font-bold text-[#e14e2b]">
+                    <div className="text-[14.5px] font-bold text-[#e14e2b]">
                       공구를 삭제할까요? 되돌릴 수 없어요.
                     </div>
                     {deleteErr && (
@@ -142,7 +142,7 @@ export default function MyView() {
                           if (err) setDeleteErr(err);
                           else setAskDeleteId(null);
                         }}
-                        className="key key-primary flex-1 py-2 text-[13px]"
+                        className="key key-primary flex-1 py-2 text-[14.5px]"
                       >
                         [ {deleting ? "삭제 중…" : "삭제하기"} ]
                       </div>
@@ -151,7 +151,7 @@ export default function MyView() {
                           setAskDeleteId(null);
                           setDeleteErr(null);
                         }}
-                        className="key key-line flex-1 py-2 text-[13px]"
+                        className="key key-line flex-1 py-2 text-[14.5px]"
                       >
                         [ 그만두기 ]
                       </div>

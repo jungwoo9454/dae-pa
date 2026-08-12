@@ -56,7 +56,7 @@ export function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 export function Avatar({ ch, size = 26 }: { ch: string; size?: number }) {
   return (
     <span
-      className="inline-flex flex-none items-center justify-center border-[1.5px] border-[#1b1917] text-[11px] font-bold"
+      className="inline-flex flex-none items-center justify-center border-[1.5px] border-[#1b1917] text-[12.5px] font-bold"
       style={{ minWidth: size, height: size }}
     >
       {ch}

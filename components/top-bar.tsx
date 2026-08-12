@@ -54,10 +54,10 @@ export default function TopBar() {
 
   return (
     <div className="flex h-[66px] flex-none items-center gap-6 bg-[#141210] px-8">
-      <span className="text-[19px] font-bold tracking-[.04em] text-white">
+      <span className="text-[21.5px] font-bold tracking-[.04em] text-white">
         DAEPA_POS<span className="text-[#e14e2b]">★</span>
       </span>
-      <div className="flex items-center gap-1.5 text-[13px] font-semibold">
+      <div className="flex items-center gap-1.5 text-[14.5px] font-semibold">
         {NAV.map((n) => (
           <div
             key={n.key}
@@ -80,7 +80,7 @@ export default function TopBar() {
         >
           <Bell aria-hidden className="h-5 w-5" />
           {unread > 0 && (
-            <span className="absolute -right-1 -top-1 min-w-[16px] rounded-full border-2 border-[#141210] bg-[#e14e2b] px-1 text-center text-[10px] font-bold leading-[14px] text-white">
+            <span className="absolute -right-1 -top-1 min-w-[16px] rounded-full border-2 border-[#141210] bg-[#e14e2b] px-1 text-center text-[11px] font-bold leading-[14px] text-white">
               {unread > 9 ? "9+" : unread}
             </span>
           )}

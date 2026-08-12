@@ -36,24 +36,24 @@ export default function ProfilePopover() {
           <div className="text-xs text-[#6e675e]">{me?.dong ?? "동네 미인증"}</div>
         </div>
       </div>
-      <div className="flex items-center gap-1.5 rounded-lg bg-[#f1efe8] px-2.5 py-1.5 text-[12.5px] font-bold text-[#1b1917]">
+      <div className="flex items-center gap-1.5 rounded-lg bg-[#f1efe8] px-2.5 py-1.5 text-[14px] font-bold text-[#1b1917]">
         <ShieldCheck aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 정산 신뢰도 {trust}%
       </div>
       <div className="h-px bg-[#e2eee2]" />
       {/* 계좌는 설정 화면까지 가지 않고 여기서 바로 고친다 (#84) — 저장은 설정과 같은 saveProfile */}
       <div>
-        <div className="mb-1 text-[11.5px] font-extrabold text-[#6e675e]">정산 받을 계좌</div>
+        <div className="mb-1 text-[13px] font-extrabold text-[#6e675e]">정산 받을 계좌</div>
         <div className="flex gap-1.5">
           <input
             value={bank}
             onChange={(e) => setBank(e.target.value)}
             onKeyDown={(e) => isSubmitEnter(e) && saveBank()}
             placeholder="초록은행 1104-04"
-            className="w-full min-w-0  border-[1.5px] border-[#c9c9c4] bg-[#fdfdfb] px-2.5 py-[6px] text-[12.5px] outline-none focus:border-[#e14e2b]"
+            className="w-full min-w-0  border-[1.5px] border-[#c9c9c4] bg-[#fdfdfb] px-2.5 py-[6px] text-[14px] outline-none focus:border-[#e14e2b]"
           />
           <button
             onClick={saveBank}
-            className="flex-none cursor-pointer  bg-[#e14e2b] px-2.5 py-[6px] text-[12px] font-extrabold text-white hover:bg-[#b93c1f]"
+            className="flex-none cursor-pointer  bg-[#e14e2b] px-2.5 py-[6px] text-[13.5px] font-extrabold text-white hover:bg-[#b93c1f]"
           >
             저장
           </button>

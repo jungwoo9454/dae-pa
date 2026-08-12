@@ -97,7 +97,7 @@ export default function ImageUpload({
       ) : (
         <label
           htmlFor={inputId}
-          className={`flex cursor-pointer items-center justify-center gap-2 border border-dashed border-[#c3dcc4] bg-[#f7fbf6] text-[13px] font-bold text-[#6e675e] hover:border-[#e14e2b] hover:text-[#e14e2b] ${shape}`}
+          className={`flex cursor-pointer items-center justify-center gap-2 border border-dashed border-[#c3dcc4] bg-[#f7fbf6] text-[14.5px] font-bold text-[#6e675e] hover:border-[#e14e2b] hover:text-[#e14e2b] ${shape}`}
           style={{ height, width: round ? height : undefined }}
         >
           {busy ? (

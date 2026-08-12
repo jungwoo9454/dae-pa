@@ -39,13 +39,13 @@ function RoomItem({ room, active, onPick }: { room: RoomDef; active: boolean; on
     >
       <div className="flex items-center gap-2">
         {room.pinned ? (
-          <span className="bg-[#e14e2b] px-2 py-0.5 text-[11px] font-bold text-white">고정</span>
+          <span className="bg-[#e14e2b] px-2 py-0.5 text-[12.5px] font-bold text-white">고정</span>
         ) : (
           st && <StatusBadge s={st} />
         )}
         <span className="font-sans-ko truncate text-sm font-extrabold">{room.name}</span>
       </div>
-      <div className="mt-2 truncate text-[11px] text-[#9c9ca3]">{room.sub}</div>
+      <div className="mt-2 truncate text-[12.5px] text-[#9c9ca3]">{room.sub}</div>
     </div>
   );
 }
@@ -141,16 +141,24 @@ export default function ChatView() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="방 검색_"
-          className="field h-[42px] flex-none text-[13px]"
+          className="field h-[42px] flex-none text-[14.5px]"
         />
+        {foundLounge.length > 0 && (
+          <div className="px-1 text-[12.5px] font-bold tracking-[.14em] text-[#8b8478]">// 동네</div>
+        )}
         {foundLounge.map((r) => (
           <RoomItem key={r.id} room={r} active={room === r.id} onPick={() => goRoom(r.id)} />
         ))}
+        {foundDeals.length > 0 && (
+          <div className="mt-2 px-1 text-[12.5px] font-bold tracking-[.14em] text-[#8b8478]">
+            // 내 공구방
+          </div>
+        )}
         {foundDeals.map((r) => (
           <RoomItem key={r.id} room={r} active={room === r.id} onPick={() => goRoom(r.id)} />
         ))}
         {noResult && (
-          <div className="mt-4 text-center text-[12.5px] text-[#8b8478]">
+          <div className="mt-4 text-center text-[14px] text-[#8b8478]">
             &lsquo;{search.trim()}&rsquo; 검색 결과가 없어요
             <div onClick={() => setSearch("")} className="mt-1.5 cursor-pointer font-bold text-[#e14e2b]">
               검색 지우기
@@ -158,7 +166,7 @@ export default function ChatView() {
           </div>
         )}
         {!q && dealRooms.length === 0 && (
-          <div className="px-1 text-[12px] leading-relaxed text-[#8b8478]">
+          <div className="px-1 text-[13.5px] leading-relaxed text-[#8b8478]">
             참여한 공구가 없어요. 공구에 참여하면 채팅방이 여기에 생겨요.
           </div>
         )}
@@ -174,7 +182,7 @@ export default function ChatView() {
                 </span>
                 {current?.st && <StatusBadge s={current.st} />}
               </div>
-              <div className="tnum mt-1 text-[11px] text-[#8b8478]">
+              <div className="tnum mt-1 text-[12.5px] text-[#8b8478]">
                 {current?.sub ?? "참여 후 이용 가능"}
               </div>
             </div>
@@ -191,12 +199,12 @@ export default function ChatView() {
                 <div className="font-sans-ko text-sm font-extrabold">
                   {missingDeal ? `‘${missingDeal.title}’ 채팅방` : "채팅방을 찾을 수 없어요"}
                 </div>
-                <div className="text-[13px] leading-relaxed text-[#8b8478]">
+                <div className="text-[14.5px] leading-relaxed text-[#8b8478]">
                   {missingDeal?.me
                     ? "채팅방을 준비하고 있어요"
                     : "공구 채팅방은 참여자만 들어갈 수 있어요"}
                 </div>
-                <div className="mt-1 flex gap-2 text-[13px]">
+                <div className="mt-1 flex gap-2 text-[14.5px]">
                   {missingDeal && (
                     <div onClick={() => openDeal(missingDeal.id)} className="key key-primary px-4 py-2">
                       [ 전표 보기 ]
@@ -209,13 +217,13 @@ export default function ChatView() {
               </div>
             )}
             {current && roomMsgs.length === 0 && (
-              <div className="m-auto text-center text-[13px] text-[#8b8478]">아직 대화가 없어요</div>
+              <div className="m-auto text-center text-[14.5px] text-[#8b8478]">아직 대화가 없어요</div>
             )}
 
             {roomMsgs.map((mg, i) => {
               if (mg.kind === "sys") {
                 return (
-                  <div key={i} className="self-center text-center text-[11px] text-[#8b8478]">
+                  <div key={i} className="self-center text-center text-[12.5px] text-[#8b8478]">
                     --- {mg.text} ---
                   </div>
                 );
@@ -232,11 +240,11 @@ export default function ChatView() {
                       onClick={() => openDeal(cd.id)}
                       className="w-[250px] cursor-pointer border-[1.5px] border-dashed border-[#1b1917] bg-white p-4"
                     >
-                      <div className="rule-dash border-b border-t-0 pb-2 text-center text-[10px] tracking-[.14em] text-[#8b8478]">
+                      <div className="rule-dash border-b border-t-0 pb-2 text-center text-[11px] tracking-[.14em] text-[#8b8478]">
                         ＊ 전표 공유 · {receiptNo(cd.id, cd.created_at)} ＊
                       </div>
-                      <div className="font-sans-ko mt-2.5 text-[13px] font-extrabold">{cd.title}</div>
-                      <div className="tnum mt-1.5 text-[11px] text-[#6e675e]">
+                      <div className="font-sans-ko mt-2.5 text-[14.5px] font-extrabold">{cd.title}</div>
+                      <div className="tnum mt-1.5 text-[12.5px] text-[#6e675e]">
                         {cd.joined}/{cd.goal}명 · {remainLabel(cd, now)} · {fmt(perAmount(cd))}{" "}
                         {perLabel(cd)}
                       </div>
@@ -261,7 +269,7 @@ export default function ChatView() {
                   <div key={i} className="flex max-w-[78%] gap-2.5 self-start">
                     <Avatar ch={mg.who[0] ?? "?"} />
                     <div className="min-w-0">
-                      <div className="mb-1 text-[10px] text-[#9c9ca3]">{mg.who}</div>
+                      <div className="mb-1 text-[11px] text-[#9c9ca3]">{mg.who}</div>
                       {mg.imageUrl ? (
                         <a href={mg.imageUrl} target="_blank" rel="noreferrer" className="block">
                           {/* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */}
@@ -300,7 +308,7 @@ export default function ChatView() {
               }
               return (
                 <div key={i} className="max-w-[78%] self-end">
-                  <div className="mb-1 text-right text-[10px] text-[#9c9ca3]">나</div>
+                  <div className="mb-1 text-right text-[11px] text-[#9c9ca3]">나</div>
                   <div className="font-sans-ko whitespace-pre-wrap break-words bg-[#1b1917] px-3.5 py-2.5 leading-[1.6] text-[#fdfdfb]">
                     {mg.text}
                   </div>
@@ -311,7 +319,7 @@ export default function ChatView() {
 
           {/* 못 연 방에서는 입력창을 감춘다 — sendMsg 가 조용히 아무 일도 안 하는 게 더 헷갈린다 */}
           {current && locked && (
-            <div className="rule-dash flex flex-none items-center justify-center border-b-0 border-t bg-[#f1efe8] px-4 py-4 text-[13px] text-[#a29b8e]">
+            <div className="rule-dash flex flex-none items-center justify-center border-b-0 border-t bg-[#f1efe8] px-4 py-4 text-[14.5px] text-[#a29b8e]">
               마감된 공구방이에요 · 대화 기록만 볼 수 있어요
             </div>
           )}
@@ -340,7 +348,7 @@ export default function ChatView() {
                 placeholder="메시지 입력_"
                 className="field font-sans-ko h-[42px] flex-1 text-sm"
               />
-              <div onClick={sendMsg} className="key key-primary px-5 py-3 text-[13px]">
+              <div onClick={sendMsg} className="key key-primary px-5 py-3 text-[14.5px]">
                 [전송]
               </div>
             </div>

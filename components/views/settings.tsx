@@ -17,8 +17,8 @@ const PROVIDER_LABEL: Record<string, string> = {
 
 type EditKey = "bank" | "app" | "account";
 
-const INPUT = "field w-full text-[13.5px]";
-const BTN = "key key-ink px-4 py-2 text-[13px]";
+const INPUT = "field w-full text-[15px]";
+const BTN = "key key-ink px-4 py-2 text-[14.5px]";
 
 /** 단말 설정 한 줄 — 점선 구분, 우측에 키 */
 function Row({
@@ -99,13 +99,13 @@ export default function SettingsView() {
                 // eslint-disable-next-line @next/next/no-img-element -- 소셜 아바타는 외부 도메인이라 next/image 설정 없이 쓴다
                 <img src={me.avatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <span className="flex h-full w-full items-center justify-center text-[22px] font-extrabold">
+                <span className="flex h-full w-full items-center justify-center text-[24.5px] font-extrabold">
                   {me?.nickname?.[0] ?? "파"}
                 </span>
               )}
             </div>
             <div className="min-w-0">
-              <div className="font-sans-ko text-[17px] font-extrabold">
+              <div className="font-sans-ko text-[19px] font-extrabold">
                 {me?.nickname ?? "파티원"}
               </div>
               <div className="mt-1.5 text-xs text-[#8b8478]">
@@ -144,7 +144,7 @@ export default function SettingsView() {
             </div>
           )}
 
-          <div className="pt-4 text-[11px] font-bold tracking-[.14em] text-[#8b8478]">// 알림</div>
+          <div className="pt-4 text-[12.5px] font-bold tracking-[.14em] text-[#8b8478]">// 알림</div>
           <Row
             title="마감 임박 알림"
             sub="참여한 공구 마감 30분 전"
@@ -156,7 +156,7 @@ export default function SettingsView() {
             right={<Toggle on={n2} onClick={toggleN2} />}
           />
 
-          <div className="pt-4 text-[11px] font-bold tracking-[.14em] text-[#8b8478]">// 정산</div>
+          <div className="pt-4 text-[12.5px] font-bold tracking-[.14em] text-[#8b8478]">// 정산</div>
           <Row
             title="정산 받을 계좌"
             sub={me?.bankAccount ?? "등록 안 함"}
@@ -179,25 +179,33 @@ export default function SettingsView() {
               </div>
             )}
           </Row>
+          {/* main 과 같은 동작 — 현재 선택값을 sub 로 보여주고, 행을 눌러야 선택지가 펼쳐진다 */}
           <Row
             title="기본 송금 앱"
-            right={
-              <div className="flex gap-1.5">
+            sub={me?.transferApp ?? "선택 안 함"}
+            right={edited}
+            onClick={() => open("app")}
+          >
+            {edit === "app" && (
+              <div className="flex flex-wrap gap-1.5">
                 {TRANSFER_APPS.map((app) => (
                   <span
                     key={app}
-                    onClick={() => saveProfile({ transferApp: app })}
+                    onClick={() => {
+                      saveProfile({ transferApp: app });
+                      setEdit(null);
+                    }}
                     className={`chip px-3.5 py-1.5 text-xs ${me?.transferApp === app ? "chip-on" : ""}`}
                   >
                     {app}
                   </span>
                 ))}
               </div>
-            }
-          />
+            )}
+          </Row>
 
           <div className="flex items-center pt-5">
-            <span onClick={logout} className="cursor-pointer text-[13px] font-extrabold tracking-[.1em] text-[#e14e2b]">
+            <span onClick={logout} className="cursor-pointer text-[14.5px] font-extrabold tracking-[.1em] text-[#e14e2b]">
               [ 로그아웃 ]
             </span>
           </div>

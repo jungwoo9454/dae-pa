@@ -120,7 +120,7 @@ export default function SettleView() {
     <div className="flex-1 overflow-auto px-9 py-8">
       <div
         onClick={() => go("my")}
-        className="mb-4 inline-block cursor-pointer text-[13px] text-[#77777f] hover:text-[#e14e2b]"
+        className="mb-4 inline-block cursor-pointer text-[14.5px] text-[#77777f] hover:text-[#e14e2b]"
       >
         ← 원장으로
       </div>
@@ -148,18 +148,18 @@ export default function SettleView() {
                 </a>
               )}
               <div className="flex-1">
-                <div className="text-[13px] font-bold">
+                <div className="text-[14.5px] font-bold">
                   {settlement.hasReceipt ? "영수증 인증 완료" : "참여자 과반 동의로 확정"}
                 </div>
                 <div className="tnum mt-1 text-xs text-[#6e675e]">
                   확정 총액 {fmt(settlement.finalTotal)} · 수정 잠금
                 </div>
               </div>
-              <span className="stamp h-[54px] w-[54px] flex-none text-[11px]">확정</span>
+              <span className="stamp h-[54px] w-[54px] flex-none text-[12.5px]">확정</span>
             </div>
           ) : settlement ? (
             <div className="mt-[18px] border-[1.5px] border-[#1b1917] p-4">
-              <div className="text-[13px] font-bold">영수증 없이 정산 · 과반 동의 필요</div>
+              <div className="text-[14.5px] font-bold">영수증 없이 정산 · 과반 동의 필요</div>
               <div className="tnum mt-2.5 text-xs text-[#6e675e]">
                 제안 총액 <b className="text-[#1b1917]">{fmt(settlement.finalTotal)}</b> · 동의{" "}
                 <b className="text-[#1b1917]">
@@ -174,7 +174,7 @@ export default function SettleView() {
                 </div>
               )}
               {myVote === undefined ? (
-                <div className="mt-3 flex gap-2 text-[13px]">
+                <div className="mt-3 flex gap-2 text-[14.5px]">
                   <div onClick={() => voteSettlement(sd.id, true)} className="key key-ink flex-1 py-2">
                     [ 동의 ]
                   </div>
@@ -190,39 +190,39 @@ export default function SettleView() {
             </div>
           ) : isHost ? (
             <div className="mt-[18px] border-[1.5px] border-[#1b1917] p-4">
-              <div className="text-[13px] font-bold">
-                최종 총액 확정 <span className="text-[11px] font-normal text-[#9c9ca3]">(주최자 전용)</span>
+              <div className="text-[14.5px] font-bold">
+                최종 총액 확정 <span className="text-[12.5px] font-normal text-[#9c9ca3]">(주최자 전용)</span>
               </div>
               <input
                 value={commaFmt(settleTotalInput)}
                 onChange={(e) => setSettleTotalInput(digits(e.target.value))}
                 placeholder="예: 54,500"
-                className="field tnum mt-3 h-[46px] w-full text-[19px] font-bold"
+                className="field tnum mt-3 h-[46px] w-full text-[21.5px] font-bold"
               />
               <div className="mt-3">
                 <ImageUpload
                   kind="receipts"
                   value={settleReceiptUrl}
                   onChange={setSettleReceiptUrl}
-                  label="영수증 사진 첨부 (선택)"
+                  label="영수증 사진 첨부 — 붙이면 투표 없이 바로 확정"
                   height={92}
                 />
               </div>
               <div
                 onClick={() => confirmSettlement(sd.id, overrides)}
-                className="key key-primary mt-3 py-3 text-[13.5px]"
+                className="key key-primary mt-3 py-3 text-[15px]"
               >
                 [ 총액 확정하기 ]
               </div>
             </div>
           ) : (
-            <div className="mt-[18px] border-[1.5px] border-dashed border-[#c9c9c4] p-4 text-center text-[13px] text-[#8b8478]">
+            <div className="mt-[18px] border-[1.5px] border-dashed border-[#c9c9c4] p-4 text-center text-[14.5px] text-[#8b8478]">
               주최자가 최종 총액을 입력하면 정산이 시작돼요
             </div>
           )}
 
           <div className="mt-[18px]">
-            <div className="rule-dash flex border-b border-t-0 pb-2.5 text-[11px] tracking-[.1em] text-[#8b8478]">
+            <div className="rule-dash flex border-b border-t-0 pb-2.5 text-[12.5px] tracking-[.1em] text-[#8b8478]">
               <span className="tnum">
                 참여자별 부담{settlement ? ` (총 ${fmt(settlement.finalTotal)} ÷ ${mem.length})` : ""}
               </span>
@@ -241,14 +241,16 @@ export default function SettleView() {
               const displayAmount = showPreview ? previewAmount(p) : (p.amount_due ?? 0);
               const nickname = p.profile?.nickname ?? "탈퇴한 사용자";
               return (
-                <div key={p.id} className="rule-dot flex items-center gap-2.5 py-3 text-[13.5px]">
+                <div key={p.id} className="rule-dot flex items-center gap-2.5 py-3 text-[15px]">
                   <Avatar ch={nickname[0]} />
                   <span className="font-sans-ko truncate">
                     {nickname}
-                    {isHostRow && <span className="ml-1 text-[10px] text-[#9c9ca3]">주최</span>}
+                    {isHostRow && (
+                      <span className="ml-1 text-[11px] text-[#9c9ca3]">주최 · 나머지 부담</span>
+                    )}
                     {/* 주최자 행은 DB 트리거가 note 를 '주최자' 로 넣어둬서 위 태그와 겹친다 */}
                     {p.note && !isHostRow && (
-                      <span className="ml-1 text-[11px] text-[#9c9ca3]">· {p.note}</span>
+                      <span className="ml-1 text-[12.5px] text-[#9c9ca3]">· {p.note}</span>
                     )}
                   </span>
                   <span className="mb-[3px] flex-1 border-b-[1.5px] border-dotted border-[#d8d2c6]" />
@@ -261,18 +263,18 @@ export default function SettleView() {
                         if (composing) setOverrides((o) => ({ ...o, [p.id]: v }));
                         else void adjustParticipationAmount(p.id, v);
                       }}
-                      className="field tnum w-[100px] px-2 py-1 text-right text-[13px]"
+                      className="field tnum w-[100px] px-2 py-1 text-right text-[14.5px]"
                     />
                   ) : (
                     <span className="tnum border-b-[1.5px] border-dashed border-[#8b8478] font-bold">
                       {fmt(displayAmount)}
                     </span>
                   )}
-                  {showPreview && <span className="text-[10px] text-[#9c9ca3]">예상</span>}
+                  {showPreview && <span className="text-[11px] text-[#9c9ca3]">예상</span>}
                   {p.is_paid ? (
-                    <span className="stamp h-[29px] w-12 flex-none text-[9px]">입금완료</span>
+                    <span className="stamp h-[29px] w-12 flex-none text-[10px]">입금완료</span>
                   ) : (
-                    <span className="flex-none border-[1.5px] border-dashed border-[#8b8478] px-2 py-1.5 text-[10px] text-[#8b8478]">
+                    <span className="flex-none border-[1.5px] border-dashed border-[#8b8478] px-2 py-1.5 text-[11px] text-[#8b8478]">
                       대기중
                     </span>
                   )}
@@ -298,8 +300,8 @@ export default function SettleView() {
 
           <div className="mt-[18px] border-2 border-[#1b1917] bg-white p-[18px]">
             <div className="flex items-baseline">
-              <span className="text-[13px] font-bold tracking-[.14em]">내가 낼 금액</span>
-              <span className="tnum ml-auto text-[32px] font-black text-[#e14e2b]">
+              <span className="text-[14.5px] font-bold tracking-[.14em]">내가 낼 금액</span>
+              <span className="tnum ml-auto text-[36px] font-black text-[#e14e2b]">
                 {mine ? fmt(showPreview ? previewAmount(mine) : (mine.amount_due ?? 0)) : "—"}
               </span>
             </div>
@@ -309,7 +311,7 @@ export default function SettleView() {
                 {isHost ? (
                   <>
                     <div className="key key-off mt-3.5 py-3 text-sm">[ 대파페이로 즉시 결제 ]</div>
-                    <div className="mt-2.5 text-center text-[11px] text-[#9c9ca3]">
+                    <div className="mt-2.5 text-center text-[12.5px] text-[#9c9ca3]">
                       주최자는 받는 쪽이라 낼 금액이 없어요
                     </div>
                   </>
@@ -347,7 +349,7 @@ export default function SettleView() {
           </div>
 
           {!!sd.deliveryFee && (
-            <div className="tnum mt-3 text-center text-[11px] text-[#8b8478]">
+            <div className="tnum mt-3 text-center text-[12.5px] text-[#8b8478]">
               배달비 {fmt(sd.deliveryFee)} · 참여자 {mem.length}명 균등 분담
             </div>
           )}

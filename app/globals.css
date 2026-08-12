@@ -1,6 +1,19 @@
 @import "tailwindcss";
 
 /**
+ * 타이포 스케일 — 전표 UI 가 모노라 기본값이 작게 읽혀서 한 단계 키웠다 (#143).
+ * 임의값(text-[13px] 등)도 같은 비율로 함께 올려둔다.
+ */
+@theme {
+  --text-xs: 13px;
+  --text-sm: 15px;
+  --text-base: 17px;
+  --text-lg: 19px;
+  --text-xl: 22px;
+  --text-2xl: 26px;
+}
+
+/**
  * 영수증 POS 디자인 언어 (#143) — 회색 데스크 위에 감열지 전표를 올린 화면.
  * 색은 시안 hex 를 그대로 쓴다 (CLAUDE.md — 임의 팔레트 금지).
  *   데스크 #E4E4E0 · 감열지 #FDFDFB · 잉크 #1B1917 · 레드 인주 #E14E2B · 정산 블루 #4A6FA5
@@ -9,6 +22,7 @@
  */
 body {
   margin: 0;
+  font-size: 15px;
   background: #e4e4e0;
   color: #1b1917;
   font-family: "IBM Plex Mono", "Pretendard Variable", Pretendard, system-ui, monospace;

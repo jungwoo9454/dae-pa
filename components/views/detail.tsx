@@ -129,14 +129,14 @@ export default function DetailView() {
     <div className="flex-1 overflow-auto px-9 py-8">
       <div
         onClick={() => go("home")}
-        className="mb-4 inline-block cursor-pointer text-[13px] text-[#77777f] hover:text-[#e14e2b]"
+        className="mb-4 inline-block cursor-pointer text-[14.5px] text-[#77777f] hover:text-[#e14e2b]"
       >
         ← 목록으로
       </div>
       <div className="flex justify-center gap-[30px]">
         <div className="w-[560px] flex-none">
           <div className="receipt px-[30px] pb-6 pt-7">
-            <div className="receipt-head text-[15px]">＊ 거래 전표 ＊</div>
+            <div className="receipt-head text-[17px]">＊ 거래 전표 ＊</div>
             <div className="mt-[7px] text-center text-xs text-[#8b8478]">
               {receiptNo(deal.id, deal.created_at)} ｜ {deal.cat} ｜ 발행: {deal.host}
               {deal.mine ? "(나)" : ""}
@@ -148,14 +148,14 @@ export default function DetailView() {
               <img src={deal.imageUrl} alt="" className="mt-4 h-[220px] w-full object-cover" />
             ) : (
               <div className="mt-4 flex h-[130px] items-center justify-center bg-[#ededea]">
-                <span className="font-sans-ko text-[44px] font-extrabold text-[#b9b9b4]">
+                <span className="font-sans-ko text-[49.5px] font-extrabold text-[#b9b9b4]">
                   {deal.cat.slice(0, 1)}
                 </span>
               </div>
             )}
 
             <div className="mt-4 flex items-center gap-3.5">
-              <div className="font-sans-ko text-[23px] font-black leading-[1.35]">{deal.title}</div>
+              <div className="font-sans-ko text-[26px] font-black leading-[1.35]">{deal.title}</div>
               <div className="ml-auto flex flex-none flex-col items-end gap-2">
                 <StatusBadge s={st} />
                 {/* 도장은 실제로 초가 흐를 때만 — 마감·정산중이면 문구가 원 밖으로 넘친다 */}
@@ -164,15 +164,15 @@ export default function DetailView() {
                     className="stamp h-[74px] w-[74px] flex-col"
                     style={{ borderColor: cd.color, color: cd.color }}
                   >
-                    <span className="text-[9px] font-bold">마감까지</span>
-                    <span className="tnum mt-0.5 text-[12px] font-bold">{cd.text}</span>
+                    <span className="text-[10px] font-bold">마감까지</span>
+                    <span className="tnum mt-0.5 text-[13.5px] font-bold">{cd.text}</span>
                   </div>
                 )}
               </div>
             </div>
 
             {deal.description && (
-              <div className="font-sans-ko mt-3 whitespace-pre-line text-[13px] leading-[1.8] text-[#55524b]">
+              <div className="font-sans-ko mt-3 whitespace-pre-line text-[14.5px] leading-[1.8] text-[#55524b]">
                 {deal.description}
               </div>
             )}
@@ -213,7 +213,7 @@ export default function DetailView() {
                 <div className="leader">
                   <span>총액</span>
                   <i />
-                  <b className="text-[15px]">{fmt(deal.total)}</b>
+                  <b className="text-[17px]">{fmt(deal.total)}</b>
                   {canEditTotal && (
                     <span
                       onClick={startEditTotal}
@@ -231,13 +231,13 @@ export default function DetailView() {
             </div>
 
             <div className="rule-dash mt-4 flex items-baseline pt-3.5">
-              <span className="text-[13px] text-[#8b8478]">{perLabel(deal)}</span>
-              <span className="tnum ml-auto text-[28px] font-black">{fmt(perAmount(deal))}</span>
+              <span className="text-[14.5px] text-[#8b8478]">{perLabel(deal)}</span>
+              <span className="tnum ml-auto text-[31.5px] font-black">{fmt(perAmount(deal))}</span>
             </div>
 
             <div className="barcode mt-3.5" />
 
-            <div onClick={onMainAction} className={`${mainKeyClass} mt-3.5 py-3 text-[15px]`}>
+            <div onClick={onMainAction} className={`${mainKeyClass} mt-3.5 py-3 text-[17px]`}>
               [ {canLeave ? "나가기" : joinLabel(deal, now)} ]
             </div>
             {settleErr && <div className="mt-2 text-center text-xs text-[#e14e2b]">{settleErr}</div>}
@@ -254,7 +254,10 @@ export default function DetailView() {
 
             {askLeave && (
               <div className="mt-3 border-[1.5px] border-dashed border-[#e14e2b] p-3.5">
-                <div className="text-[13px] font-bold text-[#e14e2b]">공구에서 나갈까요?</div>
+                <div className="text-[14.5px] font-bold text-[#e14e2b]">공구에서 나갈까요?</div>
+                <div className="mt-1 text-xs text-[#8b8478]">
+                  참여가 취소되고 채팅방에 나갔다는 메시지가 남아요.
+                </div>
                 {leaveErr && <div className="mt-2 text-xs font-bold text-[#e14e2b]">{leaveErr}</div>}
                 <div className="mt-3 flex gap-2">
                   <div
@@ -267,7 +270,7 @@ export default function DetailView() {
                       if (err) setLeaveErr(err);
                       else setAskLeave(false);
                     }}
-                    className="key key-primary flex-1 py-2 text-[13px]"
+                    className="key key-primary flex-1 py-2 text-[14.5px]"
                   >
                     [ {leaving ? "나가는 중…" : "나가기"} ]
                   </div>
@@ -276,7 +279,7 @@ export default function DetailView() {
                       setAskLeave(false);
                       setLeaveErr(null);
                     }}
-                    className="key key-line flex-1 py-2 text-[13px]"
+                    className="key key-line flex-1 py-2 text-[14.5px]"
                   >
                     [ 그만두기 ]
                   </div>
@@ -293,7 +296,7 @@ export default function DetailView() {
                 [ 채팅방 입장 ]
               </div>
               <div onClick={() => shareDeal(deal.id, "lounge")} className="key key-line flex-1 py-3">
-                [ 공유 ]
+                [ 라운지 공유 ]
               </div>
             </div>
             {!canChat && (
@@ -304,7 +307,7 @@ export default function DetailView() {
             {cancelable &&
               (askCancel ? (
                 <div className="rule-dash mt-3.5 border-[1.5px] border-dashed border-[#e14e2b] p-3.5">
-                  <div className="text-[13px] font-bold text-[#e14e2b]">공구를 취소할까요?</div>
+                  <div className="text-[14.5px] font-bold text-[#e14e2b]">공구를 취소할까요?</div>
                   <div className="mt-1 text-xs text-[#8b8478]">
                     참여자 전원에게 알림이 가고 되돌릴 수 없어요.
                   </div>
@@ -320,7 +323,7 @@ export default function DetailView() {
                         if (err) setCancelErr(err);
                         else setAskCancel(false);
                       }}
-                      className="key key-primary flex-1 py-2 text-[13px]"
+                      className="key key-primary flex-1 py-2 text-[14.5px]"
                     >
                       [ {canceling ? "취소 중…" : "취소하기"} ]
                     </div>
@@ -329,7 +332,7 @@ export default function DetailView() {
                         setAskCancel(false);
                         setCancelErr(null);
                       }}
-                      className="key key-line flex-1 py-2 text-[13px]"
+                      className="key key-line flex-1 py-2 text-[14.5px]"
                     >
                       [ 그만두기 ]
                     </div>
@@ -352,17 +355,17 @@ export default function DetailView() {
             <div className="rule-dash border-b border-t-0 pb-2.5 text-xs font-bold tracking-[.14em]">
               참여 명단 // 실시간
             </div>
-            <div className="mt-3 flex flex-col gap-2.5 text-[13px]">
+            <div className="mt-3 flex flex-col gap-2.5 text-[14.5px]">
               {participantAvatars.map((p) => (
                 <div key={p.userId} className="flex items-center gap-2.5">
                   <Avatar ch={p.initials} />
                   <span className="font-sans-ko truncate">{p.nickname}</span>
-                  {p.isHost && <span className="ml-auto text-[10px] text-[#9c9ca3]">주최</span>}
+                  {p.isHost && <span className="ml-auto text-[11px] text-[#9c9ca3]">주최</span>}
                 </div>
               ))}
               {Array.from({ length: Math.max(0, deal.goal - deal.joined) }).map((_, i) => (
                 <div key={`empty-${i}`} className="flex items-center gap-2.5 text-[#9c9ca3]">
-                  <span className="inline-flex h-[26px] min-w-[26px] items-center justify-center border-[1.5px] border-dashed border-[#c9c9c4] text-[11px]">
+                  <span className="inline-flex h-[26px] min-w-[26px] items-center justify-center border-[1.5px] border-dashed border-[#c9c9c4] text-[12.5px]">
                     ·
                   </span>
                   <span>공석</span>

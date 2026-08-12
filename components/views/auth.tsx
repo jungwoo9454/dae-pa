@@ -57,46 +57,46 @@ export default function AuthView() {
     (isSignup ? !!(auth.nick && auth.email && auth.pw && dongOk) : !!(auth.email && auth.pw));
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#e4e4e0] p-8 text-[14px] text-[#1b1917]">
+    <div className="flex min-h-screen items-center justify-center bg-[#e4e4e0] p-8 text-[15.5px] text-[#1b1917]">
       <div className="w-[400px]">
         <div className="mb-5 text-center">
-          <span className="text-[22px] font-bold tracking-[.04em]">
+          <span className="text-[24.5px] font-bold tracking-[.04em]">
             DAEPA_POS<span className="text-[#e14e2b]">★</span>
           </span>
         </div>
 
         <div className="receipt px-8 py-7">
-          <div className="receipt-head text-[13px]">
+          <div className="receipt-head text-[14.5px]">
             ＊ {isSignup ? "신규 등록" : "단말 로그인"} ＊
           </div>
           <div className="rule-dash mt-3.5" />
 
           {/* 소셜·이메일 어느 쪽에서 난 오류든 보이도록 카드 위쪽에 둔다 (#81) */}
           {authError && (
-            <div className="mt-3.5 border-[1.5px] border-[#e14e2b] px-3 py-2 text-[12.5px] font-bold text-[#e14e2b]">
+            <div className="mt-3.5 border-[1.5px] border-[#e14e2b] px-3 py-2 text-[14px] font-bold text-[#e14e2b]">
               {authError}
             </div>
           )}
 
           {/* 1) 소셜 — 깃허브·구글 계정으로 바로 시작 */}
-          <div className="mt-4 text-[11px] font-bold tracking-[.14em] text-[#8b8478]">// 간편 시작</div>
+          <div className="mt-4 text-[12.5px] font-bold tracking-[.14em] text-[#8b8478]">// 간편 시작</div>
           <div
             onClick={() => signInWithOAuth("github")}
-            className="key key-ink mt-2.5 flex items-center justify-center gap-2 py-3 text-[13.5px]"
+            className="key key-ink mt-2.5 flex items-center justify-center gap-2 py-3 text-[15px]"
           >
             <GithubMark className="h-[18px] w-[18px] flex-none" />
             깃허브로 시작
           </div>
           <div
             onClick={() => signInWithOAuth("google")}
-            className="key key-line mt-2 flex items-center justify-center gap-2 py-3 text-[13.5px]"
+            className="key key-line mt-2 flex items-center justify-center gap-2 py-3 text-[15px]"
           >
             <GoogleMark className="h-[18px] w-[18px] flex-none" />
             구글로 시작
           </div>
 
           {/* 2) 이메일 — 대파 자체 계정 */}
-          <div className="mt-5 text-[11px] font-bold tracking-[.14em] text-[#8b8478]">// 이메일</div>
+          <div className="mt-5 text-[12.5px] font-bold tracking-[.14em] text-[#8b8478]">// 이메일</div>
           <div className="mt-2.5 flex flex-col gap-2">
             {isSignup && (
               <input
@@ -126,9 +126,9 @@ export default function AuthView() {
 
           {isSignup && (
             <div className="mt-2.5 border-[1.5px] border-dashed border-[#e14e2b] p-3.5">
-              <div className="text-[11px] font-bold tracking-[.1em] text-[#e14e2b]">동네 인증</div>
+              <div className="text-[12.5px] font-bold tracking-[.1em] text-[#e14e2b]">동네 인증</div>
               {dongOk ? (
-                <div className="font-sans-ko mt-2 text-[13px] font-bold">{dongValue} 인증 완료 ✓</div>
+                <div className="font-sans-ko mt-2 text-[14.5px] font-bold">{dongValue} 인증 완료 ✓</div>
               ) : (
                 <div className="mt-2.5 flex gap-2">
                   <input
@@ -136,7 +136,7 @@ export default function AuthView() {
                     onChange={(e) => setDongValue(e.target.value)}
                     onKeyDown={(e) => isSubmitEnter(e) && confirmDong()}
                     placeholder="동네 이름 — 예: 역삼동"
-                    className="field field-sub font-sans-ko min-w-0 flex-1 py-2 text-[13px]"
+                    className="field field-sub font-sans-ko min-w-0 flex-1 py-2 text-[14.5px]"
                   />
                   <div onClick={confirmDong} className="key key-ink flex-none px-3.5 py-2 text-xs">
                     [확정]
@@ -150,12 +150,12 @@ export default function AuthView() {
             onClick={() => {
               if (authOk) (isSignup ? signUp : signIn)();
             }}
-            className={`mt-4 py-3.5 text-[15px] tracking-[.14em] ${authOk ? "key key-primary" : "key key-off"}`}
+            className={`mt-4 py-3.5 text-[17px] tracking-[.14em] ${authOk ? "key key-primary" : "key key-off"}`}
           >
             [ {authBusy ? "잠시만요…" : isSignup ? "가입하고 시작" : "로그인"} ]
           </div>
 
-          <div className="mt-4 text-center text-[13px] text-[#6e675e]">
+          <div className="mt-4 text-center text-[14.5px] text-[#6e675e]">
             {isSignup ? "이미 파티원이신가요?" : "아직 계정이 없나요?"}{" "}
             <span
               onClick={switchAuthMode}

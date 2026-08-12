@@ -39,14 +39,14 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
     <div onClick={() => openDeal(deal.id)} className="cursor-pointer">
       <div className={`receipt px-[26px] pb-[22px] pt-6 ${dead ? "receipt-dead" : ""}`}>
         <div className="receipt-head">＊ 대파 공구 ＊</div>
-        <div className="mt-[7px] text-center text-[11px] text-[#8b8478]">
+        <div className="mt-[7px] text-center text-[12.5px] text-[#8b8478]">
           {receiptNo(deal.id, deal.created_at)} ｜ {deal.cat} ｜ 주최: {deal.host}
         </div>
         <div className="rule-dash mt-3.5" />
 
         <div className="mt-4 flex min-h-[70px] items-start gap-3.5">
           <div
-            className={`font-sans-ko text-[22px] font-black leading-[1.35] ${dead ? "text-[#8b8478]" : ""}`}
+            className={`font-sans-ko text-[24.5px] font-black leading-[1.35] ${dead ? "text-[#8b8478]" : ""}`}
           >
             {deal.title}
           </div>
@@ -59,8 +59,8 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
                 className="stamp h-[70px] w-[70px] flex-col"
                 style={{ borderColor: st.fg, color: st.fg }}
               >
-                <span className="text-[9px] font-bold">마감까지</span>
-                <span className="tnum mt-0.5 text-[12px] font-bold">{remainLabel(deal, now)}</span>
+                <span className="text-[10px] font-bold">마감까지</span>
+                <span className="tnum mt-0.5 text-[13.5px] font-bold">{remainLabel(deal, now)}</span>
               </div>
             )}
           </div>
@@ -110,8 +110,8 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
         )}
 
         <div className={`flex items-baseline ${dead ? "mt-[30px]" : "mt-[18px]"}`}>
-          <span className="text-[13px] text-[#8b8478]">{perLabel(deal)}</span>
-          <span className={`tnum ml-auto text-[27px] font-black ${dead ? "text-[#8b8478]" : ""}`}>
+          <span className="text-[14.5px] text-[#8b8478]">{perLabel(deal)}</span>
+          <span className={`tnum ml-auto text-[30px] font-black ${dead ? "text-[#8b8478]" : ""}`}>
             {fmt(perAmount(deal))}
           </span>
         </div>

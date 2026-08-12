@@ -108,12 +108,12 @@ export default function NewDealView() {
   return (
     <div className="flex-1 overflow-auto px-9 py-8">
       <div className="mx-auto flex w-[960px] justify-center gap-[30px]">
-        <div className="receipt w-[540px] flex-none p-7 text-[13px]">
-          <div className="rule-dash border-b border-t-0 pb-3 text-[13px] font-extrabold tracking-[.2em]">
+        <div className="receipt w-[540px] flex-none p-7 text-[14.5px]">
+          <div className="rule-dash border-b border-t-0 pb-3 text-[14.5px] font-extrabold tracking-[.2em]">
             발행 정보 입력
           </div>
 
-          <div className="mt-4 text-[11.5px] font-bold text-[#8b8478]">카테고리</div>
+          <div className="mt-4 text-[13px] font-bold text-[#8b8478]">카테고리</div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {FORM_CATS.map((c) => {
               const Icon = CAT_ICON[c];
@@ -148,7 +148,7 @@ export default function NewDealView() {
 
           {isDelivery && (
             <div className="mt-3.5 border-[1.5px] border-dashed border-[#e14e2b] p-4">
-              <div className="text-[11px] font-bold tracking-[.1em] text-[#e14e2b]">
+              <div className="text-[12.5px] font-bold tracking-[.1em] text-[#e14e2b]">
                 배달음식 전용 필드
               </div>
               <input
@@ -176,7 +176,7 @@ export default function NewDealView() {
 
           <div className="mt-3.5 flex gap-2.5">
             <div className="flex-1">
-              <div className="text-[11.5px] font-bold text-[#8b8478]">
+              <div className="text-[13px] font-bold text-[#8b8478]">
                 예상 총 금액{isDelivery ? " (선택)" : ""}
               </div>
               <input
@@ -187,7 +187,7 @@ export default function NewDealView() {
               />
             </div>
             <div className="flex-1">
-              <div className="text-[11.5px] font-bold text-[#8b8478]">목표 인원</div>
+              <div className="text-[13px] font-bold text-[#8b8478]">목표 인원</div>
               <input
                 value={form.goal}
                 onChange={(e) => setForm({ goal: digits(e.target.value) })}
@@ -197,7 +197,7 @@ export default function NewDealView() {
             </div>
           </div>
 
-          <div className="mt-3.5 text-[11.5px] font-bold text-[#8b8478]">
+          <div className="mt-3.5 text-[13px] font-bold text-[#8b8478]">
             마감까지 <span className="font-normal text-[#9c9ca3]">(최소 {MIN_DEADLINE_MIN}분)</span>
           </div>
           <div className="mt-2 flex gap-1.5">
@@ -218,7 +218,7 @@ export default function NewDealView() {
             />
           </div>
           {minsTooShort && (
-            <div className="mt-2 text-[11.5px] font-bold text-[#e14e2b]">
+            <div className="mt-2 text-[13px] font-bold text-[#e14e2b]">
               마감은 최소 {MIN_DEADLINE_MIN}분 뒤로 잡아주세요
             </div>
           )}
@@ -242,7 +242,7 @@ export default function NewDealView() {
 
           <div
             onClick={submitNew}
-            className={`mt-[18px] py-3.5 text-[15px] tracking-[.14em] ${
+            className={`mt-[18px] py-3.5 text-[17px] tracking-[.14em] ${
               canSubmit ? "key key-primary" : "key key-off"
             }`}
           >
@@ -252,19 +252,19 @@ export default function NewDealView() {
 
         {/* 실시간 인쇄 미리보기 */}
         <div className="w-[360px] flex-none">
-          <div className="mb-2.5 text-[11px] tracking-[.14em] text-[#8b8478]">
+          <div className="mb-2.5 text-[12.5px] tracking-[.14em] text-[#8b8478]">
             // 실시간 인쇄 미리보기
           </div>
           <div className="receipt px-[22px] pb-[18px] pt-[22px]">
-            <div className="receipt-head text-[13px]">＊ 대파 공구 ＊</div>
-            <div className="mt-1.5 text-center text-[10.5px] text-[#8b8478]">
+            <div className="receipt-head text-[14.5px]">＊ 대파 공구 ＊</div>
+            <div className="mt-1.5 text-center text-[12px] text-[#8b8478]">
               {form.cat} ｜ 주최: {me?.nickname ?? "나"}
             </div>
             <div className="rule-dash mt-3" />
-            <div className="font-sans-ko mt-3.5 text-[17px] font-black leading-[1.4]">
+            <div className="font-sans-ko mt-3.5 text-[19px] font-black leading-[1.4]">
               {form.title || "제목을 입력하면 여기 보여요"}
             </div>
-            <div className="mt-3 flex flex-col gap-2 text-[13px] text-[#6e675e]">
+            <div className="mt-3 flex flex-col gap-2 text-[14.5px] text-[#6e675e]">
               <div className="leader">
                 <span>수령지</span>
                 <i />
@@ -285,10 +285,10 @@ export default function NewDealView() {
               <ProgressBar pct={goalN > 0 ? Math.min(100, Math.round(100 / goalN)) : 0} />
             </div>
             <div className="rule-dash mt-3.5 flex items-baseline pt-3">
-              <span className="tnum text-[11px] text-[#8b8478]">
+              <span className="tnum text-[12.5px] text-[#8b8478]">
                 1인당{goalN > 0 && previewShared > 0 ? ` (${previewShared.toLocaleString("ko-KR")}÷${goalN})` : ""}
               </span>
-              <span className="tnum ml-auto text-[23px] font-black">
+              <span className="tnum ml-auto text-[26px] font-black">
                 {goalN > 0 && previewShared > 0 ? fmt(Math.ceil(previewShared / goalN)) : "— 원"}
               </span>
             </div>

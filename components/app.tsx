@@ -23,7 +23,7 @@ export default function App() {
   if (page === "login") return <AuthView />;
   return (
     // 좌측 사이드바 → 상단 단말 바 (#143). 화면은 데스크(회색) 위에 전표로 얹힌다
-    <div className="flex h-screen flex-col overflow-hidden bg-[#e4e4e0] text-[14px] text-[#1b1917]">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#e4e4e0] text-[15.5px] text-[#1b1917]">
       <div className="relative flex min-h-0 flex-1 flex-col">
         <TopBar />
         {profileOpen && <ProfilePopover />}
