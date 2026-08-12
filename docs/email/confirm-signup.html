@@ -74,9 +74,10 @@
         </p>
       </td></tr>
 
-      <!-- 바코드 — gradient 미지원 대비로 문자로 찍는다 -->
-      <tr><td align="center" style="padding:16px 30px 24px;font-family:'IBM Plex Mono',monospace;font-size:26px;line-height:1;letter-spacing:-1px;color:#1b1917;">
-        ▌▏▌▌▏▎▌▏▌▎▏▌▌▏▎▌▏▌▌▎▏▌▏▎▌▌▏▌▎▏▌▏▌▌▎
+      <!-- 바코드 — 웹 .barcode 와 같은 gradient. 문자로 찍으면 전표가 432px 보다 넓어져
+           아래 절취선 폭이 어긋난다 (#143) -->
+      <tr><td style="padding:16px 30px 24px;">
+        <div style="height:28px;font-size:0;line-height:0;background:repeating-linear-gradient(90deg,#1b1917 0 2px,transparent 2px 4px,#1b1917 4px 7px,transparent 7px 10px,#1b1917 10px 11px,transparent 11px 14px);">&nbsp;</div>
       </td></tr>
     </table>
 
