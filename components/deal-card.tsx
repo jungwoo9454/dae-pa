@@ -3,7 +3,7 @@
 import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, settleStartable, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Deal } from "@/lib/types";
-import { ProgressBar, StatusBadge, receiptNo } from "./ui";
+import { Barcode, ProgressBar, StatusBadge, receiptNo } from "./ui";
 
 /**
  * 공구 카드 = 감열지 전표 한 장 (#143).
@@ -116,7 +116,7 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
           </span>
         </div>
 
-        {!dead && <div className="barcode mt-3.5 h-8" />}
+        {!dead && <Barcode seed={deal.id} className="mt-3.5 h-8" />}
 
         <div onClick={onJoin} className={`${keyClass} mt-3.5 py-3 text-sm tracking-[.1em]`}>
           [ {joinLabel(deal, now)} ]

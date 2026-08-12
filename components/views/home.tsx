@@ -61,7 +61,7 @@ export default function HomeView() {
     <div className="flex-1 overflow-auto px-10 pb-12">
       <div className="flex items-center gap-6 pb-6 pt-8">
         <div className="font-sans-ko text-[51.5px] font-black leading-[1.15] tracking-[-.03em]">
-          오늘의 <span className="text-[#e14e2b]">특가</span> 공구
+          오늘의 <span className="text-[#e14e2b]">알뜰</span> 공구
         </div>
         <div className="ml-auto flex items-center gap-5">
           <input

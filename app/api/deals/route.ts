@@ -92,8 +92,12 @@ export async function POST(req: Request) {
       return Response.json({ error: "로그인이 필요합니다" }, { status: 401 });
     }
 
-    // 마감이 너무 짧으면 아무도 못 보고 끝난다 — 폼에서도 막지만 서버에서도 거부한다
-    const minN = parseInt(mins) || 60;
+    // 마감이 너무 짧으면 아무도 못 보고 끝난다 — 폼에서도 막지만 서버에서도 거부한다.
+    // || 60 폴백을 두면 0 을 보냈을 때 조용히 60분짜리가 만들어진다 (#164) — 못 읽으면 그냥 거부.
+    const minN = Number.parseInt(mins, 10);
+    if (!Number.isFinite(minN)) {
+      return Response.json({ error: "마감 시간을 입력해주세요" }, { status: 400 });
+    }
     if (minN < MIN_DEADLINE_MIN) {
       return Response.json(
         { error: `마감 시간은 최소 ${MIN_DEADLINE_MIN}분이에요` },

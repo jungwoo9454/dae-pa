@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import type { StatusView } from "@/lib/deal";
 
 /** 상태 태그 — 각진 네모 + 기호. 마감임박(▲)만 점멸한다 (#143) */
@@ -68,6 +69,37 @@ export function Avatar({ ch, size = 26 }: { ch: string; size?: number }) {
     >
       {ch}
     </span>
+  );
+}
+
+/**
+ * 전표 바코드 — 공구마다 다른 막대 패턴 (#166).
+ *
+ * 난수를 그때그때 뽑으면 카운트다운이 1초마다 다시 그릴 때 바코드가 춤춘다. 그래서 공구 id 를
+ * 씨앗으로 쓰는 결정적 난수(LCG)로 만든다 — 같은 공구는 언제 봐도 같은 바코드, 다른 공구는 다른 바코드.
+ */
+export function Barcode({ seed, className = "" }: { seed: number; className?: string }) {
+  const image = useMemo(() => {
+    let s = (Math.abs(seed) * 2654435761) % 2147483647 || 1;
+    const rnd = () => (s = (s * 48271) % 2147483647) / 2147483647;
+    const stops: string[] = [];
+    let x = 0;
+    // 300px 한 마디를 만들고 가로로 반복시킨다 — 카드 폭이 달라도 자연스럽게 이어진다
+    while (x < 300) {
+      const bar = 1 + Math.floor(rnd() * 3);
+      const gap = 1 + Math.floor(rnd() * 3);
+      stops.push(`#1b1917 ${x}px ${x + bar}px`, `transparent ${x + bar}px ${x + bar + gap}px`);
+      x += bar + gap;
+    }
+    return { backgroundImage: `linear-gradient(90deg, ${stops.join(",")})`, backgroundSize: `${x}px 100%` };
+  }, [seed]);
+
+  return (
+    <div
+      aria-hidden
+      className={`h-7 w-full ${className}`}
+      style={{ ...image, backgroundRepeat: "repeat-x" }}
+    />
   );
 }
 

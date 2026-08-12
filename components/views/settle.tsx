@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import ImageUpload from "@/components/image-upload";
-import { Avatar, ProgressBar, StatusBadge, receiptNo } from "@/components/ui";
+import { Avatar, Barcode, ProgressBar, StatusBadge, receiptNo } from "@/components/ui";
 import { commaFmt, digits, fmt, statusOf } from "@/lib/deal";
 import type { ParticipationWithProfile } from "@/lib/db-types";
 import { useStore } from "@/lib/store";
@@ -364,7 +364,7 @@ export default function SettleView() {
             </div>
           )}
 
-          <div className="barcode mt-[18px]" />
+          <Barcode seed={sd.id} className="mt-[18px]" />
         </div>
         <div className="receipt-edge" />
       </div>

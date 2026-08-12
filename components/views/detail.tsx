@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Avatar, ProgressBar, StatusBadge, receiptNo } from "@/components/ui";
+import { Avatar, Barcode, ProgressBar, StatusBadge, receiptNo } from "@/components/ui";
 import {
   LEAVE_CUTOFF_MS,
   countdownDisplay,
@@ -235,7 +235,7 @@ export default function DetailView() {
               <span className="tnum ml-auto text-[31.5px] font-black">{fmt(perAmount(deal))}</span>
             </div>
 
-            <div className="barcode mt-3.5" />
+            <Barcode seed={deal.id} className="mt-3.5" />
 
             <div onClick={onMainAction} className={`${mainKeyClass} mt-3.5 py-3 text-[17px]`}>
               [ {canLeave ? "나가기" : joinLabel(deal, now)} ]
