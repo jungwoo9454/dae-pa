@@ -42,7 +42,7 @@ export default function NewDealView() {
     const newDeal = await res.json();
 
     if (!res.ok) {
-      alert(newDeal.error || "공고 작성 실패");
+      alert(newDeal.error || "공구 올리기에 실패했어요");
       return;
     }
 
