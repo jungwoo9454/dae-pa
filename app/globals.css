@@ -276,17 +276,39 @@ button {
 /* ── 움직임 (#174) ─────────────────────────────────────── */
 
 /**
- * 전표 인쇄 — 프린터 슬롯에서 종이가 위에서부터 밀려 나오는 모양.
- * clip-path 로 위→아래로 드러내고, 종이를 살짝 아래로 내보낸다.
+ * 전표 인쇄 — 감열 프린터가 종이를 한 칸씩 툭툭 밀어내는 모양 (#177).
+ *
+ * 부드럽게 보간하면 그냥 "나타나는" 느낌이라, 구간마다 steps(1,end) 로 끊어 **불균등하게**
+ * 밀어낸다 (10 → 30 → 40 → 60 → 70 → 90 → 100). 밀어낼 때마다 종이가 1px 씩 튄다.
  */
-@keyframes print-out {
+@keyframes print-feed {
   0% {
     clip-path: inset(0 0 100% 0);
-    transform: translateY(-10px);
+    transform: translateY(-3px);
   }
-  60% {
-    clip-path: inset(0 0 0 0);
-    transform: translateY(2px);
+  12% {
+    clip-path: inset(0 0 90% 0);
+    transform: translateY(-2px);
+  }
+  26% {
+    clip-path: inset(0 0 70% 0);
+    transform: translateY(-3px);
+  }
+  40% {
+    clip-path: inset(0 0 60% 0);
+    transform: translateY(-1px);
+  }
+  56% {
+    clip-path: inset(0 0 40% 0);
+    transform: translateY(-2px);
+  }
+  70% {
+    clip-path: inset(0 0 30% 0);
+    transform: translateY(0);
+  }
+  86% {
+    clip-path: inset(0 0 10% 0);
+    transform: translateY(-1px);
   }
   100% {
     clip-path: inset(0 0 0 0);
@@ -294,7 +316,8 @@ button {
   }
 }
 .card-print {
-  animation: print-out 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  /* steps(1, end) — 구간 안에서는 값을 붙들고 있다가 끝에서 한 번에 튄다 */
+  animation: print-feed 0.62s steps(1, end) both;
 }
 
 /**
