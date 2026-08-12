@@ -440,6 +440,11 @@ grant execute on function public.change_total_amount(bigint, integer)
 
 -- 확정 총액을 참여자 수만큼 균등 분배하고, 항목·배달비 나머지는 모두 주최자가 흡수한다.
 -- (CLAUDE.md 규칙 4·5 — 배달비 항상 균등, 1/N 나머지는 주최자 부담)
+--
+-- p_overrides 가 붙기 전 구버전 시그니처를 먼저 지운다 — create or replace 는 파라미터 개수가
+-- 바뀌면 교체가 아니라 새 오버로드를 만들어서, 이미 배포된 DB 에 이 파일을 다시 돌리면 구버전이
+-- 그대로 남아 PostgREST 오버로드 충돌이 난다 (#95).
+drop function if exists public.apply_settlement_split(bigint, int, int);
 create or replace function public.apply_settlement_split(
   p_group_buy_id bigint,
   p_total_amount int,
@@ -477,8 +482,13 @@ begin
     set amount_due = v_auto_even
   where group_buy_id = p_group_buy_id and user_id <> v_host_id;
 
+  -- 주최자는 이미 가게에 선결제한 쪽이라 자기한테 입금할 게 없다 — 확정과 동시에 입금 완료로
+  -- 처리한다. 안 그러면 complete_group_buy_if_all_paid 가 주최자 행 때문에 영영 통과 못 해서
+  -- 공구가 settling 에서 멈춘다 (#95).
   update public.participations
-    set amount_due = v_item_base + v_item_remainder + v_delivery_base + v_delivery_remainder
+    set amount_due = v_item_base + v_item_remainder + v_delivery_base + v_delivery_remainder,
+        is_paid = true,
+        paid_at = coalesce(paid_at, now())
   where group_buy_id = p_group_buy_id and user_id = v_host_id
   returning id into v_host_participation_id;
 
@@ -498,6 +508,8 @@ begin
 end $$;
 
 -- 정산 시작/총액 확정 (#15). 영수증 있으면 즉시 확정, 없으면 과반 동의 대기(pending).
+-- 위 apply_settlement_split 과 같은 이유로 구버전 시그니처를 먼저 지운다 (#95).
+drop function if exists public.confirm_settlement(bigint, int, int, text);
 create or replace function public.confirm_settlement(
   p_group_buy_id bigint,
   p_total_amount int,
