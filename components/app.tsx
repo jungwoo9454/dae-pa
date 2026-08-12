@@ -6,7 +6,6 @@ import TopBar from "./top-bar";
 import ProfilePopover from "./profile-popover";
 import NotiPopover from "./noti-popover";
 import NotiToasts from "./noti-toasts";
-import DongBanner from "./dong-banner";
 import AuthView from "./views/auth";
 import HomeView from "./views/home";
 import DetailView from "./views/detail";
@@ -35,7 +34,6 @@ export default function App() {
         {profileOpen && <ProfilePopover />}
         {notiOpen && <NotiPopover />}
         <NotiToasts />
-        {page === "home" && <DongBanner />}
         {page === "home" && <HomeView />}
         {/* key={sel} — 알림에서 다른 공구 상세로 바로 넘어갈 때 이전 공구의 에러 문구·
             열려있던 확인창이 그대로 따라붙는다. 공구가 바뀌면 통째로 새로 마운트한다. */}
