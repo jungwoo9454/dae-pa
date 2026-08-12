@@ -92,9 +92,6 @@ export async function POST(req: Request) {
       return Response.json({ error: "로그인이 필요합니다" }, { status: 401 });
     }
 
-    // 임시 수정 (인증 스킵):
-    // const user = {id: "30019992-ef88-40c5-b7a7-5cad74ea6a4e",};
-
     // 마감이 너무 짧으면 아무도 못 보고 끝난다 — 폼에서도 막지만 서버에서도 거부한다
     const minN = parseInt(mins) || 60;
     if (minN < MIN_DEADLINE_MIN) {
@@ -127,11 +124,6 @@ export async function POST(req: Request) {
       .single();
 
     if (error) {
-      return Response.json({ error: error.message }, { status: 400 });
-    }
-
-        // ⭐ 이 response만 남김
-        if (error) {
       return Response.json({ error: error.message }, { status: 400 });
     }
 
