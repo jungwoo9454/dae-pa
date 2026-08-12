@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Emoticon, EmoticonPicker } from "@/components/emoticon";
 import { uploadImage } from "@/components/image-upload";
 import { Avatar, StatusBadge, receiptNo } from "@/components/ui";
@@ -51,6 +51,33 @@ function RoomItem({ room, active, onPick }: { room: RoomDef; active: boolean; on
   );
 }
 
+/**
+ * 말풍선 한 개의 껍데기 — 아바타 + **보낸 사람 이름** + 내용 (#184).
+ * 종류(글·사진·이모티콘·공구 카드)마다 따로 그리다 보니 사진·이모티콘에는 이름이 빠져 있었다.
+ * 누가 보냈는지는 종류와 무관하게 항상 같은 자리에 있어야 한다.
+ */
+function Bubble({
+  who,
+  avatarUrl,
+  mine,
+  children,
+}: {
+  who: string;
+  avatarUrl?: string | null;
+  mine?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`flex max-w-[78%] gap-2.5 ${mine ? "flex-row-reverse self-end" : "self-start"}`}>
+      <Avatar ch={who[0] ?? "?"} src={avatarUrl} />
+      <div className="min-w-0">
+        <div className={`mb-1 text-[11px] text-[#9c9ca3] ${mine ? "text-right" : ""}`}>{who}</div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function ChatView() {
   const now = useNow();
   const deals = useStore((s) => s.deals);
@@ -71,6 +98,8 @@ export default function ChatView() {
   const sendEmoticon = useStore((s) => s.sendEmoticon);
   const photoRef = useRef<HTMLInputElement>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
+  /** 내 말풍선에 붙는 이름 — 상대와 같은 자리에 같은 방식으로 (#184) */
+  const myName = me?.nickname ?? "나";
   const [emoOpen, setEmoOpen] = useState(false);
 
   const sendPhoto = async (file?: File) => {
@@ -131,12 +160,27 @@ export default function ChatView() {
   const allMsgs = current ? (msgs[current.id] ?? []) : [];
   const roomMsgs = allMsgs.slice(-RECENT_LIMIT);
 
-  // 방 전환·새 메시지 시 항상 최신 메시지가 보이도록 하단 고정
+  /**
+   * 방에 들어오면 최신 메시지가 보이게 (#184).
+   *
+   * 예전엔 메시지 수가 바뀔 때 한 번만 맨 아래로 보냈는데, **사진은 그 뒤에 뜬다.**
+   * 늦게 뜬 사진이 아래로 밀어내는 만큼 화면은 위쪽에 남아, 방에 들어오면 맨 위 대화만 보였다.
+   * 그래서 사진이 다 뜰 때마다 다시 내려보내고, 사용자가 위로 올려 읽는 중이면(pinned=false)
+   * 붙잡지 않는다.
+   */
   const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  const pinned = useRef(true);
+  const toBottom = () => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [current?.id, allMsgs.length]);
+  };
+  useLayoutEffect(() => {
+    pinned.current = true;
+    toBottom();
+  }, [current?.id]);
+  useLayoutEffect(() => {
+    if (pinned.current) toBottom();
+  }, [allMsgs.length]);
 
   // 방을 옮기면 열어둔 이모티콘 창은 닫는다 (새 메시지에는 닫지 않는다 — 고르는 중일 수 있다)
   useEffect(() => setEmoOpen(false), [current?.id]);
@@ -200,7 +244,15 @@ export default function ChatView() {
             )}
           </div>
 
-          <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-6 py-5">
+          <div
+            ref={scrollRef}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              // 바닥에서 80px 안쪽이면 "따라가는 중"으로 본다
+              pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+            }}
+            className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-6 py-5"
+          >
             {!current && (
               <div className="m-auto flex max-w-[320px] flex-col items-center gap-3 text-center">
                 <div className="font-sans-ko text-sm font-extrabold">
@@ -243,8 +295,7 @@ export default function ChatView() {
                 const st = statusOf(cd, now);
                 return (
                   // 공유 카드는 보낸 사람이 따로 있다 — 오른쪽(=내 말풍선) 정렬이면 내가 보낸 걸로 읽힌다
-                  <div key={i} className="flex max-w-[78%] gap-2.5 self-start">
-                    <Avatar ch={mg.who[0] ?? "?"} src={mg.avatarUrl} />
+                  <Bubble key={i} who={mg.who} avatarUrl={mg.avatarUrl}>
                     <div
                       onClick={() => openDeal(cd.id)}
                       className="w-[250px] cursor-pointer border-[1.5px] border-dashed border-[#1b1917] bg-white p-4"
@@ -270,15 +321,13 @@ export default function ChatView() {
                         [ {joinable(cd, now) ? "바로 참여" : joinLabel(cd, now)} ]
                       </div>
                     </div>
-                  </div>
+                  </Bubble>
                 );
               }
               if (mg.kind === "other") {
                 return (
-                  <div key={i} className="flex max-w-[78%] gap-2.5 self-start">
-                    <Avatar ch={mg.who[0] ?? "?"} src={mg.avatarUrl} />
-                    <div className="min-w-0">
-                      <div className="mb-1 text-[11px] text-[#9c9ca3]">{mg.who}</div>
+                  <Bubble key={i} who={mg.who} avatarUrl={mg.avatarUrl}>
+                    <>
                       {mg.emoticon !== undefined ? (
                         <Emoticon i={mg.emoticon} />
                       ) : mg.imageUrl ? (
@@ -287,6 +336,7 @@ export default function ChatView() {
                           <img
                             src={mg.imageUrl}
                             alt="보낸 사진"
+                            onLoad={() => pinned.current && toBottom()}
                             className="max-h-[260px] border-[1.5px] border-[#1b1917] object-cover"
                           />
                         </a>
@@ -295,43 +345,38 @@ export default function ChatView() {
                           {mg.text}
                         </div>
                       )}
-                    </div>
-                  </div>
+                    </>
+                  </Bubble>
                 );
               }
               if (mg.emoticon !== undefined) {
                 return (
-                  <div key={i} className="flex max-w-[78%] flex-row-reverse gap-2.5 self-end">
-                    <Avatar ch={me?.nickname?.[0] ?? "나"} src={me?.avatarUrl} />
+                  <Bubble key={i} who={myName} avatarUrl={me?.avatarUrl} mine>
                     <Emoticon i={mg.emoticon} />
-                  </div>
+                  </Bubble>
                 );
               }
               if (mg.imageUrl) {
                 return (
-                  <div key={i} className="flex max-w-[78%] flex-row-reverse gap-2.5 self-end">
-                    <Avatar ch={me?.nickname?.[0] ?? "나"} src={me?.avatarUrl} />
-                    <a href={mg.imageUrl} target="_blank" rel="noreferrer" className="min-w-0">
+                  <Bubble key={i} who={myName} avatarUrl={me?.avatarUrl} mine>
+                    <a href={mg.imageUrl} target="_blank" rel="noreferrer" className="block">
                       {/* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */}
                       <img
                         src={mg.imageUrl}
                         alt="보낸 사진"
+                        onLoad={() => pinned.current && toBottom()}
                         className="max-h-[260px] border-[1.5px] border-[#1b1917] object-cover"
                       />
                     </a>
-                  </div>
+                  </Bubble>
                 );
               }
               return (
-                <div key={i} className="flex max-w-[78%] flex-row-reverse gap-2.5 self-end">
-                  <Avatar ch={me?.nickname?.[0] ?? "나"} src={me?.avatarUrl} />
-                  <div className="min-w-0">
-                    <div className="mb-1 text-right text-[11px] text-[#9c9ca3]">나</div>
-                    <div className="font-sans-ko whitespace-pre-wrap break-words bg-[#1b1917] px-3.5 py-2.5 leading-[1.6] text-[#fdfdfb]">
-                      {mg.text}
-                    </div>
+                <Bubble key={i} who={myName} avatarUrl={me?.avatarUrl} mine>
+                  <div className="font-sans-ko whitespace-pre-wrap break-words bg-[#1b1917] px-3.5 py-2.5 leading-[1.6] text-[#fdfdfb]">
+                    {mg.text}
                   </div>
-                </div>
+                </Bubble>
               );
             })}
           </div>
