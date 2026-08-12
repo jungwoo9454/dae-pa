@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { CAT_EMOJI, joinable, relativeWhen } from "./deal";
 import { createClient } from "./supabase/client";
+import { subscribePg } from "./supabase/realtime";
 import { sysText } from "./sys-messages";
 import type { GroupBuyRow } from "./db-types";
 import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, Noti, PageKey, Room } from "./types";
@@ -350,13 +351,23 @@ export const useStore = create<StoreState>((set, get) => ({
 
   initAuth: () => {
     const sb = createClient();
-    let walletChannel: ReturnType<typeof sb.channel> | null = null;
-    // 소셜 로그인 콜백이 실패하면 /?auth_error=1 로 돌아온다
-    if (new URLSearchParams(window.location.search).has("auth_error")) {
-      set({ authError: "소셜 로그인에 실패했어요. 다시 시도해주세요" });
+    let unsubWallet: (() => void) | null = null;
+    // onAuthStateChange 콜백은 setTimeout 으로 이어진다. 그 사이 로그아웃/재로그인/정리가 일어나면
+    // 뒤늦게 도착한 예전 세션의 응답으로 남의 잔액을 쓰거나 채널을 열면 안 된다 (#107)
+    let gen = 0;
+    // 인증 콜백이 실패하면 /?auth_error=email|oauth 로 돌아온다
+    const authErrorKind = new URLSearchParams(window.location.search).get("auth_error");
+    if (authErrorKind) {
+      set({
+        authError:
+          authErrorKind === "email"
+            ? "이메일 인증 링크가 만료됐거나 이미 사용됐어요. 가입한 브라우저에서 다시 열어주세요"
+            : "소셜 로그인에 실패했어요. 다시 시도해주세요",
+      });
       window.history.replaceState(null, "", window.location.pathname);
     }
     const { data } = sb.auth.onAuthStateChange((_event, session) => {
+      const myGen = ++gen;
       const uid = session?.user.id;
       // 가입 수단 표시용 (#81) — profiles 에는 없고 auth user 메타에만 있다
       const provider = session?.user.app_metadata?.provider ?? null;
@@ -364,8 +375,8 @@ export const useStore = create<StoreState>((set, get) => ({
         // 다음 사람이 남의 알림·대화·설정을 보지 않게 목록·중복 표시·토글을 비운다
         firedDeadlines.clear();
         nickCache.clear();
-        walletChannel?.unsubscribe();
-        walletChannel = null;
+        unsubWallet?.();
+        unsubWallet = null;
         set((st) => ({
           me: null,
           notis: [],
@@ -407,6 +418,7 @@ export const useStore = create<StoreState>((set, get) => ({
           await sb.auth.signOut();
           return;
         }
+        if (myGen !== gen) return;
         set({
           me: {
             id: uid,
@@ -430,6 +442,7 @@ export const useStore = create<StoreState>((set, get) => ({
           .eq("user_id", uid)
           .order("created_at", { ascending: false })
           .limit(30);
+        if (myGen !== gen) return;
         set({
           balance: w?.balance ?? 0,
           history: (txs ?? []).map((t) => ({
@@ -440,18 +453,19 @@ export const useStore = create<StoreState>((set, get) => ({
           })),
         });
 
-        walletChannel?.unsubscribe();
-        walletChannel = sb
-          .channel("wallet:" + uid)
-          .on(
-            "postgres_changes",
-            { event: "UPDATE", schema: "public", table: "wallets", filter: `user_id=eq.${uid}` },
-            (payload) => set({ balance: (payload.new as { balance: number }).balance }),
-          )
-          .on(
-            "postgres_changes",
-            { event: "INSERT", schema: "public", table: "wallet_transactions", filter: `user_id=eq.${uid}` },
-            (payload) => {
+        unsubWallet?.();
+        unsubWallet = subscribePg("wallet:" + uid, [
+          {
+            event: "UPDATE",
+            table: "wallets",
+            filter: `user_id=eq.${uid}`,
+            handler: (payload) => set({ balance: (payload.new as { balance: number }).balance }),
+          },
+          {
+            event: "INSERT",
+            table: "wallet_transactions",
+            filter: `user_id=eq.${uid}`,
+            handler: (payload) => {
               const t = payload.new as { kind: string; amount: number; title: string; created_at: string };
               set((st) => ({
                 history: [
@@ -460,13 +474,14 @@ export const useStore = create<StoreState>((set, get) => ({
                 ],
               }));
             },
-          )
-          .subscribe();
+          },
+        ]);
       }, 0);
     });
     return () => {
-      data.subscription.unsubscribe();
-      walletChannel?.unsubscribe();
+      gen++;
+      data.subscription.unsubscribe(); // Auth 리스너 — 채널이 아니라 정상
+      unsubWallet?.();
     };
   },
 
@@ -506,7 +521,11 @@ export const useStore = create<StoreState>((set, get) => ({
     }
     // 대시보드에서 Confirm email 이 켜져 있으면 세션 없이 끝난다
     if (!data.session) {
-      set({ authBusy: false, authError: "메일로 보낸 인증 링크를 확인한 뒤 로그인해주세요" });
+      set({
+        authBusy: false,
+        authError:
+          "메일로 보낸 인증 링크를 확인한 뒤 로그인해주세요 — 링크는 가입한 이 브라우저에서 열어야 해요",
+      });
     }
   },
 
@@ -622,24 +641,25 @@ export const useStore = create<StoreState>((set, get) => ({
 
     void loadRooms();
 
-    const ch = sb
-      .channel("chat")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, ({ new: row }) => {
-        void onMsg(row as MsgRow);
-      })
+    // 토픽에 uid 를 넣는다 — 다른 사람이 로그인하면 필터가 달라야 하므로 채널도 달라야 한다
+    const unsub = subscribePg(`chat:${uid}`, [
+      {
+        event: "INSERT",
+        table: "messages",
+        handler: ({ new: row }) => void onMsg(row as MsgRow),
+      },
       // 공구를 만들거나 참여하면 방이 하나 늘어난다 — 목록을 다시 읽는다
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "participations", filter: `user_id=eq.${uid}` },
-        () => {
-          void loadRooms();
-        },
-      )
-      .subscribe();
+      {
+        event: "INSERT",
+        table: "participations",
+        filter: `user_id=eq.${uid}`,
+        handler: () => void loadRooms(),
+      },
+    ]);
 
     return () => {
       alive = false;
-      void sb.removeChannel(ch);
+      unsub();
     };
   },
 
@@ -664,21 +684,18 @@ export const useStore = create<StoreState>((set, get) => ({
       });
     })();
 
-    const ch = sb
-      .channel("notis")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` },
-        ({ new: row }) =>
+    return subscribePg(`notis:${uid}`, [
+      {
+        event: "INSERT",
+        table: "notifications",
+        filter: `user_id=eq.${uid}`,
+        handler: ({ new: row }) =>
           set((st) => {
             const n = toNoti(row as NotiRow);
             return st.notis.some((x) => x.id === n.id) ? {} : { notis: [n, ...st.notis] };
           }),
-      )
-      .subscribe();
-    return () => {
-      void sb.removeChannel(ch);
-    };
+      },
+    ]);
   },
 
   // supabase-js 쿼리 빌더는 await 해야 요청이 나간다 — 결과를 안 봐도 async 로 둔다
