@@ -209,6 +209,8 @@ interface StoreState {
   profileOpen: boolean;
   notiOpen: boolean;
   notis: Noti[];
+  /** 우측 하단에 잠깐 뜨는 알림 토스트 (#161) — 알림 목록과 달리 4초 후 사라진다 */
+  toasts: Noti[];
   /** 로그인 후 채팅이 DB에 붙었는지 — 붙기 전엔 시드가 보인다 */
   chatReady: boolean;
   topupOpen: boolean;
@@ -255,6 +257,7 @@ interface StoreState {
   initNotis: (uid: string) => () => void;
   /** 열 때 미읽음을 전부 읽음 처리한다 */
   toggleNoti: () => Promise<void>;
+  dismissToast: (id: number) => void;
   /** 참여한 공구의 마감 30분 전 알림을 넣는다 — 주기 호출 */
   notifyDeadlines: () => Promise<void>;
   setChatInput: (v: string) => void;
@@ -340,6 +343,7 @@ export const useStore = create<StoreState>((set, get) => ({
   profileOpen: false,
   notiOpen: false,
   notis: [],
+  toasts: [],
   chatReady: false,
   rooms: [],
   topupOpen: false,
@@ -405,6 +409,7 @@ export const useStore = create<StoreState>((set, get) => ({
         set((st) => ({
           me: null,
           notis: [],
+          toasts: [],
           rooms: [],
           chatReady: false,
           msgs: seedMsgs,
@@ -729,11 +734,13 @@ export const useStore = create<StoreState>((set, get) => ({
         event: "INSERT",
         table: "notifications",
         filter: `user_id=eq.${uid}`,
-        handler: ({ new: row }) =>
-          set((st) => {
-            const n = toNoti(row as NotiRow);
-            return st.notis.some((x) => x.id === n.id) ? {} : { notis: [n, ...st.notis] };
-          }),
+        handler: ({ new: row }) => {
+          const n = toNoti(row as NotiRow);
+          if (get().notis.some((x) => x.id === n.id)) return;
+          set((st) => ({ notis: [n, ...st.notis], toasts: [...st.toasts, n] }));
+          // 토스트는 목록과 달리 스스로 사라진다. 화면이 언마운트돼도 상태만 지우니 안전하다
+          setTimeout(() => get().dismissToast(n.id), 4000);
+        },
       },
     ]);
   },
@@ -751,6 +758,8 @@ export const useStore = create<StoreState>((set, get) => ({
     set((st) => ({ notis: st.notis.map((n) => (n.isRead ? n : { ...n, isRead: true })) }));
     await createClient().from("notifications").update({ is_read: true }).in("id", unreadIds);
   },
+
+  dismissToast: (id) => set((st) => ({ toasts: st.toasts.filter((t) => t.id !== id) })),
 
   notifyDeadlines: async () => {
     const { me, n1, deals } = get();
