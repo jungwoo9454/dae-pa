@@ -524,10 +524,14 @@ export const useStore = create<StoreState>((set, get) => ({
     }
     // 대시보드에서 Confirm email 이 켜져 있으면 세션 없이 끝난다
     if (!data.session) {
+      // 이미 가입된 이메일이어도 Supabase 는 사용자 열거 방지로 에러를 안 준다.
+      // 중복이면 가짜 user 의 identities 가 빈 배열로 온다 (#119)
+      const dup = data.user?.identities?.length === 0;
       set({
         authBusy: false,
-        authError:
-          "메일로 보낸 인증 링크를 확인한 뒤 로그인해주세요 — 링크는 가입한 이 브라우저에서 열어야 해요",
+        authError: dup
+          ? "이미 가입된 이메일이에요. 로그인해주세요"
+          : "메일로 보낸 인증 링크를 확인한 뒤 로그인해주세요 — 링크는 가입한 이 브라우저에서 열어야 해요",
       });
     }
   },
