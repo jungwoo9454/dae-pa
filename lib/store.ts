@@ -194,7 +194,7 @@ interface StoreState {
   initAuth: () => () => void;
   signIn: () => Promise<void>;
   signUp: () => Promise<void>;
-  signInWithOAuth: (provider: "google" | "kakao") => Promise<void>;
+  signInWithOAuth: (provider: "google" | "github") => Promise<void>;
   logout: () => Promise<void>;
   go: (page: PageKey) => void;
   openDeal: (id: number) => void;

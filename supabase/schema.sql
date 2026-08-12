@@ -1,6 +1,6 @@
 -- 대파(대용량 파티원) — Supabase 스키마
 -- 적용: Supabase 대시보드 > SQL Editor에 전체 붙여넣고 실행 (처음 1회)
--- 사전 설정: Authentication > Providers 에서 Email / Google / Kakao 활성화
+-- 사전 설정: Authentication > Providers 에서 Email / Google / GitHub 활성화
 --            (소셜 제공자별 Client ID·Secret 입력 + 리디렉트 URL 등록은 대시보드에서)
 --            데모 편의상 Email > "Confirm email" 은 끈다 (켜두면 가입 직후 세션이 안 나옴)
 --            URL Configuration > Redirect URLs 에 http://localhost:3000/auth/callback 등록
@@ -136,7 +136,7 @@ create index on wallet_transactions (user_id, created_at desc);
 -- ─────────────────────────────────────────────
 
 -- 닉네임·아바타는 제공자마다 키가 다르다. 이메일 폼은 nickname 을 직접 넣지만
--- 구글은 full_name/name + avatar_url(picture), 카카오는 name/user_name + avatar_url 로 온다.
+-- 구글은 full_name/name + avatar_url(picture), 깃허브는 name(비어있을 수 있음)/user_name(login) + avatar_url 로 온다.
 -- 하나라도 못 찾으면 기존처럼 '이웃abcd' 로 떨어진다.
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
@@ -149,8 +149,8 @@ begin
     coalesce(
       nullif(m->>'nickname', ''),        -- 이메일 회원가입 폼
       nullif(m->>'full_name', ''),       -- Google
-      nullif(m->>'name', ''),            -- Google / Kakao
-      nullif(m->>'user_name', ''),       -- Kakao
+      nullif(m->>'name', ''),            -- Google / GitHub
+      nullif(m->>'user_name', ''),       -- GitHub (login) — 이름 미설정 계정의 최후 방어선
       '이웃' || left(new.id::text, 4)
     ),
     coalesce(nullif(m->>'avatar_url', ''), nullif(m->>'picture', '')),

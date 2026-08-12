@@ -128,10 +128,10 @@ export default function AuthView() {
           </div>
 
           <div
-            onClick={() => signInWithOAuth("kakao")}
-            className="flex cursor-pointer items-center justify-center gap-1.5 rounded-[11px] bg-[#fee500] p-[11px] font-extrabold text-[#191919] hover:brightness-[.97]"
+            onClick={() => signInWithOAuth("github")}
+            className="flex cursor-pointer items-center justify-center rounded-[11px] bg-[#24292f] p-[11px] font-extrabold text-white hover:brightness-125"
           >
-            <MessageCircle aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 카카오로 3초 만에 시작
+            깃허브로 3초 만에 시작
           </div>
           <div
             onClick={() => signInWithOAuth("google")}
