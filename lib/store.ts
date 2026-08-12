@@ -7,7 +7,7 @@ import { sysText } from "./sys-messages";
 import type { GroupBuyRow } from "./db-types";
 import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, Noti, PageKey, Room } from "./types";
 
-/** 동네 인증은 아직 모의 — 위치 기반 판정은 별도 이슈 */
+/** IP 판정이 안 될 때(로컬·사설 IP) 쓰는 기본 동네 (#83) */
 export const DONG = "역삼동";
 
 /** 마감 몇 분 전에 알림을 넣을지 (#13) */
@@ -116,6 +116,7 @@ async function patchProfile(uid: string, patch: Record<string, unknown>) {
 const PROFILE_COL: Record<string, string> = {
   nickname: "nickname",
   avatarUrl: "avatar_url",
+  dong: "dong",
   bankAccount: "bank_account",
   transferApp: "transfer_app",
 };
@@ -185,6 +186,12 @@ interface StoreState {
   authBusy: boolean;
   authError: string;
   dongOk: boolean;
+  /** IP 로 추정했거나 사용자가 고친 동네 이름 — 확정 시 profiles.dong 으로 간다 (#83) */
+  dongValue: string;
+  /** IP 판정 API 를 부르는 중 */
+  dongBusy: boolean;
+  /** 판정 근거 문구 ("서울 · 강남구" 등). 빈 문자열이면 아직 안 불렀다 */
+  dongDetail: string;
   room: string;
   chatInput: string;
   search: string;
@@ -219,7 +226,11 @@ interface StoreState {
   switchAuthMode: () => void;
   /** bfcache 복원 등으로 남은 authBusy 를 푼다 — 안 풀면 로그인 버튼이 죽는다 (#82) */
   resetAuthBusy: () => void;
-  verifyDong: () => void;
+  /** IP 기반 동네 판정 (#83) — /api/verify-dong 결과를 dongValue 에 채운다 */
+  verifyDong: () => Promise<void>;
+  setDongValue: (v: string) => void;
+  /** 동네 확정 — 가입 전이면 dongOk 만 켜고, 로그인 상태면 profiles.dong 까지 저장한다 */
+  confirmDong: () => void;
   /** 세션 구독 시작. 정리 함수를 돌려준다 */
   initAuth: () => () => void;
   signIn: () => Promise<void>;
@@ -285,7 +296,9 @@ interface StoreState {
   toggleN1: () => void;
   toggleN2: () => void;
   /** 닉네임·아바타·계좌·송금 앱 저장 (#20, #15) — 화면은 즉시 바꾸고 profiles 에 반영한다 */
-  saveProfile: (patch: Partial<Pick<Me, "nickname" | "avatarUrl" | "bankAccount" | "transferApp">>) => void;
+  saveProfile: (
+    patch: Partial<Pick<Me, "nickname" | "avatarUrl" | "bankAccount" | "transferApp" | "dong">>,
+  ) => void;
   submitNew: () => void;
 }
 
@@ -299,6 +312,9 @@ export const useStore = create<StoreState>((set, get) => ({
   authBusy: false,
   authError: "",
   dongOk: false,
+  dongValue: DONG,
+  dongBusy: false,
+  dongDetail: "",
   room: "lounge",
   chatInput: "",
   search: "",
@@ -332,7 +348,28 @@ export const useStore = create<StoreState>((set, get) => ({
   switchAuthMode: () =>
     set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup", authError: "" })),
   resetAuthBusy: () => set({ authBusy: false }),
-  verifyDong: () => set({ dongOk: true }),
+  verifyDong: async () => {
+    if (get().dongBusy) return;
+    set({ dongBusy: true });
+    try {
+      const res = await fetch("/api/verify-dong");
+      const d = (await res.json()) as { dong: string; detail: string };
+      set({ dongValue: d.dong, dongDetail: d.detail, dongBusy: false });
+    } catch {
+      set({ dongDetail: "위치를 확인하지 못했어요", dongBusy: false });
+    }
+  },
+
+  setDongValue: (v) => set({ dongValue: v }),
+
+  confirmDong: () => {
+    const dong = get().dongValue.trim();
+    if (!dong) return;
+    set({ dongOk: true, dongValue: dong });
+    // 이미 로그인한 사용자(소셜 가입 등)는 바로 profiles 에 저장한다. 가입 폼에서는
+    // 아직 계정이 없으니 signUp 이 raw_user_meta_data 로 넘긴다
+    if (get().me) get().saveProfile({ dong });
+  },
 
   initAuth: () => {
     const sb = createClient();
@@ -481,7 +518,7 @@ export const useStore = create<StoreState>((set, get) => ({
       password: pw,
       options: {
         // 닉네임·동네는 raw_user_meta_data 로 들어가 handle_new_user 트리거가 profiles 에 넣는다
-        data: { nickname: nick, dong: get().dongOk ? DONG : null },
+        data: { nickname: nick, dong: get().dongOk ? get().dongValue : null },
         // 없으면 확인 링크가 항상 Site URL(프로덕션)로 가서 로컬 테스트가 막힌다
         emailRedirectTo: `${location.origin}/auth/callback`,
       },

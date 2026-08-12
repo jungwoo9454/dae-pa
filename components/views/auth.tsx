@@ -2,7 +2,7 @@
 
 import { MapPin, MessageCircle, ReceiptText, ShoppingBasket } from "lucide-react";
 import { isSubmitEnter } from "@/lib/keys";
-import { DONG, useStore } from "@/lib/store";
+import { useStore } from "@/lib/store";
 
 /** 구글 공식 4색 마크 — lucide 에는 브랜드 아이콘이 없어서 SVG 로 둔다 (#81) */
 function GoogleMark({ className }: { className?: string }) {
@@ -52,6 +52,11 @@ export default function AuthView() {
   const authMode = useStore((s) => s.authMode);
   const auth = useStore((s) => s.auth);
   const dongOk = useStore((s) => s.dongOk);
+  const dongValue = useStore((s) => s.dongValue);
+  const dongBusy = useStore((s) => s.dongBusy);
+  const dongDetail = useStore((s) => s.dongDetail);
+  const setDongValue = useStore((s) => s.setDongValue);
+  const confirmDong = useStore((s) => s.confirmDong);
   const authBusy = useStore((s) => s.authBusy);
   const authError = useStore((s) => s.authError);
   const setAuth = useStore((s) => s.setAuth);
@@ -153,22 +158,46 @@ export default function AuthView() {
           />
 
           {isSignup && (
-            <div className="flex items-center gap-[9px] rounded-[11px] border-[1.5px] border-dashed border-[#9fd4ae] bg-[#f5faf4] px-3.5 py-[11px]">
-              <MapPin aria-hidden className="h-[18px] w-[18px] flex-none text-[#1f8a4c]" />
-              <div className="flex-1">
-                <div className="text-[13.5px] font-extrabold">동네 인증</div>
-                <div className="text-xs text-[#6b8573]">
-                  {dongOk ? `${DONG} 인증 완료 ✓` : "현재 위치로 우리 동네를 인증해요"}
+            <div className="flex flex-col gap-2 rounded-[11px] border-[1.5px] border-dashed border-[#9fd4ae] bg-[#f5faf4] px-3.5 py-[11px]">
+              <div className="flex items-center gap-[9px]">
+                <MapPin aria-hidden className="h-[18px] w-[18px] flex-none text-[#1f8a4c]" />
+                <div className="flex-1">
+                  <div className="text-[13.5px] font-extrabold">동네 인증</div>
+                  <div className="text-xs text-[#6b8573]">
+                    {dongOk
+                      ? `${dongValue} 인증 완료 ✓`
+                      : dongBusy
+                        ? "접속 위치를 확인하는 중…"
+                        : dongDetail || "접속 위치(IP)로 우리 동네를 확인해요"}
+                  </div>
+                </div>
+                <div
+                  onClick={() => void verifyDong()}
+                  className={`flex-none cursor-pointer rounded-[9px] px-3 py-[7px] text-[12.5px] font-extrabold hover:brightness-105 ${
+                    dongOk ? "bg-[#e9f6ec] text-[#166b3a]" : "bg-[#1f8a4c] text-white"
+                  }`}
+                >
+                  {dongOk ? "다시 확인" : dongBusy ? "확인 중…" : "위치 확인"}
                 </div>
               </div>
-              <div
-                onClick={verifyDong}
-                className={`flex-none cursor-pointer rounded-[9px] px-3 py-[7px] text-[12.5px] font-extrabold hover:brightness-105 ${
-                  dongOk ? "bg-[#e9f6ec] text-[#166b3a]" : "bg-[#1f8a4c] text-white"
-                }`}
-              >
-                {dongOk ? "인증됨 ✓" : "인증하기"}
-              </div>
+              {/* GeoIP 는 시/구까지만 맞는다 — 동 이름은 사용자가 고쳐서 확정한다 (#83) */}
+              {dongDetail && !dongOk && (
+                <div className="flex gap-2">
+                  <input
+                    value={dongValue}
+                    onChange={(e) => setDongValue(e.target.value)}
+                    onKeyDown={(e) => isSubmitEnter(e) && confirmDong()}
+                    placeholder="동네 이름 — 예: 역삼동"
+                    className="input-base min-w-0 flex-1"
+                  />
+                  <div
+                    onClick={confirmDong}
+                    className="flex-none cursor-pointer rounded-[9px] bg-[#1f8a4c] px-3 py-[7px] text-[12.5px] font-extrabold text-white hover:brightness-105"
+                  >
+                    확정
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
