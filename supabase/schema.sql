@@ -749,6 +749,7 @@ declare
   v_balance int;
   v_title text;
   v_nickname text;
+  v_host_id uuid;
 begin
   select group_buy_id, user_id, amount_due, is_paid
     into v_group_buy_id, v_user_id, v_amount, v_is_paid
@@ -767,17 +768,28 @@ begin
     raise exception '정산 총액이 아직 확정되지 않았습니다';
   end if;
 
-  select balance into v_balance from public.wallets where user_id = v_user_id for update;
-  if v_balance < v_amount then
-    raise exception '잔액이 부족합니다';
+  select host_id, title into v_host_id, v_title from public.group_buys where id = v_group_buy_id;
+
+  -- 주최자가 자기 몫을 결제하면 자기 지갑에서 빼서 자기 지갑에 넣는 무의미한 이동이라
+  -- 잔액·거래내역을 아예 건드리지 않는다 (#125). 입금 체크만 한다.
+  if v_user_id <> v_host_id then
+    select balance into v_balance from public.wallets where user_id = v_user_id for update;
+    if v_balance < v_amount then
+      raise exception '잔액이 부족합니다';
+    end if;
+
+    update public.wallets set balance = balance - v_amount where user_id = v_user_id;
+    insert into public.wallet_transactions (user_id, kind, amount, group_buy_id, title)
+    values (v_user_id, 'pay', -v_amount, v_group_buy_id, v_title || ' 정산');
+
+    -- 참여자가 낸 돈은 주최자 지갑으로 들어간다 — 이게 없으면 앱 안에서 돈이 증발한다 (#125)
+    insert into public.wallets (user_id, balance) values (v_host_id, v_amount)
+      on conflict (user_id) do update set balance = public.wallets.balance + excluded.balance;
+    insert into public.wallet_transactions (user_id, kind, amount, group_buy_id, title)
+    values (v_host_id, 'receive', v_amount, v_group_buy_id, v_title || ' 정산 입금');
   end if;
 
-  update public.wallets set balance = balance - v_amount where user_id = v_user_id;
   update public.participations set is_paid = true, paid_at = now() where id = p_participation_id;
-
-  select title into v_title from public.group_buys where id = v_group_buy_id;
-  insert into public.wallet_transactions (user_id, kind, amount, group_buy_id, title)
-  values (v_user_id, 'pay', -v_amount, v_group_buy_id, v_title || ' 정산');
 
   -- 문구는 lib/sys-messages.ts 의 sysText.paid(who, amount) 와 맞춘다.
   select nickname into v_nickname from public.profiles where id = v_user_id;
@@ -875,6 +887,8 @@ declare
   v_status  text;
   v_title   text;
   v_refund  record;
+  v_host_take int;
+  v_host_balance int;
 begin
   select host_id, status, title into v_host_id, v_status, v_title
   from public.group_buys where id = p_group_buy_id for update;
@@ -898,7 +912,7 @@ begin
   -- (계좌·토스로 낸 사람은 앱 밖 송금이라 주최자가 직접 돌려줘야 한다 — 아래 안내 메시지).
   for v_refund in
     select user_id, -amount as amt from public.wallet_transactions
-    where group_buy_id = p_group_buy_id and kind = 'pay'
+    where group_buy_id = p_group_buy_id and kind = 'pay' and user_id <> v_host_id
   loop
     update public.wallets set balance = balance + v_refund.amt where user_id = v_refund.user_id;
     insert into public.wallet_transactions (user_id, kind, amount, group_buy_id, title)
@@ -910,11 +924,27 @@ begin
               || to_char(v_refund.amt, 'FM999,999,999') || '원 환불됐어요', 'dealId', p_group_buy_id));
   end loop;
 
+  -- 환불한 돈은 주최자 지갑에 이미 들어와 있다 (pay_with_wallet #125) — 같은 금액을 되가져와야
+  -- 앱 안에서 돈이 복사되지 않는다.
+  select coalesce(sum(amount), 0) into v_host_take from public.wallet_transactions
+  where group_buy_id = p_group_buy_id and kind = 'receive' and user_id = v_host_id;
+  if v_host_take > 0 then
+    -- wallets.balance 에 check(balance >= 0) 이 있어 이미 써버렸으면 있는 만큼만 회수한다.
+    -- ponytail: 부족분은 앱 밖에서 정리 — 모자란 채로 취소를 막지는 않는다.
+    select balance into v_host_balance from public.wallets where user_id = v_host_id for update;
+    v_host_take := least(coalesce(v_host_balance, 0), v_host_take);
+    if v_host_take > 0 then
+      update public.wallets set balance = balance - v_host_take where user_id = v_host_id;
+      insert into public.wallet_transactions (user_id, kind, amount, group_buy_id, title)
+      values (v_host_id, 'pay', -v_host_take, p_group_buy_id, v_title || ' 취소 환불');
+    end if;
+  end if;
+
   -- 앱 밖(계좌·토스)으로 낸 사람이 있으면 채팅방에 환불 안내를 남긴다.
   -- 문구는 lib/sys-messages.ts 의 sysText.cancelRefundOffApp() 와 맞춘다.
   if exists (
     select 1 from public.participations pt
-    where pt.group_buy_id = p_group_buy_id and pt.is_paid
+    where pt.group_buy_id = p_group_buy_id and pt.is_paid and pt.user_id <> v_host_id
       and not exists (select 1 from public.wallet_transactions w
                       where w.group_buy_id = p_group_buy_id and w.kind = 'pay' and w.user_id = pt.user_id)
   ) then
