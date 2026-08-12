@@ -15,8 +15,9 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  // Supabase 가 링크 만료·재사용 등을 error 쿼리로 붙여 보낸다
-  const linkError = searchParams.get("error_description") ?? searchParams.get("error");
+  // Supabase 가 링크 만료·재사용 등을 error 쿼리로 붙여 보낸다 (이때 token_hash 는 없다)
+  const errorCode = searchParams.get("error_code");
+  const linkError = errorCode ?? searchParams.get("error_description") ?? searchParams.get("error");
 
   if (!linkError) {
     const supabase = await createClient();
@@ -33,6 +34,7 @@ export async function GET(request: Request) {
   }
 
   // 이메일 인증 실패와 소셜 로그인 실패를 구분해서 알린다
-  const kind = tokenHash || type ? "email" : "oauth";
+  // 만료·재사용 링크는 token_hash 없이 error_code=otp_expired 만 달고 온다
+  const kind = tokenHash || type || errorCode === "otp_expired" ? "email" : "oauth";
   return NextResponse.redirect(`${base}/?auth_error=${kind}`);
 }
