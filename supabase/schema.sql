@@ -1212,4 +1212,4 @@ create policy receipts_upload on storage.objects for insert to authenticated
 -- ─────────────────────────────────────────────
 
 -- 이름은 UI(components/views/chat.tsx)의 라운지 표기와 맞춘다.
-insert into chat_rooms (type, name) values ('lounge', '역삼동 라운지');
+insert into chat_rooms (type, name) values ('lounge', '크래프톤 라운지');
