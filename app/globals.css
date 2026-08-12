@@ -272,3 +272,69 @@ button {
 .field-error:focus {
   border-color: #e14e2b;
 }
+
+/* ── 움직임 (#174) ─────────────────────────────────────── */
+
+/**
+ * 전표 인쇄 — 프린터 슬롯에서 종이가 위에서부터 밀려 나오는 모양.
+ * clip-path 로 위→아래로 드러내고, 종이를 살짝 아래로 내보낸다.
+ */
+@keyframes print-out {
+  0% {
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(-10px);
+  }
+  60% {
+    clip-path: inset(0 0 0 0);
+    transform: translateY(2px);
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    transform: translateY(0);
+  }
+}
+.card-print {
+  animation: print-out 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/**
+ * 파쇄 — 세로 조각으로 갈리면서 아래로 빨려 들어간다.
+ * mask 로 세로 줄무늬를 입혀 조각처럼 보이게 하고, 아래를 축으로 scaleY 를 0 으로 접는다.
+ */
+@keyframes shred-down {
+  0% {
+    transform: translateY(0) scaleY(1);
+    opacity: 1;
+  }
+  35% {
+    transform: translateY(4px) scaleY(0.96);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(18px) scaleY(0);
+    opacity: 0;
+  }
+}
+.card-shred {
+  transform-origin: bottom center;
+  pointer-events: none;
+  animation: shred-down 0.55s cubic-bezier(0.6, 0, 0.9, 0.4) forwards;
+  -webkit-mask-image: repeating-linear-gradient(
+    90deg,
+    #000 0 7px,
+    rgba(0, 0, 0, 0.25) 7px 9px
+  );
+  mask-image: repeating-linear-gradient(90deg, #000 0 7px, rgba(0, 0, 0, 0.25) 7px 9px);
+}
+
+/* 움직임을 줄이도록 설정한 사용자에게는 애니메이션을 걸지 않는다 */
+@media (prefers-reduced-motion: reduce) {
+  .card-print,
+  .card-shred,
+  .mark-pulse {
+    animation: none;
+  }
+  .card-shred {
+    opacity: 0;
+  }
+}

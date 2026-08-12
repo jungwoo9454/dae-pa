@@ -3,6 +3,7 @@
 import { Banknote, CreditCard, Coins, ReceiptText, Wallet, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Toggle } from "@/components/ui";
+import { useCountUp } from "@/lib/use-count-up";
 import { fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 
@@ -22,6 +23,8 @@ const TX_ICON: Record<string, LucideIcon> = {
 
 export default function PayView() {
   const balance = useStore((s) => s.balance);
+  // 금고 LED — 들어오면 0 에서, 충전·출금 뒤엔 직전 금액에서 굴려 올린다 (#174)
+  const shownBalance = useCountUp(balance);
   const topupOpen = useStore((s) => s.topupOpen);
   const topupAmt = useStore((s) => s.topupAmt);
   const topupResult = useStore((s) => s.topupResult);
@@ -76,7 +79,7 @@ export default function PayView() {
                 className="tnum text-[45px] font-bold text-[#7ce28c]"
                 style={{ textShadow: "0 0 12px rgba(124,226,140,.5)" }}
               >
-                {balance.toLocaleString("ko-KR")}
+                {shownBalance.toLocaleString("ko-KR")}
               </span>
               <span className="text-[17px] text-[#7ce28c] opacity-70"> 원</span>
             </div>

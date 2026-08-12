@@ -1,11 +1,12 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DealCard from "@/components/deal-card";
 import { statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
 import { fetchDeals } from "@/lib/supabase/queries";
 import { useRealtimeDeals } from "@/lib/use-realtime-deals";
+import type { Deal } from "@/lib/types";
 
 const CATS = ["전체", "식료품", "배달음식", "생활용품", "대량구매", "기타"];
 const STATUS_FILTERS = ["전체", "모집중", "마감임박"];
@@ -57,6 +58,57 @@ export default function HomeView() {
     if (statusFilter === "마감임박") return key === "closing";
     return true;
   });
+  const dealKey = deals.map((d) => d.id).join(",");
+
+  /**
+   * 삭제된 카드는 잠깐 더 들고 있다가 파쇄 애니메이션을 끝내고 버린다 (#174).
+   * 있던 자리에서 갈려야 해서 사라지기 직전 index 를 같이 기억한다.
+   *
+   * 판정 기준은 화면 목록(cards)이 아니라 **원본 목록(deals)** 이다 — 카테고리 필터를 바꿔서
+   * 화면에서 빠진 것뿐인데 파쇄기를 돌리면 안 된다.
+   */
+  const [shredding, setShredding] = useState<{ deal: Deal; index: number }[]>([]);
+  const prevCards = useRef<Deal[]>([]);
+  const prevDealIds = useRef<number[] | null>(null);
+  useEffect(() => {
+    const prevIds = prevDealIds.current;
+    if (prevIds === null) return; // 첫 렌더는 비교 대상이 없다
+    const removed = prevIds.filter((id) => !deals.some((d) => d.id === id));
+    if (!removed.length) return;
+    const gone = prevCards.current
+      .map((deal, index) => ({ deal, index }))
+      .filter(({ deal }) => removed.includes(deal.id));
+    if (!gone.length) return;
+    setShredding((s) => [...s, ...gone]);
+    const t = setTimeout(
+      () => setShredding((s) => s.filter((x) => !gone.some((g) => g.deal.id === x.deal.id))),
+      560,
+    );
+    return () => clearTimeout(t);
+    // deals 는 매 렌더 새 배열이라 id 목록으로 비교한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealKey]);
+
+  /**
+   * 직전 목록 기록 — **반드시 위 감지 effect 보다 뒤에** 선언해야 한다.
+   * 같은 커밋에서 effect 는 선언 순서대로 도니까, 감지 쪽은 아직 옛 값을 본다.
+   * (렌더 중에 갱신하면 감지 시점엔 이미 새 값이라 사라진 카드를 못 찾는다.)
+   */
+  useEffect(() => {
+    prevCards.current = cards;
+    prevDealIds.current = deals.map((d) => d.id);
+  });
+
+  // 파쇄 중인 카드를 원래 자리에 도로 끼워 넣는다
+  const display = useMemo(() => {
+    if (!shredding.length) return cards.map((deal) => ({ deal, shred: false }));
+    const list = cards.map((deal) => ({ deal, shred: false }));
+    for (const { deal, index } of shredding) {
+      list.splice(Math.min(index, list.length), 0, { deal, shred: true });
+    }
+    return list;
+  }, [cards, shredding]);
+
   return (
     <div className="flex-1 overflow-auto px-10 pb-12">
       <div className="flex items-center gap-6 pb-6 pt-8">
@@ -119,8 +171,16 @@ export default function HomeView() {
         </div>
       ) : (
         <div className="grid gap-[26px]" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(330px,1fr))" }}>
-          {cards.map((d) => (
-            <DealCard key={d.id} deal={d} now={now} />
+          {display.map(({ deal, shred }, i) => (
+            // 새로 붙는 카드만 인쇄된다 — 이미 있던 카드는 다시 mount 되지 않아 애니메이션이 재생되지 않는다.
+            // 첫 진입에는 전부 mount 되므로 index 만큼 시차를 줘 차례로 인쇄되는 것처럼 보인다.
+            <div
+              key={deal.id}
+              className={shred ? "card-shred" : "card-print"}
+              style={shred ? undefined : { animationDelay: `${Math.min(i, 11) * 55}ms` }}
+            >
+              <DealCard deal={deal} now={now} />
+            </div>
           ))}
         </div>
       )}

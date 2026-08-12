@@ -64,6 +64,17 @@ export function useRealtimeDeals(): void {
         },
       },
       {
+        // 삭제도 실시간으로 빠져야 홈에서 파쇄 애니메이션이 돈다 (#174).
+        // group_buys 는 replica identity 가 기본(PK)이라 old 에는 id 만 실려 온다 — 그거면 충분하다.
+        event: "DELETE",
+        table: "group_buys",
+        handler: (payload) => {
+          const gone = (payload.old as { id?: number }).id;
+          if (gone == null) return;
+          useStore.setState((st) => ({ deals: st.deals.filter((d) => d.id !== gone) }));
+        },
+      },
+      {
         event: "INSERT",
         table: "group_buys",
         handler: () => {
