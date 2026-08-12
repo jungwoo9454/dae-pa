@@ -308,7 +308,15 @@ export default function SettleView() {
               </span>
             </div>
 
-            {mine && !mine.is_paid && (
+            {/* 총액 확정 전에는 결제·셀프체크를 막는다 — amount_due 가 아직 null 이라
+                즉시결제는 서버가 거부해 alert 만 뜨고, 셀프체크는 confirm_self_paid 가
+                그대로 통과시켜 "안 낸 돈"이 입금완료로 굳는다(주최자 손실). 확정 후에만 연다. */}
+            {mine && !mine.is_paid && !settlement?.confirmed && (
+              <div className="mt-3.5 text-center text-[13px] text-[#8b8478]">
+                총액이 확정되면 결제할 수 있어요
+              </div>
+            )}
+            {mine && !mine.is_paid && settlement?.confirmed && (
               <>
                 {isHost ? (
                   <>

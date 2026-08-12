@@ -835,6 +835,11 @@ begin
   if v_is_paid then
     raise exception '이미 입금 완료된 참여입니다';
   end if;
+  -- 정산 확정 전엔 amount_due 가 null 이라 낼 금액이 없다 — 셀프 체크로 "입금완료"를 만들면
+  -- 안 낸 돈이 완료로 굳어 주최자가 손실을 본다. pay_with_wallet 과 같은 가드를 둔다.
+  if v_amount is null then
+    raise exception '정산 총액이 아직 확정되지 않았습니다';
+  end if;
 
   update public.participations set is_paid = true, paid_at = now() where id = p_participation_id;
 
