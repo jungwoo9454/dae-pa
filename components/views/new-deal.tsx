@@ -1,9 +1,8 @@
 "use client";
 
-import { Coins, Timer } from "lucide-react";
 import ImageUpload from "@/components/image-upload";
 import { ProgressBar } from "@/components/ui";
-import { CAT_EMOJI, CAT_ICON, MIN_DEADLINE_MIN, commaFmt, digits, fmt } from "@/lib/deal";
+import { CAT_ICON, MIN_DEADLINE_MIN, commaFmt, digits, fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Category } from "@/lib/types";
 
@@ -11,6 +10,7 @@ const FORM_CATS: Category[] = ["식료품", "배달음식", "생활용품", "대
 
 export default function NewDealView() {
   const form = useStore((s) => s.form);
+  const me = useStore((s) => s.me);
   const setForm = useStore((s) => s.setForm);
   // const submitNew = useStore((s) => s.submitNew); //zustand 방식
   const isDelivery = form.cat === "배달음식";
@@ -106,190 +106,195 @@ export default function NewDealView() {
     (isDelivery ? minOrderN > 0 && form.deliveryFee.trim() !== "" && !!form.store_link : totalN > 0);
 
   return (
-    <div className="flex-1 overflow-auto px-7 py-5">
-      <div className="flex max-w-[940px] flex-wrap items-start gap-[26px]">
-        <div className="flex min-w-[320px] flex-[1.3] flex-col gap-[13px]">
-          <div>
-            <div className="mb-2 font-extrabold">카테고리</div>
-            <div className="flex flex-wrap gap-2">
-              {FORM_CATS.map((c) => {
-                const Icon = CAT_ICON[c];
-                return (
-                  <div
-                    key={c}
-                    onClick={() => setForm({ cat: c })}
-                    className={`flex cursor-pointer items-center gap-1.5 rounded-full border-[1.5px] px-4 py-2 text-[13.5px] font-bold hover:border-[#1f8a4c] ${
-                      form.cat === c
-                        ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
-                        : "border-[#d5e6d6] bg-white text-[#4d6d58]"
-                    }`}
-                  >
-                    <Icon aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
-                    {c}
-                  </div>
-                );
-              })}
-            </div>
+    <div className="flex-1 overflow-auto px-9 py-8">
+      <div className="mx-auto flex w-[960px] justify-center gap-[30px]">
+        <div className="receipt w-[540px] flex-none p-7 text-[13px]">
+          <div className="rule-dash border-b border-t-0 pb-3 text-[13px] font-extrabold tracking-[.2em]">
+            발행 정보 입력
           </div>
+
+          <div className="mt-4 text-[11.5px] font-bold text-[#8b8478]">카테고리</div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {FORM_CATS.map((c) => {
+              const Icon = CAT_ICON[c];
+              return (
+                <div
+                  key={c}
+                  onClick={() => setForm({ cat: c })}
+                  className={`chip flex items-center gap-1.5 px-3.5 py-[7px] text-xs ${
+                    form.cat === c ? "chip-on" : ""
+                  }`}
+                >
+                  <Icon aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
+                  {c}
+                </div>
+              );
+            })}
+          </div>
+
           <input
             value={form.title}
             onChange={(e) => setForm({ title: e.target.value })}
             placeholder="제목 — 예: 제주 감귤 10kg 같이 사요"
-            className="input-base"
+            className="field font-sans-ko mt-4 h-[46px] w-full font-bold"
           />
           <textarea
             value={form.description}
             onChange={(e) => setForm({ description: e.target.value })}
-            placeholder={"설명 (선택) — 품목·수량도 줄바꿈으로 적어주세요\n예: 대파 5단 · 감자 3kg"}
+            placeholder={"설명·품목 (선택) — 예: 대파 5단 · 감자 3kg"}
             rows={3}
-            className="input-base resize-none"
+            className="field field-sub font-sans-ko mt-2 w-full resize-none"
           />
+
           {isDelivery && (
-            <>
+            <div className="mt-3.5 border-[1.5px] border-dashed border-[#e14e2b] p-4">
+              <div className="text-[11px] font-bold tracking-[.1em] text-[#e14e2b]">
+                배달음식 전용 필드
+              </div>
               <input
                 value={form.store_link}
                 onChange={(e) => setForm({ store_link: e.target.value })}
                 placeholder="가격/메뉴 링크"
-                className="input-base"
+                className="field field-sub mt-2.5 h-10 w-full text-xs"
               />
-              <div className="flex gap-2.5">
+              <div className="mt-2 flex gap-2">
                 <input
                   value={commaFmt(form.minOrderAmount)}
                   onChange={(e) => setForm({ minOrderAmount: digits(e.target.value) })}
-                  placeholder="최소 주문 금액 (원)"
-                  className="input-base flex-1"
+                  placeholder="최소 주문 금액"
+                  className="field field-sub tnum h-10 flex-1 text-xs"
                 />
                 <input
                   value={commaFmt(form.deliveryFee)}
                   onChange={(e) => setForm({ deliveryFee: digits(e.target.value) })}
-                  placeholder="배달비 (원)"
-                  className="input-base flex-1"
+                  placeholder="배달비"
+                  className="field field-sub tnum h-10 flex-1 text-xs"
                 />
               </div>
-              <div className="rounded-[10px] bg-[#f0f7ee] px-3 py-[9px] text-[12.5px] text-[#4d6d58]">
-                배달음식 공구 · 배달비도 자동 1/N · 메뉴는 채팅방에서 취합 · 주문 후 실제 금액으로 수정
-                가능
-              </div>
-            </>
+            </div>
           )}
-          <div className="flex gap-2.5">
-            <input
-              value={commaFmt(form.total)}
-              onChange={(e) => setForm({ total: digits(e.target.value) })}
-              placeholder={isDelivery ? "예상 총 금액 (원) · 선택" : "예상 총 금액 (원)"}
-              className="input-base flex-1"
-            />
-            <input
-              value={form.goal}
-              onChange={(e) => setForm({ goal: digits(e.target.value) })}
-              placeholder="목표 인원"
-              className="input-base flex-1"
-            />
+
+          <div className="mt-3.5 flex gap-2.5">
+            <div className="flex-1">
+              <div className="text-[11.5px] font-bold text-[#8b8478]">
+                예상 총 금액{isDelivery ? " (선택)" : ""}
+              </div>
+              <input
+                value={commaFmt(form.total)}
+                onChange={(e) => setForm({ total: digits(e.target.value) })}
+                placeholder="0"
+                className="field tnum mt-[7px] h-11 w-full text-base font-bold"
+              />
+            </div>
+            <div className="flex-1">
+              <div className="text-[11.5px] font-bold text-[#8b8478]">목표 인원</div>
+              <input
+                value={form.goal}
+                onChange={(e) => setForm({ goal: digits(e.target.value) })}
+                placeholder="0"
+                className="field tnum mt-[7px] h-11 w-full text-base font-bold"
+              />
+            </div>
           </div>
-          <div className="text-[11.5px] text-[#8aa392]">
-            예상 총 금액이에요 — 정산을 시작할 때 실제 금액으로 확정돼요
+
+          <div className="mt-3.5 text-[11.5px] font-bold text-[#8b8478]">
+            마감까지 <span className="font-normal text-[#9c9ca3]">(최소 {MIN_DEADLINE_MIN}분)</span>
           </div>
-          <div className="flex gap-2.5">
+          <div className="mt-2 flex gap-1.5">
+            {[MIN_DEADLINE_MIN, 15, 30, 60].map((m) => (
+              <div
+                key={m}
+                onClick={() => setForm({ mins: String(m) })}
+                className={`chip px-4 py-2 text-xs ${form.mins === String(m) ? "chip-on" : ""}`}
+              >
+                {m}분
+              </div>
+            ))}
             <input
               value={form.mins}
               onChange={(e) => setForm({ mins: digits(e.target.value) })}
-              placeholder={`마감까지 (분) — 최소 ${MIN_DEADLINE_MIN}분`}
-              className="input-base flex-1"
-            />
-            <input
-              value={form.place}
-              onChange={(e) => setForm({ place: e.target.value })}
-              placeholder="수령 장소/방법"
-              className="input-base flex-[1.4]"
+              placeholder="직접 입력(분)_"
+              className="field field-sub tnum h-9 flex-1 py-0 text-xs"
             />
           </div>
           {minsTooShort && (
-            <div className="text-[11.5px] font-bold text-[#b3261e]">
-              마감은 최소 {MIN_DEADLINE_MIN}분 뒤로 잡아주세요 — 이웃이 보고 참여할 시간이 필요해요
+            <div className="mt-2 text-[11.5px] font-bold text-[#e14e2b]">
+              마감은 최소 {MIN_DEADLINE_MIN}분 뒤로 잡아주세요
             </div>
           )}
-          <div className="flex flex-col gap-1.5">
-            <div className="text-[12.5px] text-[#4d6d58]">대표 사진 (선택) — 없으면 카테고리 이모지로 보여요</div>
+
+          <input
+            value={form.place}
+            onChange={(e) => setForm({ place: e.target.value })}
+            placeholder="수령 장소/방법"
+            className="field font-sans-ko mt-3.5 h-11 w-full"
+          />
+
+          <div className="mt-2">
             <ImageUpload
               kind="deals"
               value={form.imageUrl || null}
               onChange={(url) => setForm({ imageUrl: url ?? "" })}
-              label="대표 사진 첨부"
-              height={140}
+              label="대표 사진 첨부 — 없으면 카테고리 인장"
+              height={92}
             />
           </div>
-        <div className="flex gap-2">
-          {[MIN_DEADLINE_MIN, 15, 30, 60].map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setForm({ mins: String(m) })}
-              className={`rounded-lg border px-3 py-2 text-sm font-bold ${
-                form.mins === String(m)
-                  ? "border-[#1f8a4c] bg-[#1f8a4c] text-white"
-                  : "border-[#d5e6d6] bg-white text-[#4d6d58]"
-              }`}
-            >
-              {m}분
-            </button>
-          ))}
-        </div>
-        
-          <div className="flex items-start gap-1.5 text-xs text-[#8aa392]">
-            <Coins aria-hidden className="mt-[.15em] h-[1.15em] w-[1.15em] shrink-0" />
-            <span>총 금액은 정산 시작 전까지 언제든 수정할 수 있어요 (변경 시 전원 알림)</span>
-          </div>
+
           <div
             onClick={submitNew}
-            className={`rounded-xl p-[13px] text-center text-[15px] font-extrabold ${
-              canSubmit
-                ? "cursor-pointer bg-[#1f8a4c] text-white hover:brightness-105"
-                : "cursor-default bg-[#e6efe4] text-[#8a9a8e]"
+            className={`mt-[18px] py-3.5 text-[15px] tracking-[.14em] ${
+              canSubmit ? "key key-primary" : "key key-off"
             }`}
           >
-            올리기 → 채팅방 자동 생성
+            [ 전표 발행 ]
           </div>
         </div>
 
-        <div className="flex w-[300px] flex-none flex-col gap-2">
-          <div className="text-[12.5px] font-extrabold text-[#6b8573]">미리보기 · 실시간</div>
-          <div className="flex flex-col gap-2.5 rounded-2xl border border-[#dbe9da] bg-white p-4 shadow-[0_6px_18px_rgba(18,70,38,.08)]">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e9f6ec] text-[22px]">
-                {CAT_EMOJI[form.cat]}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="overflow-hidden text-ellipsis whitespace-nowrap font-extrabold">
-                  {form.title || "제목을 입력하면 여기 보여요"}
-                </div>
-                <div className="text-xs text-[#6b8573]">{form.cat} · 나</div>
-              </div>
-              <span className="badge" style={{ background: "#e9f6ec", color: "#166b3a" }}>
-                모집중
-              </span>
+        {/* 실시간 인쇄 미리보기 */}
+        <div className="w-[360px] flex-none">
+          <div className="mb-2.5 text-[11px] tracking-[.14em] text-[#8b8478]">
+            // 실시간 인쇄 미리보기
+          </div>
+          <div className="receipt px-[22px] pb-[18px] pt-[22px]">
+            <div className="receipt-head text-[13px]">＊ 대파 공구 ＊</div>
+            <div className="mt-1.5 text-center text-[10.5px] text-[#8b8478]">
+              {form.cat} ｜ 주최: {me?.nickname ?? "나"}
             </div>
-            <ProgressBar pct={goalN > 0 ? Math.min(100, Math.round(100 / goalN)) : 0} />
-            <div className="flex justify-between text-[13px]">
-              <span>
-                <b>1</b>
-                <span className="text-[#6b8573]">/{goalN || "?"}명</span>
-              </span>
-              <span className="inline-flex items-center gap-1 font-bold text-[#1f8a4c]">
-                <Timer aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> {parseInt(form.mins) || 60}분
-              </span>
+            <div className="rule-dash mt-3" />
+            <div className="font-sans-ko mt-3.5 text-[17px] font-black leading-[1.4]">
+              {form.title || "제목을 입력하면 여기 보여요"}
             </div>
-            <div className="text-[13px] text-[#6b8573]">
-              1인{" "}
-              <b className="text-[15px] text-[#17301f]">
+            <div className="mt-3 flex flex-col gap-2 text-[13px] text-[#6e675e]">
+              <div className="leader">
+                <span>수령지</span>
+                <i />
+                <b>{form.place || "미정"}</b>
+              </div>
+              <div className="leader">
+                <span>참여</span>
+                <i />
+                <b>1/{goalN || "?"}명</b>
+              </div>
+              <div className="leader">
+                <span>마감까지</span>
+                <i />
+                <b className="tnum">{parseInt(form.mins) || 60}분</b>
+              </div>
+            </div>
+            <div className="mt-3.5">
+              <ProgressBar pct={goalN > 0 ? Math.min(100, Math.round(100 / goalN)) : 0} />
+            </div>
+            <div className="rule-dash mt-3.5 flex items-baseline pt-3">
+              <span className="tnum text-[11px] text-[#8b8478]">
+                1인당{goalN > 0 && previewShared > 0 ? ` (${previewShared.toLocaleString("ko-KR")}÷${goalN})` : ""}
+              </span>
+              <span className="tnum ml-auto text-[23px] font-black">
                 {goalN > 0 && previewShared > 0 ? fmt(Math.ceil(previewShared / goalN)) : "— 원"}
-              </b>
-              <span className="ml-1 text-[11px] text-[#8aa392]">· 목표 인원 기준 예상</span>
+              </span>
             </div>
+            <div className="barcode mt-3" />
           </div>
-          <div className="text-xs leading-[1.6] text-[#8aa392]">
-            올리는 즉시 공구 채팅방이 생기고, 동네 라운지에 카드로 공유할 수 있어요. 1인 금액은 실제
-            참여자 수에 맞춰 실시간으로 다시 계산돼요.
-          </div>
+          <div className="receipt-edge" />
         </div>
       </div>
     </div>

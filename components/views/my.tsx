@@ -1,8 +1,7 @@
 "use client";
 
-import { Ban } from "lucide-react";
-import { type CSSProperties, useEffect, useState } from "react";
-import { StatusBadge } from "@/components/ui";
+import { useEffect, useState } from "react";
+import { ProgressBar, StatusBadge, receiptNo } from "@/components/ui";
 import { fmt, perAmount, perLabel, profileStats, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { fetchDeals } from "@/lib/supabase/queries";
@@ -34,129 +33,138 @@ export default function MyView() {
   const myDeals = deals.filter((x) => x.me && (!mySearch || x.title.includes(mySearch)));
 
   return (
-    <div className="max-w-[860px] flex-1 overflow-auto px-6 py-5">
-      <input
-        value={mySearch}
-        onChange={(e) => setMySearch(e.target.value)}
-        placeholder="내 공구 검색"
-        className="mb-4 w-[280px] rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white px-3.5 py-[9px] text-[13.5px] outline-none"
-      />
-      {/* 프로필 팝오버에 있던 참여·주최 수를 여기로 옮겼다 (#84) */}
-      <div className="mb-4 flex gap-2.5">
-        <div className="flex-1 rounded-[12px] border border-[#dbe9da] bg-white px-4 py-3">
-          <div className="text-[12px] text-[#6b8573]">참여한 공구</div>
-          <div className="text-[19px] font-extrabold">{joined}</div>
+    <div className="flex-1 overflow-auto px-9 py-8">
+      <div className="mx-auto w-[820px]">
+        <div className="mb-4 flex items-baseline gap-3.5">
+          <span className="font-sans-ko text-2xl font-black">내 거래 원장</span>
+          <span className="text-xs text-[#77777f]">
+            주최 {hosted} · 참여 {joined}
+          </span>
+          <input
+            value={mySearch}
+            onChange={(e) => setMySearch(e.target.value)}
+            placeholder="내 공구 검색_"
+            className="field ml-auto h-10 w-[220px] text-[13px]"
+          />
         </div>
-        <div className="flex-1 rounded-[12px] border border-[#dbe9da] bg-white px-4 py-3">
-          <div className="text-[12px] text-[#6b8573]">내가 연 공구</div>
-          <div className="text-[19px] font-extrabold">{hosted}</div>
-        </div>
-      </div>
-      <div className="flex flex-col gap-2.5">
-        {myDeals.map((m) => {
-          const deletable = m.mine && m.status === "recruiting";
-          const showDeleteDialog = askDeleteId === m.id;
-          const st = statusOf(m, now);
-          const dimmed = st.key === "closed";
 
-          return (
-            <div key={m.id}>
-              {/* 상태 색은 인라인 style 대신 CSS 변수(--bc)로 넘긴다 — 인라인 borderColor 는
-                  hover:border-* 를 항상 이겨서 호버 테두리가 죽는다 */}
-              <div
-                onClick={() => openDeal(m.id)}
-                className={`flex cursor-pointer items-center gap-3.5 rounded-[14px] border border-[var(--bc)] px-4 py-3.5 ${
-                  dimmed ? "bg-[#f4f6f5]" : "bg-white hover:border-[#1f8a4c] hover:bg-[#f9fdf9]"
-                }`}
-                style={{ "--bc": st.fg } as CSSProperties}
-              >
-                <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] text-xl" style={{ backgroundColor: st.bg }}>
-                  {m.emoji}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <b style={{ color: st.fg }}>{m.title}</b>
-                    <StatusBadge s={st} />
-                    <span className="text-[11.5px]" style={{ color: dimmed ? "#b4b8b7" : "#8aa392" }}>{m.mine ? "주최" : "참여"}</span>
-                  </div>
-                  <div className="mt-[3px] text-[12.5px]" style={{ color: dimmed ? "#8a9089" : "#6b8573" }}>
-                    {m.joined}/{m.goal}명 · ⏱ {remainLabel(m, now)} · {perLabel(m)} {fmt(perAmount(m))}
-                  </div>
-                </div>
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    goRoom("d" + m.id);
-                  }}
-                  className="cursor-pointer rounded-[9px] border-[1.5px] border-[#cfe4d0] px-3 py-[7px] text-[13px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
-                >
-                  채팅
-                </div>
-                {m.status === "settling" && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openSettle(m.id);
-                    }}
-                    className="cursor-pointer rounded-[9px] bg-[#1f8a4c] px-3 py-2 text-[13px] font-extrabold text-white hover:bg-[#187741]"
+        <div className="receipt px-7 py-6">
+          <div className="rule-dash receipt-head border-b border-t-0 pb-3 text-[13px] tracking-[.4em]">
+            ＊ {me?.nickname ?? "파티원"} 님의 거래 기록 ＊
+          </div>
+
+          {myDeals.length === 0 && (
+            <div className="py-10 text-center text-[13px] text-[#8b8478]">기록된 거래가 없어요</div>
+          )}
+
+          {myDeals.map((m) => {
+            const deletable = m.mine && m.status === "recruiting";
+            const showDeleteDialog = askDeleteId === m.id;
+            const st = statusOf(m, now);
+            const dead = st.key === "closed" || st.key === "canceled";
+            const pct = Math.min(100, Math.round((m.joined / m.goal) * 100));
+
+            return (
+              <div key={m.id} className="rule-dash border-b border-t-0 py-[18px] last:border-b-0">
+                <div className="flex items-center gap-2 text-xs">
+                  <span
+                    className={`px-2.5 py-[3px] font-bold ${
+                      m.mine ? "bg-[#1b1917] text-white" : "border border-[#8b8478] text-[#6e675e]"
+                    }`}
                   >
-                    정산하기
-                  </div>
-                )}
-                {deletable && !showDeleteDialog && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setAskDeleteId(m.id);
-                      setDeleteErr(null);
-                    }}
-                    className="flex cursor-pointer items-center gap-1 rounded-[9px] border-[1.5px] border-[#d5e6d6] px-3 py-2 text-[13px] font-bold text-[#4d6d58] hover:border-[#b3261e] hover:text-[#b3261e]"
+                    {m.mine ? "주최" : "참여"}
+                  </span>
+                  <StatusBadge s={st} />
+                  <span className="text-[#8b8478]">{receiptNo(m.id, m.created_at)}</span>
+                  <span className="tnum ml-auto text-[13px] text-[#6e675e]">
+                    {m.joined}/{m.goal}명 · <span style={{ color: st.fg }}>{remainLabel(m, now)}</span> ·{" "}
+                    <b className="text-[#1b1917]">{fmt(perAmount(m))}</b>
+                    <span className="text-[#8b8478]"> {perLabel(m)}</span>
+                  </span>
+                </div>
+
+                <div className="mt-2.5 flex items-center gap-3">
+                  <span
+                    onClick={() => openDeal(m.id)}
+                    className={`font-sans-ko cursor-pointer text-[17px] font-extrabold hover:text-[#e14e2b] ${
+                      dead ? "text-[#a29b8e] line-through" : ""
+                    }`}
                   >
-                    <Ban className="h-4 w-4" /> 삭제
+                    {m.title}
+                  </span>
+                  <div className="ml-auto flex gap-1.5 text-xs">
+                    <div onClick={() => goRoom("d" + m.id)} className="key key-line px-3 py-1.5">
+                      [채팅]
+                    </div>
+                    {m.status === "settling" && (
+                      <div
+                        onClick={() => openSettle(m.id)}
+                        className="key px-3 py-1.5 text-white"
+                        style={{ background: "#4a6fa5" }}
+                      >
+                        [정산서 →]
+                      </div>
+                    )}
+                    {deletable && !showDeleteDialog && (
+                      <div
+                        onClick={() => {
+                          setAskDeleteId(m.id);
+                          setDeleteErr(null);
+                        }}
+                        className="key key-line border-[#e14e2b] px-3 py-1.5 text-[#e14e2b] hover:bg-[#e14e2b]"
+                      >
+                        [삭제]
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <ProgressBar pct={pct} color={st.fg} h={7} />
+                </div>
+
+                {showDeleteDialog && (
+                  <div className="mt-3 border-[1.5px] border-dashed border-[#e14e2b] p-3.5">
+                    <div className="text-[13px] font-bold text-[#e14e2b]">
+                      공구를 삭제할까요? 되돌릴 수 없어요.
+                    </div>
+                    {deleteErr && (
+                      <div className="mt-2 text-xs font-bold text-[#e14e2b]">{deleteErr}</div>
+                    )}
+                    <div className="mt-3 flex gap-2">
+                      <div
+                        onClick={async () => {
+                          if (deleting) return;
+                          setDeleting(true);
+                          setDeleteErr(null);
+                          const err = await deleteDeal(m.id);
+                          setDeleting(false);
+                          if (err) setDeleteErr(err);
+                          else setAskDeleteId(null);
+                        }}
+                        className="key key-primary flex-1 py-2 text-[13px]"
+                      >
+                        [ {deleting ? "삭제 중…" : "삭제하기"} ]
+                      </div>
+                      <div
+                        onClick={() => {
+                          setAskDeleteId(null);
+                          setDeleteErr(null);
+                        }}
+                        className="key key-line flex-1 py-2 text-[13px]"
+                      >
+                        [ 그만두기 ]
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-              {showDeleteDialog && (
-                <div className="ml-14 mt-2 rounded-xl bg-[#fdecec] p-3">
-                  <div className="text-[13px] font-extrabold text-[#b3261e]">공구를 삭제할까요?</div>
-                  <div className="mt-1 text-[12px] text-[#8a6a6a]">
-                    되돌릴 수 없어요.
-                  </div>
-                  {deleteErr && (
-                    <div className="mt-2 rounded-[8px] bg-white px-2.5 py-1.5 text-[12px] font-bold text-[#b3261e]">
-                      {deleteErr}
-                    </div>
-                  )}
-                  <div className="mt-2 flex gap-2">
-                    <div
-                      onClick={async () => {
-                        if (deleting) return;
-                        setDeleting(true);
-                        setDeleteErr(null);
-                        const err = await deleteDeal(m.id);
-                        setDeleting(false);
-                        if (err) setDeleteErr(err);
-                        else setAskDeleteId(null);
-                      }}
-                      className="flex-1 cursor-pointer rounded-[10px] bg-[#b3261e] p-2 text-center text-[13px] font-extrabold text-white hover:brightness-110"
-                    >
-                      {deleting ? "삭제 중…" : "삭제하기"}
-                    </div>
-                    <div
-                      onClick={() => {
-                        setAskDeleteId(null);
-                        setDeleteErr(null);
-                      }}
-                      className="flex-1 cursor-pointer rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white p-2 text-center text-[13px] font-bold text-[#4d6d58] hover:border-[#1f8a4c]"
-                    >
-                      그만두기
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+
+          {myDeals.length > 0 && <div className="barcode mt-4" />}
+        </div>
+        <div className="receipt-edge" />
       </div>
     </div>
   );

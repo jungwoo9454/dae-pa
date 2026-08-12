@@ -1,7 +1,6 @@
 "use client";
 
 import { useStore } from "@/lib/store";
-import Sidebar from "./sidebar";
 import TopBar from "./top-bar";
 import ProfilePopover from "./profile-popover";
 import NotiPopover from "./noti-popover";
@@ -23,9 +22,9 @@ export default function App() {
   const notiOpen = useStore((s) => s.notiOpen);
   if (page === "login") return <AuthView />;
   return (
-    <div className="flex h-screen overflow-hidden bg-[#eef4ec] text-[14px] text-[#17301f]">
-      <Sidebar />
-      <div className="relative flex min-w-0 flex-1 flex-col">
+    // 좌측 사이드바 → 상단 단말 바 (#143). 화면은 데스크(회색) 위에 전표로 얹힌다
+    <div className="flex h-screen flex-col overflow-hidden bg-[#e4e4e0] text-[14px] text-[#1b1917]">
+      <div className="relative flex min-h-0 flex-1 flex-col">
         <TopBar />
         {profileOpen && <ProfilePopover />}
         {notiOpen && <NotiPopover />}

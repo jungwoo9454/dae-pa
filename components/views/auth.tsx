@@ -1,6 +1,5 @@
 "use client";
 
-import { MapPin, MessageCircle, ReceiptText, ShoppingBasket } from "lucide-react";
 import { isSubmitEnter } from "@/lib/keys";
 import { useStore } from "@/lib/store";
 
@@ -37,17 +36,6 @@ function GithubMark({ className }: { className?: string }) {
   );
 }
 
-/** 소셜 영역과 이메일 폼을 갈라 주는 섹션 라벨 (#81) */
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-1 flex items-center gap-2.5 text-[11.5px] font-extrabold tracking-[.5px] text-[#6b8573]">
-      <div className="h-px flex-1 bg-[#e2eee2]" />
-      {children}
-      <div className="h-px flex-1 bg-[#e2eee2]" />
-    </div>
-  );
-}
-
 export default function AuthView() {
   const authMode = useStore((s) => s.authMode);
   const auth = useStore((s) => s.auth);
@@ -69,116 +57,89 @@ export default function AuthView() {
     (isSignup ? !!(auth.nick && auth.email && auth.pw && dongOk) : !!(auth.email && auth.pw));
 
   return (
-    <div className="flex h-screen bg-[#eef4ec] text-[14px] text-[#17301f]">
-      <div
-        className="flex w-[44%] min-w-[340px] flex-col justify-center gap-[18px] p-14 text-white"
-        style={{ background: "linear-gradient(160deg,#12311e,#1f8a4c)" }}
-      >
-        <div className="flex items-center gap-4">
-          <img src="/logo-mark-light.svg" alt="" aria-hidden className="h-[74px] w-auto" />
-          <span className="font-jua text-[64px] leading-none">
-            대<span className="text-[#7fdc95]">파</span>
+    <div className="flex min-h-screen items-center justify-center bg-[#e4e4e0] p-8 text-[14px] text-[#1b1917]">
+      <div className="w-[400px]">
+        <div className="mb-5 text-center">
+          <span className="text-[22px] font-bold tracking-[.04em]">
+            DAEPA_POS<span className="text-[#e14e2b]">★</span>
           </span>
         </div>
-        <div className="font-jua text-[22px] text-[#d7efdc]">대용량 파티원 — 같이 사면 이득</div>
-        <div className="mt-2.5 flex flex-col gap-3 text-[14.5px] text-[#bfe3c8]">
-          <div className="flex items-center gap-2.5">
-            <ShoppingBasket aria-hidden className="h-[18px] w-[18px] flex-none" /> 이웃과 대용량으로
-            나눠 사고
-          </div>
-          <div className="flex items-center gap-2.5">
-            <MessageCircle aria-hidden className="h-[18px] w-[18px] flex-none" /> 공구별 채팅방에서
-            편하게 조율하고
-          </div>
-          <div className="flex items-center gap-2.5">
-            <ReceiptText aria-hidden className="h-[18px] w-[18px] flex-none" /> 영수증 인증으로
-            투명하게 1/N 정산
-          </div>
-        </div>
-      </div>
 
-      <div className="flex flex-1 items-center justify-center overflow-auto p-8">
-        <div className="flex w-[360px] flex-col gap-3 rounded-[20px] border border-[#dbe9da] bg-white p-[30px] shadow-[0_14px_36px_rgba(18,70,38,.12)]">
-          <div className="font-jua text-2xl">
-            {isSignup ? "대파 시작하기" : "다시 만나서 반가워요"}
+        <div className="receipt px-8 py-7">
+          <div className="receipt-head text-[13px]">
+            ＊ {isSignup ? "신규 등록" : "단말 로그인"} ＊
           </div>
+          <div className="rule-dash mt-3.5" />
 
           {/* 소셜·이메일 어느 쪽에서 난 오류든 보이도록 카드 위쪽에 둔다 (#81) */}
           {authError && (
-            <div className="rounded-[10px] bg-[#fdecec] px-3 py-2 text-[12.5px] font-bold text-[#b3261e]">
+            <div className="mt-3.5 border-[1.5px] border-[#e14e2b] px-3 py-2 text-[12.5px] font-bold text-[#e14e2b]">
               {authError}
             </div>
           )}
 
           {/* 1) 소셜 — 깃허브·구글 계정으로 바로 시작 */}
-          <SectionLabel>{isSignup ? "간편하게 시작" : "간편 로그인"}</SectionLabel>
+          <div className="mt-4 text-[11px] font-bold tracking-[.14em] text-[#8b8478]">// 간편 시작</div>
           <div
             onClick={() => signInWithOAuth("github")}
-            className="flex cursor-pointer items-center justify-center gap-2 rounded-[11px] bg-[#24292f] p-[11px] font-extrabold text-white hover:brightness-125"
+            className="key key-ink mt-2.5 flex items-center justify-center gap-2 py-3 text-[13.5px]"
           >
             <GithubMark className="h-[18px] w-[18px] flex-none" />
-            깃허브로 3초 만에 시작
+            깃허브로 시작
           </div>
           <div
             onClick={() => signInWithOAuth("google")}
-            className="flex cursor-pointer items-center justify-center gap-2 rounded-[11px] border-[1.5px] border-[#d5e6d6] p-[11px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
+            className="key key-line mt-2 flex items-center justify-center gap-2 py-3 text-[13.5px]"
           >
             <GoogleMark className="h-[18px] w-[18px] flex-none" />
-            구글로 계속하기
+            구글로 시작
           </div>
 
-          {/* 2) 이메일 — 대파 자체 계정. 위 소셜과 다른 수단이라는 걸 라벨로 분명히 한다 */}
-          <SectionLabel>{isSignup ? "이메일로 시작" : "이메일로 로그인"}</SectionLabel>
-          {isSignup && (
+          {/* 2) 이메일 — 대파 자체 계정 */}
+          <div className="mt-5 text-[11px] font-bold tracking-[.14em] text-[#8b8478]">// 이메일</div>
+          <div className="mt-2.5 flex flex-col gap-2">
+            {isSignup && (
+              <input
+                value={auth.nick}
+                onChange={(e) => setAuth({ nick: e.target.value })}
+                placeholder="닉네임_"
+                className="field font-sans-ko w-full"
+              />
+            )}
             <input
-              value={auth.nick}
-              onChange={(e) => setAuth({ nick: e.target.value })}
-              placeholder="닉네임 — 예: 파밍맘"
-              className="input-base"
+              value={auth.email}
+              onChange={(e) => setAuth({ email: e.target.value })}
+              placeholder="이메일_"
+              className="field w-full"
             />
-          )}
-          <input
-            value={auth.email}
-            onChange={(e) => setAuth({ email: e.target.value })}
-            placeholder="이메일"
-            className="input-base"
-          />
-          <input
-            value={auth.pw}
-            onChange={(e) => setAuth({ pw: e.target.value })}
-            onKeyDown={(e) => {
-              if (isSubmitEnter(e) && authOk) (isSignup ? signUp : signIn)();
-            }}
-            type="password"
-            placeholder="비밀번호"
-            className="input-base"
-          />
+            <input
+              value={auth.pw}
+              onChange={(e) => setAuth({ pw: e.target.value })}
+              onKeyDown={(e) => {
+                if (isSubmitEnter(e) && authOk) (isSignup ? signUp : signIn)();
+              }}
+              type="password"
+              placeholder="비밀번호_"
+              className="field w-full"
+            />
+          </div>
 
           {isSignup && (
-            <div className="flex flex-col gap-2 rounded-[11px] border-[1.5px] border-dashed border-[#9fd4ae] bg-[#f5faf4] px-3.5 py-[11px]">
-              <div className="flex items-center gap-[9px]">
-                <MapPin aria-hidden className="h-[18px] w-[18px] flex-none text-[#1f8a4c]" />
-                <div className="flex-1">
-                  <div className="text-[13.5px] font-extrabold">동네 인증</div>
-                  <div className="text-xs text-[#6b8573]">
-                    {dongOk ? `${dongValue} 인증 완료 ✓` : "우리 동네를 직접 적어주세요"}
-                  </div>
-                </div>
-              </div>
-              {!dongOk && (
-                <div className="flex gap-2">
+            <div className="mt-2.5 border-[1.5px] border-dashed border-[#e14e2b] p-3.5">
+              <div className="text-[11px] font-bold tracking-[.1em] text-[#e14e2b]">동네 인증</div>
+              {dongOk ? (
+                <div className="font-sans-ko mt-2 text-[13px] font-bold">{dongValue} 인증 완료 ✓</div>
+              ) : (
+                <div className="mt-2.5 flex gap-2">
                   <input
                     value={dongValue}
                     onChange={(e) => setDongValue(e.target.value)}
                     onKeyDown={(e) => isSubmitEnter(e) && confirmDong()}
                     placeholder="동네 이름 — 예: 역삼동"
-                    className="input-base min-w-0 flex-1"
+                    className="field field-sub font-sans-ko min-w-0 flex-1 py-2 text-[13px]"
                   />
-                  <div
-                    onClick={confirmDong}
-                    className="flex-none cursor-pointer rounded-[9px] bg-[#1f8a4c] px-3 py-[7px] text-[12.5px] font-extrabold text-white hover:brightness-105"
-                  >
-                    확정
+                  <div onClick={confirmDong} className="key key-ink flex-none px-3.5 py-2 text-xs">
+                    [확정]
                   </div>
                 </div>
               )}
@@ -189,22 +150,24 @@ export default function AuthView() {
             onClick={() => {
               if (authOk) (isSignup ? signUp : signIn)();
             }}
-            className={`rounded-xl p-[13px] text-center text-[15px] font-extrabold ${
-              authOk
-                ? "cursor-pointer bg-[#1f8a4c] text-white hover:brightness-105"
-                : "cursor-default bg-[#e6efe4] text-[#8a9a8e]"
-            }`}
+            className={`mt-4 py-3.5 text-[15px] tracking-[.14em] ${authOk ? "key key-primary" : "key key-off"}`}
           >
-            {authBusy ? "잠시만요…" : isSignup ? "가입하고 시작하기" : "로그인"}
+            [ {authBusy ? "잠시만요…" : isSignup ? "가입하고 시작" : "로그인"} ]
           </div>
 
-          <div className="mt-0.5 text-center text-[13px] text-[#6b8573]">
+          <div className="mt-4 text-center text-[13px] text-[#6e675e]">
             {isSignup ? "이미 파티원이신가요?" : "아직 계정이 없나요?"}{" "}
-            <span onClick={switchAuthMode} className="cursor-pointer font-extrabold text-[#1f8a4c]">
+            <span
+              onClick={switchAuthMode}
+              className="cursor-pointer border-b-[1.5px] border-[#e14e2b] font-bold text-[#e14e2b]"
+            >
               {isSignup ? "로그인" : "회원가입"}
             </span>
           </div>
+
+          <div className="barcode mt-5" />
         </div>
+        <div className="receipt-edge" />
       </div>
     </div>
   );

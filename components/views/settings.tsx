@@ -17,11 +17,10 @@ const PROVIDER_LABEL: Record<string, string> = {
 
 type EditKey = "bank" | "app" | "account";
 
-const INPUT =
-  "w-full rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white px-3.5 py-[9px] text-[13.5px] outline-none focus:border-[#1f8a4c]";
-const BTN =
-  "cursor-pointer rounded-[9px] bg-[#1f8a4c] px-3.5 py-2 text-[13px] font-extrabold text-white hover:bg-[#187741]";
+const INPUT = "field w-full text-[13.5px]";
+const BTN = "key key-ink px-4 py-2 text-[13px]";
 
+/** 단말 설정 한 줄 — 점선 구분, 우측에 키 */
 function Row({
   title,
   sub,
@@ -30,26 +29,24 @@ function Row({
   children,
 }: {
   title: string;
-  sub: string;
+  sub?: string;
   right: React.ReactNode;
   onClick?: () => void;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="border-b border-[#eef4ec] last:border-b-0">
+    <div className="rule-dot last:border-b-0">
       <div
         onClick={onClick}
-        className={`flex items-center justify-between px-[18px] py-3.5 ${
-          onClick ? "cursor-pointer hover:bg-[#fbfdf9]" : ""
-        }`}
+        className={`flex items-center gap-3 py-3.5 text-sm ${onClick ? "cursor-pointer" : ""}`}
       >
-        <div>
-          <b>{title}</b>
-          <div className="text-xs text-[#8aa392]">{sub}</div>
+        <div className="min-w-0">
+          <span className="font-sans-ko">{title}</span>
+          {sub && <div className="mt-1 truncate text-xs text-[#8b8478]">{sub}</div>}
         </div>
-        {right}
+        <span className="ml-auto flex-none">{right}</span>
       </div>
-      {children && <div className="border-t border-[#eef4ec] bg-[#fbfdf9] px-[18px] py-3.5">{children}</div>}
+      {children && <div className="pb-4">{children}</div>}
     </div>
   );
 }
@@ -85,91 +82,42 @@ export default function SettingsView() {
     setEdit(null);
   };
 
-  const chevron = <span className="text-[#8aa392]">›</span>;
+  const providerLabel = me?.provider ? (PROVIDER_LABEL[me.provider] ?? me.provider) : null;
+  const edited = <span className="key key-line px-3.5 py-2 text-xs">[변경]</span>;
 
   return (
-    <div className="max-w-[640px] flex-1 overflow-auto px-6 py-5">
-      <div className="overflow-hidden rounded-2xl border border-[#dbe9da] bg-white">
-        <Row
-          title="마감 임박 알림"
-          sub="참여한 공구 마감 30분 전"
-          right={<Toggle on={n1} onClick={toggleN1} />}
-        />
-        <Row
-          title="입금 요청 알림"
-          sub="정산 시작·리마인드"
-          right={<Toggle on={n2} onClick={toggleN2} />}
-        />
+    <div className="flex-1 overflow-auto px-9 py-8">
+      <div className="mx-auto w-[680px]">
+        <div className="receipt px-8 py-7">
+          <div className="rule-dash receipt-head border-b border-t-0 pb-3.5 tracking-[.5em]">
+            ＊ 단말 설정 ＊
+          </div>
 
-        <Row
-          title="정산 받을 계좌"
-          sub={me?.bankAccount ?? "등록 안 함"}
-          right={chevron}
-          onClick={() => open("bank")}
-        >
-          {edit === "bank" && (
-            <div className="flex gap-2">
-              <input
-                value={bank}
-                onChange={(e) => setBank(e.target.value)}
-                onKeyDown={(e) => isSubmitEnter(e) && saveBank()}
-                placeholder="초록은행 1104-04"
-                className={INPUT}
-                autoFocus
-              />
-              <button onClick={saveBank} className={BTN}>
-                저장
-              </button>
+          <div className="rule-dash flex items-center gap-4 border-b border-t-0 py-5">
+            <div className="h-14 w-14 flex-none overflow-hidden bg-[#1b1917] text-white">
+              {me?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- 소셜 아바타는 외부 도메인이라 next/image 설정 없이 쓴다
+                <img src={me.avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-[22px] font-extrabold">
+                  {me?.nickname?.[0] ?? "파"}
+                </span>
+              )}
             </div>
-          )}
-        </Row>
-
-        <Row
-          title="기본 송금 앱"
-          sub={me?.transferApp ?? "선택 안 함"}
-          right={chevron}
-          onClick={() => open("app")}
-        >
-          {edit === "app" && (
-            <div className="flex flex-wrap gap-2">
-              {TRANSFER_APPS.map((app) => {
-                const on = me?.transferApp === app;
-                return (
-                  <div
-                    key={app}
-                    onClick={() => {
-                      saveProfile({ transferApp: app });
-                      setEdit(null);
-                    }}
-                    className={`cursor-pointer rounded-[9px] border-[1.5px] px-3 py-[7px] text-[13px] font-bold ${
-                      on
-                        ? "border-[#1f8a4c] bg-[#e9f6ec] text-[#166b3a]"
-                        : "border-[#cfe4d0] hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
-                    }`}
-                  >
-                    {app}
-                  </div>
-                );
-              })}
+            <div className="min-w-0">
+              <div className="font-sans-ko text-[17px] font-extrabold">
+                {me?.nickname ?? "파티원"}
+              </div>
+              <div className="mt-1.5 text-xs text-[#8b8478]">
+                {[providerLabel, me?.dong ? `${me.dong} 인증 ✓` : null].filter(Boolean).join(" · ")}
+              </div>
             </div>
-          )}
-        </Row>
-
-        <Row
-          title="계정 관리"
-          sub={[
-            me?.nickname ?? "파티원",
-            me?.dong,
-            me?.provider ? (PROVIDER_LABEL[me.provider] ?? me.provider) : null,
-            "로그아웃",
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-          right={chevron}
-          onClick={() => open("account")}
-        >
+            <div onClick={() => open("account")} className="key key-line ml-auto px-3.5 py-2 text-xs">
+              [계정 관리]
+            </div>
+          </div>
           {edit === "account" && (
-            <div className="flex flex-col gap-2.5">
+            <div className="rule-dash flex flex-col gap-3 border-b border-t-0 py-4">
               <div className="flex items-center gap-3">
                 <ImageUpload
                   kind="avatars"
@@ -178,11 +126,7 @@ export default function SettingsView() {
                   height={64}
                   round
                 />
-                <div className="text-[12.5px] text-[#6b8573]">
-                  프로필 사진
-                  <br />
-                  정사각형으로 잘려요
-                </div>
+                <div className="text-xs text-[#8b8478]">프로필 사진</div>
               </div>
               <div className="flex gap-2">
                 <input
@@ -197,15 +141,70 @@ export default function SettingsView() {
                   저장
                 </button>
               </div>
-              <button
-                onClick={logout}
-                className="cursor-pointer self-start rounded-[9px] border-[1.5px] border-[#cfe4d0] px-3.5 py-2 text-[13px] font-bold text-[#94a89a] hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
-              >
-                로그아웃
-              </button>
             </div>
           )}
-        </Row>
+
+          <div className="pt-4 text-[11px] font-bold tracking-[.14em] text-[#8b8478]">// 알림</div>
+          <Row
+            title="마감 임박 알림"
+            sub="참여한 공구 마감 30분 전"
+            right={<Toggle on={n1} onClick={toggleN1} />}
+          />
+          <Row
+            title="입금 요청 알림"
+            sub="정산 시작·리마인드"
+            right={<Toggle on={n2} onClick={toggleN2} />}
+          />
+
+          <div className="pt-4 text-[11px] font-bold tracking-[.14em] text-[#8b8478]">// 정산</div>
+          <Row
+            title="정산 받을 계좌"
+            sub={me?.bankAccount ?? "등록 안 함"}
+            right={edited}
+            onClick={() => open("bank")}
+          >
+            {edit === "bank" && (
+              <div className="flex gap-2">
+                <input
+                  value={bank}
+                  onChange={(e) => setBank(e.target.value)}
+                  onKeyDown={(e) => isSubmitEnter(e) && saveBank()}
+                  placeholder="초록은행 1104-04"
+                  className={INPUT}
+                  autoFocus
+                />
+                <button onClick={saveBank} className={BTN}>
+                  저장
+                </button>
+              </div>
+            )}
+          </Row>
+          <Row
+            title="기본 송금 앱"
+            right={
+              <div className="flex gap-1.5">
+                {TRANSFER_APPS.map((app) => (
+                  <span
+                    key={app}
+                    onClick={() => saveProfile({ transferApp: app })}
+                    className={`chip px-3.5 py-1.5 text-xs ${me?.transferApp === app ? "chip-on" : ""}`}
+                  >
+                    {app}
+                  </span>
+                ))}
+              </div>
+            }
+          />
+
+          <div className="flex items-center pt-5">
+            <span onClick={logout} className="cursor-pointer text-[13px] font-extrabold tracking-[.1em] text-[#e14e2b]">
+              [ 로그아웃 ]
+            </span>
+          </div>
+
+          <div className="barcode mt-4" />
+        </div>
+        <div className="receipt-edge" />
       </div>
     </div>
   );

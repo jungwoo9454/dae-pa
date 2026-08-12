@@ -5,17 +5,17 @@ import { useEffect } from "react";
 import { useStore } from "@/lib/store";
 import type { PageKey } from "@/lib/types";
 
-const TITLES: Record<PageKey, string> = {
-  login: "로그인",
-  home: "홈",
-  detail: "공구 상세",
-  my: "내 공구",
-  chat: "채팅",
-  pay: "대파페이",
-  new: "공구 올리기",
-  set: "설정",
-  settle: "정산",
-};
+/**
+ * 상단 단말 바 (#143) — 예전 좌측 사이드바를 대신한다.
+ * 화면 제목은 각 화면이 직접 큰 머리글로 들고 있어서 여기선 이동만 담당한다.
+ */
+const NAV: { key: PageKey; label: string }[] = [
+  { key: "home", label: "홈" },
+  { key: "my", label: "내 공구" },
+  { key: "chat", label: "채팅" },
+  { key: "pay", label: "대파페이" },
+  { key: "set", label: "설정" },
+];
 
 export default function TopBar() {
   const page = useStore((s) => s.page);
@@ -49,39 +49,60 @@ export default function TopBar() {
     return () => clearInterval(t);
   }, [uid, deals]);
 
+  const isActive = (k: PageKey) =>
+    page === k || (k === "home" && page === "detail") || (k === "my" && page === "settle");
+
   return (
-    <div className="flex flex-none items-center gap-3 border-b border-[#dde9dc] bg-white px-6 py-3">
-      <div className="font-jua text-[19px]">{TITLES[page]}</div>
-      <span className="flex-1" />
-      <div
-        onClick={() => go("new")}
-        className="cursor-pointer rounded-[10px] bg-[#1f8a4c] px-3.5 py-2 text-[13.5px] font-bold text-white hover:bg-[#187741]"
-      >
-        + 공구 올리기
+    <div className="flex h-[66px] flex-none items-center gap-6 bg-[#141210] px-8">
+      <span className="text-[19px] font-bold tracking-[.04em] text-white">
+        DAEPA_POS<span className="text-[#e14e2b]">★</span>
+      </span>
+      <div className="flex items-center gap-1.5 text-[13px] font-semibold">
+        {NAV.map((n) => (
+          <div
+            key={n.key}
+            onClick={() => go(n.key)}
+            className={`cursor-pointer rounded-lg px-4 py-[7px] ${
+              isActive(n.key)
+                ? "border border-[#4a4540] text-white"
+                : "border border-transparent text-[#9b948c] hover:text-white"
+            }`}
+          >
+            {n.label}
+          </div>
+        ))}
       </div>
-      <div
-        onClick={toggleNoti}
-        title="알림"
-        className="relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-[#9fd4ae] bg-white text-[15px] hover:bg-[#e9f6ec]"
-      >
-        <Bell aria-hidden className="h-[18px] w-[18px]" />
-        {unread > 0 && (
-          <span className="absolute -right-1 -top-1 min-w-[17px] rounded-full bg-[#d97706] px-1 text-center text-[10.5px] font-extrabold leading-[17px] text-white">
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
-      </div>
-      <div
-        onClick={toggleProfile}
-        title={me?.nickname}
-        className="flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-[#9fd4ae] bg-[#cde8d2] font-extrabold text-[#14532d]"
-      >
-        {me?.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- 소셜 아바타는 외부 도메인이라 next/image 설정 없이 쓴다
-          <img src={me.avatarUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          (me?.nickname[0] ?? "파")
-        )}
+      <div className="ml-auto flex items-center gap-4">
+        <div
+          onClick={toggleNoti}
+          title="알림"
+          className="relative cursor-pointer text-white hover:text-[#e14e2b]"
+        >
+          <Bell aria-hidden className="h-5 w-5" />
+          {unread > 0 && (
+            <span className="absolute -right-1 -top-1 min-w-[16px] rounded-full border-2 border-[#141210] bg-[#e14e2b] px-1 text-center text-[10px] font-bold leading-[14px] text-white">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </div>
+        <div
+          onClick={toggleProfile}
+          title={me?.nickname}
+          className="flex h-[38px] w-[38px] cursor-pointer items-center justify-center overflow-hidden rounded-full bg-[#f0e4d2] text-sm font-extrabold text-[#6b4e1e]"
+        >
+          {me?.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- 소셜 아바타는 외부 도메인이라 next/image 설정 없이 쓴다
+            <img src={me.avatarUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            (me?.nickname[0] ?? "파")
+          )}
+        </div>
+        <div
+          onClick={() => go("new")}
+          className="key key-primary flex h-11 items-center px-5 text-sm"
+        >
+          + 공구 올리기
+        </div>
       </div>
     </div>
   );

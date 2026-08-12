@@ -27,27 +27,27 @@ export default function NotiPopover() {
   const notis = useStore((s) => s.notis);
   const openDeal = useStore((s) => s.openDeal);
   return (
-    <div className="absolute right-[62px] top-[58px] z-50 flex max-h-[420px] w-[300px] flex-col overflow-hidden rounded-[14px] border border-[#d5e6d6] bg-white shadow-[0_12px_32px_rgba(18,49,30,.18)]">
-      <div className="flex-none border-b border-[#eef4ec] px-3.5 py-2.5 font-extrabold">알림</div>
+    <div className="receipt absolute right-[150px] top-[70px] z-50 flex max-h-[420px] w-[300px] flex-col overflow-hidden">
+      <div className="rule-dash receipt-head flex-none border-b border-t-0 px-3.5 py-3 text-[12px] tracking-[.4em]">＊ 알림 ＊</div>
       {notis.length === 0 ? (
-        <div className="px-3.5 py-7 text-center text-[13px] text-[#8aa392]">새 알림이 없어요</div>
+        <div className="px-3.5 py-7 text-center text-[13px] text-[#8b8478]">새 알림이 없어요</div>
       ) : (
         <div className="overflow-auto">
           {notis.map((n) => (
             <div
               key={n.id}
               onClick={() => n.dealId && openDeal(n.dealId)}
-              className={`flex gap-2.5 border-b border-[#f0f6ef] px-3.5 py-2.5 last:border-b-0 ${
-                n.dealId ? "cursor-pointer hover:bg-[#fbfdf9]" : ""
-              } ${n.isRead ? "" : "bg-[#e9f6ec]"}`}
+              className={`flex gap-2.5 rule-dot px-3.5 py-3 last:border-b-0 ${
+                n.dealId ? "cursor-pointer hover:bg-[#f1efe8]" : ""
+              } ${n.isRead ? "" : "border-l-[3px] border-l-[#e14e2b]"}`}
             >
               {(() => {
                 const Icon = ICON[n.type];
-                return <Icon aria-hidden className="mt-0.5 h-[17px] w-[17px] flex-none text-[#1f8a4c]" />;
+                return <Icon aria-hidden className="mt-0.5 h-[17px] w-[17px] flex-none text-[#e14e2b]" />;
               })()}
               <div className="min-w-0">
-                <div className="text-[13.5px] leading-snug">{n.text}</div>
-                <div className="mt-0.5 text-[11.5px] text-[#8aa392]">{ago(n.createdAt)}</div>
+                <div className="font-sans-ko text-[13.5px] leading-snug">{n.text}</div>
+                <div className="mt-0.5 text-[11px] text-[#9c9ca3]">{ago(n.createdAt)}</div>
               </div>
             </div>
           ))}

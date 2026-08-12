@@ -40,19 +40,32 @@ export function relativeWhen(iso: string) {
 
 export interface StatusView {
   key: "settling" | "closed" | "closing" | "recruiting" | "canceled";
+  /** 배지 문구 5종 고정 (CLAUDE.md 디자인 규칙) */
   label: string;
-  bg: string;
+  /** 태그 글자·진행바·강조에 쓰는 주 색 */
   fg: string;
+  /** 태그 테두리 — 마감만 글자보다 진하다 */
+  bd: string;
+  /** 썸네일·연한 배경 */
+  bg: string;
+  /** 라벨 앞 기호 — 전표 태그 규칙 (#143). 마감임박만 점멸한다 */
+  mark: string;
+  /** 취소됨만 파선 테두리 + 취소선 */
+  dashed?: boolean;
 }
 
 /** 마감임박은 DB 상태가 아니라 마감 1시간 전부터 파생 표시 */
 export function statusOf(d: Deal, now: number): StatusView {
-  if (d.status === "settling") return { key: "settling", label: "정산중", bg: "#e0f0f1", fg: "#0e7490" };
-  if (d.status === "canceled") return { key: "canceled", label: "취소됨", bg: "#f3f4f6", fg: "#6b7280" };
+  if (d.status === "settling")
+    return { key: "settling", label: "정산중", fg: "#4a6fa5", bd: "#4a6fa5", bg: "#e7edf5", mark: "◆" };
+  if (d.status === "canceled")
+    return { key: "canceled", label: "취소됨", fg: "#e14e2b", bd: "#e14e2b", bg: "#f1efe8", mark: "", dashed: true };
   const left = d.end - now;
-  if (d.status !== "recruiting" || left <= 0) return { key: "closed", label: "마감", bg: "#eceff0", fg: "#64748b" };
-  if (left < 3_600_000) return { key: "closing", label: "마감임박", bg: "#fdf0dc", fg: "#b45309" };
-  return { key: "recruiting", label: "모집중", bg: "#e9f6ec", fg: "#166b3a" };
+  if (d.status !== "recruiting" || left <= 0)
+    return { key: "closed", label: "마감", fg: "#9c9ca3", bd: "#b9b9b4", bg: "#ededea", mark: "■" };
+  if (left < 3_600_000)
+    return { key: "closing", label: "마감임박", fg: "#e14e2b", bd: "#e14e2b", bg: "#fbe9e3", mark: "▲" };
+  return { key: "recruiting", label: "모집중", fg: "#1b1917", bd: "#1b1917", bg: "#ededea", mark: "●" };
 }
 
 /** 금액 입력창에서 숫자만 남긴다 — 저장은 항상 이 원 단위 정수 문자열로 한다 (핵심 규칙 5) */

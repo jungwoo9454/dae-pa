@@ -1,8 +1,7 @@
 "use client";
 
-import { Ban, Coins, MapPin, MessageCircle, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ProgressBar, StatusBadge } from "@/components/ui";
+import { Avatar, ProgressBar, StatusBadge, receiptNo } from "@/components/ui";
 import {
   LEAVE_CUTOFF_MS,
   countdownDisplay,
@@ -65,14 +64,15 @@ export default function DetailView() {
 
   const st = statusOf(deal, now);
   const pct = Math.min(100, Math.round((deal.joined / deal.goal) * 100));
-  const closing = st.key === "closing";
   const cd = countdownDisplay(deal, now);
   const active = joinable(deal, now);
-  // 참여자 아바타 — participations.user_id → profiles.id embed로 받은 닉네임 첫 글자를 쓴다.
+  // 참여 명단 — participations.user_id → profiles.id embed로 받은 닉네임을 쓴다.
   // profile을 못 찾은 경우(고아 user_id 등)에만 user_id로 폴백한다.
-  const participantAvatars = (deal.participations ?? []).slice(0, 4).map((p) => ({
+  const participantAvatars = (deal.participations ?? []).map((p) => ({
     userId: p.user_id,
+    nickname: p.profile?.nickname ?? "이웃",
     initials: (p.profile?.nickname ?? p.user_id).slice(0, 1).toUpperCase(),
+    isHost: p.user_id === deal.host_id,
   }));
   // 취소는 주최자만, 모집중·정산중일 때만 (#29 — DB 의 cancel_group_buy 판정과 같다)
   const cancelable = deal.mine && (deal.status === "recruiting" || deal.status === "settling");
@@ -119,252 +119,255 @@ export default function DetailView() {
     if (n !== deal.total) void changeTotalAmount(deal.id, n);
   };
 
+  const mainKeyClass = canLeave
+    ? "key key-line"
+    : active || canStartSettle || deal.status === "settling"
+      ? "key key-primary"
+      : "key key-off";
+
   return (
-    <div className="flex-1 overflow-auto px-7 py-5">
+    <div className="flex-1 overflow-auto px-9 py-8">
       <div
         onClick={() => go("home")}
-        className="mb-3.5 inline-block cursor-pointer font-bold text-[#4d6d58] hover:text-[#1f8a4c]"
+        className="mb-4 inline-block cursor-pointer text-[13px] text-[#77777f] hover:text-[#e14e2b]"
       >
         ← 목록으로
       </div>
-      <div className="flex max-w-[980px] items-start gap-6">
-        <div className="flex flex-[1.5] flex-col gap-3.5">
-          {deal.imageUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */
-            <img
-              src={deal.imageUrl}
-              alt=""
-              className="h-[220px] w-full rounded-2xl border border-[#d8e7d6] object-cover"
-            />
-          ) : (
-            <div
-              className="flex h-[220px] items-center justify-center rounded-2xl border border-[#d8e7d6] text-[40px] text-[#8aa392]"
-              style={{ background: "repeating-linear-gradient(45deg,#e4efe2 0 14px,#eef5ec 14px 28px)" }}
-            >
-              {deal.emoji}
+      <div className="flex justify-center gap-[30px]">
+        <div className="w-[560px] flex-none">
+          <div className="receipt px-[30px] pb-6 pt-7">
+            <div className="receipt-head text-[15px]">＊ 거래 전표 ＊</div>
+            <div className="mt-[7px] text-center text-xs text-[#8b8478]">
+              {receiptNo(deal.id, deal.created_at)} ｜ {deal.cat} ｜ 발행: {deal.host}
+              {deal.mine ? "(나)" : ""}
             </div>
-          )}
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="font-jua text-2xl">{deal.title}</span>
-              <StatusBadge s={st} />
-            </div>
-            <div className="mt-1 text-[#6b8573]">
-              {deal.cat} · 주최 {deal.host}
-            </div>
-          </div>
-          <div className="whitespace-pre-line rounded-[14px] border border-[#dbe9da] bg-white px-4 py-3.5 leading-[1.7] text-[#3c5546]">
-            {deal.description ||
-              "품질 좋은 걸 대용량으로 사서 나눠요. 마감되면 채팅방에서 수령 시간을 맞추고, 정산은 앱에서 자동 1/N로 진행됩니다."}
-          </div>
-          <div className="flex flex-wrap gap-2.5">
-            <div className="flex items-center gap-1.5 rounded-[10px] border border-[#dbe9da] bg-white px-3 py-2 text-[13px]">
-              <MapPin aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 수령 · <b>{deal.place}</b>
-            </div>
-            {editingTotal && canEditTotal ? (
-              <div className="flex items-center gap-1.5 rounded-[10px] border border-[#1f8a4c] bg-white px-3 py-2 text-[13px]">
-                <Coins aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
-                <input
-                  type="number"
-                  autoFocus
-                  value={totalInput}
-                  onChange={(e) => setTotalInput(e.target.value)}
-                  onKeyDown={(e) => isSubmitEnter(e) && saveTotal()}
-                  className="tnum w-[110px] rounded-md border border-[#d5e6d6] px-2 py-1 text-right outline-none focus:border-[#1f8a4c]"
-                />
-                <span
-                  onClick={saveTotal}
-                  className="cursor-pointer rounded-md bg-[#1f8a4c] px-2.5 py-1 font-bold text-white hover:bg-[#187741]"
-                >
-                  저장
-                </span>
-                <span
-                  onClick={() => setEditingTotal(false)}
-                  className="cursor-pointer rounded-md border border-[#d5e6d6] px-2.5 py-1 font-bold text-[#4d6d58] hover:border-[#1f8a4c]"
-                >
-                  취소
-                </span>
-              </div>
+            <div className="rule-dash mt-3.5" />
+
+            {deal.imageUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */
+              <img src={deal.imageUrl} alt="" className="mt-4 h-[220px] w-full object-cover" />
             ) : (
-              <div className="flex items-center gap-1.5 rounded-[10px] border border-[#dbe9da] bg-white px-3 py-2 text-[13px]">
-                <Coins aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
-                <span>
-                  총액 · <b>{fmt(deal.total)}</b>{" "}
-                  {canEditTotal ? (
-                    <span
-                      onClick={startEditTotal}
-                      className="cursor-pointer text-[11.5px] font-bold text-[#1f8a4c] underline"
-                    >
-                      수정
-                    </span>
-                  ) : (
-                    <span className="text-[11.5px] text-[#8aa392]">정산 전까지 변경 가능</span>
-                  )}
+              <div className="mt-4 flex h-[130px] items-center justify-center bg-[#ededea]">
+                <span className="font-sans-ko text-[44px] font-extrabold text-[#b9b9b4]">
+                  {deal.cat.slice(0, 1)}
                 </span>
               </div>
             )}
-          </div>
-        </div>
-        <div className="flex w-[300px] flex-none flex-col gap-3.5 rounded-[18px] border border-[#cfe4d0] bg-white p-5 shadow-[0_6px_18px_rgba(18,70,38,.08)]">
-          <div className="text-center">
-            <div className="font-jua tnum text-[30px]" style={{ color: cd.color }}>
-              {cd.text}
-            </div>
-            <div className="text-xs text-[#6b8573]">{cd.caption}</div>
-          </div>
-          <ProgressBar pct={pct} color={closing ? "#d97706" : "#1f8a4c"} h={11} />
-          <div className="flex justify-between text-sm">
-            <span>
-              참여 <b>{deal.joined}</b>/{deal.goal}명
-            </span>
-            <span>
-              {perLabel(deal)} <b className="text-base">{fmt(perAmount(deal))}</b>
-            </span>
-          </div>
-          <div className="flex">
-            {participantAvatars.map((avatar) => (
-              <div
-                key={avatar.userId}
-                className="-mr-[7px] flex h-[30px] w-[30px] items-center justify-center rounded-full border-2 border-white bg-[#dceede] text-xs font-extrabold text-[#2f6d45]"
-              >
-                {avatar.initials}
+
+            <div className="mt-4 flex items-center gap-3.5">
+              <div className="font-sans-ko text-[23px] font-black leading-[1.35]">{deal.title}</div>
+              <div className="ml-auto flex flex-none flex-col items-end gap-2">
+                <StatusBadge s={st} />
+                <div
+                  className="stamp h-[74px] w-[74px] flex-col"
+                  style={{ borderColor: cd.color, color: cd.color }}
+                >
+                  <span className="text-[9px] font-bold">{cd.caption}</span>
+                  <span className="tnum mt-0.5 text-[12px] font-bold">{cd.text}</span>
+                </div>
               </div>
-            ))}
-            <span className="ml-3.5 self-center text-[12.5px] text-[#6b8573]">
-              {deal.joined > 4 ? `+${deal.joined - 4}명 참여중` : `${deal.joined}명 참여중`}
-            </span>
-          </div>
-          <div
-            onClick={onMainAction}
-            className={`cursor-pointer rounded-xl p-[13px] text-center text-base font-extrabold hover:brightness-105 ${
-              canLeave
-                ? "border-[1.5px] border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#b3261e] hover:text-[#b3261e]"
-                : active || canStartSettle || deal.status === "settling"
-                  ? "bg-[#1f8a4c] text-white"
-                  : "bg-[#e6efe4] text-[#6b8573]"
-            }`}
-          >
-            {canLeave ? "나가기" : joinLabel(deal, now)}
-          </div>
-          {settleErr && (
-            <div className="-mt-2.5 text-center text-[12px] text-[#b3261e]">{settleErr}</div>
-          )}
-          {settleAlone && (
-            <div className="-mt-2.5 text-center text-[12px] text-[#8aa392]">
-              참여자가 없어 정산할 게 없어요 — 공구를 취소해주세요
             </div>
-          )}
-          {leaveClosed && (
-            <div className="-mt-2.5 text-center text-[12px] text-[#8aa392]">
-              마감 {LEAVE_CUTOFF_MS / 60_000}분 전부터는 나갈 수 없어요
-            </div>
-          )}
-          {askLeave && (
-            <div className="flex flex-col gap-2 rounded-xl bg-[#fdecec] p-3">
-              <div className="text-[13px] font-extrabold text-[#b3261e]">공구에서 나갈까요?</div>
-              <div className="text-[12px] text-[#8a6a6a]">참여가 취소되고 채팅방에 나갔다는 메시지가 남아요.</div>
-              {leaveErr && (
-                <div className="rounded-[8px] bg-white px-2.5 py-1.5 text-[12px] font-bold text-[#b3261e]">
-                  {leaveErr}
+
+            {deal.description && (
+              <div className="font-sans-ko mt-3 whitespace-pre-line text-[13px] leading-[1.8] text-[#55524b]">
+                {deal.description}
+              </div>
+            )}
+
+            <div className="rule-dash mt-3.5 flex flex-col gap-[9px] pt-3.5 text-sm text-[#6e675e]">
+              <div className="leader">
+                <span>수령지</span>
+                <i />
+                <b>{deal.place}</b>
+              </div>
+              <div className="leader">
+                <span>참여</span>
+                <i />
+                <b>
+                  {deal.joined}/{deal.goal}명
+                  {deal.goal > deal.joined ? ` · ${deal.goal - deal.joined}자리 남음` : ""}
+                </b>
+              </div>
+              {editingTotal && canEditTotal ? (
+                <div className="flex items-center gap-2">
+                  <span>총액</span>
+                  <input
+                    type="number"
+                    autoFocus
+                    value={totalInput}
+                    onChange={(e) => setTotalInput(e.target.value)}
+                    onKeyDown={(e) => isSubmitEnter(e) && saveTotal()}
+                    className="field tnum ml-auto w-[130px] py-1.5 text-right"
+                  />
+                  <span onClick={saveTotal} className="key key-ink px-3 py-1.5 text-xs">
+                    저장
+                  </span>
+                  <span onClick={() => setEditingTotal(false)} className="key key-line px-3 py-1.5 text-xs">
+                    취소
+                  </span>
+                </div>
+              ) : (
+                <div className="leader">
+                  <span>총액</span>
+                  <i />
+                  <b className="text-[15px]">{fmt(deal.total)}</b>
+                  {canEditTotal && (
+                    <span
+                      onClick={startEditTotal}
+                      className="ml-2 cursor-pointer border-b-[1.5px] border-[#e14e2b] text-xs font-bold text-[#e14e2b]"
+                    >
+                      수정
+                    </span>
+                  )}
                 </div>
               )}
-              <div className="flex gap-2">
-                <div
-                  onClick={async () => {
-                    if (leaving) return;
-                    setLeaving(true);
-                    setLeaveErr(null);
-                    const err = await leave(deal.id);
-                    setLeaving(false);
-                    if (err) setLeaveErr(err);
-                    else setAskLeave(false);
-                  }}
-                  className="flex-1 cursor-pointer rounded-[10px] bg-[#b3261e] p-2 text-center text-[13px] font-extrabold text-white hover:brightness-110"
-                >
-                  {leaving ? "나가는 중…" : "나가기"}
-                </div>
-                <div
-                  onClick={() => {
-                    setAskLeave(false);
-                    setLeaveErr(null);
-                  }}
-                  className="flex-1 cursor-pointer rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white p-2 text-center text-[13px] font-bold text-[#4d6d58] hover:border-[#1f8a4c]"
-                >
-                  그만두기
-                </div>
+            </div>
+
+            <div className="mt-4">
+              <ProgressBar pct={pct} color={st.fg} />
+            </div>
+
+            <div className="rule-dash mt-4 flex items-baseline pt-3.5">
+              <span className="text-[13px] text-[#8b8478]">{perLabel(deal)}</span>
+              <span className="tnum ml-auto text-[28px] font-black">{fmt(perAmount(deal))}</span>
+            </div>
+
+            <div className="barcode mt-3.5" />
+
+            <div onClick={onMainAction} className={`${mainKeyClass} mt-3.5 py-3 text-[15px]`}>
+              [ {canLeave ? "나가기" : joinLabel(deal, now)} ]
+            </div>
+            {settleErr && <div className="mt-2 text-center text-xs text-[#e14e2b]">{settleErr}</div>}
+            {settleAlone && (
+              <div className="mt-2 text-center text-xs text-[#8b8478]">
+                참여자가 없어 정산할 게 없어요 — 공구를 취소해주세요
               </div>
-            </div>
-          )}
-          <div
-            onClick={() => canChat && goRoom("d" + deal.id)}
-            title={canChat ? undefined : "참여 후 이용할 수 있어요"}
-            className={`flex items-center justify-center gap-1.5 rounded-xl border-[1.5px] p-2.5 font-extrabold ${
-              canChat
-                ? "cursor-pointer border-[#1f8a4c] text-[#1f8a4c] hover:bg-[#e9f6ec]"
-                : "cursor-default border-[#e0eadf] text-[#a8bdb0]"
-            }`}
-          >
-            <MessageCircle aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 공구 채팅방
-          </div>
-          {!canChat && (
-            <div className="-mt-2.5 text-center text-[12px] text-[#8aa392]">
-              참여 후 이용할 수 있어요
-            </div>
-          )}
-          {/* 라운지에 카드 말풍선으로 공유 → 대화 중 바로 참여로 이어진다 (#10) */}
-          <div
-            onClick={() => shareDeal(deal.id, "lounge")}
-            className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-[13.5px] font-bold text-[#4d6d58] hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
-          >
-            <Share2 aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 동네 라운지에 공유
-          </div>
-          {/* 주최자 취소 (#29) — 어느 단계에서든 주최자는 공구를 취소할 수 있다 */}
-          {cancelable &&
-            (askCancel ? (
-              <div className="flex flex-col gap-2 rounded-xl bg-[#fdecec] p-3">
-                <div className="text-[13px] font-extrabold text-[#b3261e]">공구를 취소할까요?</div>
-                <div className="text-[12px] text-[#8a6a6a]">
-                  참여자 전원에게 알림이 가고 되돌릴 수 없어요.
-                </div>
-                {cancelErr && (
-                  <div className="rounded-[8px] bg-white px-2.5 py-1.5 text-[12px] font-bold text-[#b3261e]">
-                    {cancelErr}
-                  </div>
-                )}
-                <div className="flex gap-2">
+            )}
+            {leaveClosed && (
+              <div className="mt-2 text-center text-xs text-[#8b8478]">
+                마감 {LEAVE_CUTOFF_MS / 60_000}분 전부터는 나갈 수 없어요
+              </div>
+            )}
+
+            {askLeave && (
+              <div className="mt-3 border-[1.5px] border-dashed border-[#e14e2b] p-3.5">
+                <div className="text-[13px] font-bold text-[#e14e2b]">공구에서 나갈까요?</div>
+                {leaveErr && <div className="mt-2 text-xs font-bold text-[#e14e2b]">{leaveErr}</div>}
+                <div className="mt-3 flex gap-2">
                   <div
                     onClick={async () => {
-                      if (canceling) return;
-                      setCanceling(true);
-                      setCancelErr(null);
-                      const err = await cancelDeal(deal.id);
-                      setCanceling(false);
-                      if (err) setCancelErr(err);
-                      else setAskCancel(false);
+                      if (leaving) return;
+                      setLeaving(true);
+                      setLeaveErr(null);
+                      const err = await leave(deal.id);
+                      setLeaving(false);
+                      if (err) setLeaveErr(err);
+                      else setAskLeave(false);
                     }}
-                    className="flex-1 cursor-pointer rounded-[10px] bg-[#b3261e] p-2 text-center text-[13px] font-extrabold text-white hover:brightness-110"
+                    className="key key-primary flex-1 py-2 text-[13px]"
                   >
-                    {canceling ? "취소 중…" : "취소하기"}
+                    [ {leaving ? "나가는 중…" : "나가기"} ]
                   </div>
                   <div
                     onClick={() => {
-                      setAskCancel(false);
-                      setCancelErr(null);
+                      setAskLeave(false);
+                      setLeaveErr(null);
                     }}
-                    className="flex-1 cursor-pointer rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white p-2 text-center text-[13px] font-bold text-[#4d6d58] hover:border-[#1f8a4c]"
+                    className="key key-line flex-1 py-2 text-[13px]"
                   >
-                    그만두기
+                    [ 그만두기 ]
                   </div>
                 </div>
               </div>
-            ) : (
+            )}
+
+            <div className="mt-3.5 flex gap-2 text-sm">
               <div
-                onClick={() => setAskCancel(true)}
-                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-[13.5px] font-bold text-[#4d6d58] hover:border-[#b3261e] hover:text-[#b3261e]"
+                onClick={() => canChat && goRoom("d" + deal.id)}
+                title={canChat ? undefined : "참여 후 이용할 수 있어요"}
+                className={`flex-[1.3] py-3 ${canChat ? "key key-line" : "key key-off"}`}
               >
-                <Ban aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 공구 취소
+                [ 채팅방 입장 ]
               </div>
-            ))}
+              <div onClick={() => shareDeal(deal.id, "lounge")} className="key key-line flex-1 py-3">
+                [ 공유 ]
+              </div>
+            </div>
+            {!canChat && (
+              <div className="mt-2 text-center text-xs text-[#8b8478]">참여 후 이용할 수 있어요</div>
+            )}
+
+            {/* 주최자 취소 (#29) — 어느 단계에서든 주최자는 공구를 취소할 수 있다 */}
+            {cancelable &&
+              (askCancel ? (
+                <div className="rule-dash mt-3.5 border-[1.5px] border-dashed border-[#e14e2b] p-3.5">
+                  <div className="text-[13px] font-bold text-[#e14e2b]">공구를 취소할까요?</div>
+                  <div className="mt-1 text-xs text-[#8b8478]">
+                    참여자 전원에게 알림이 가고 되돌릴 수 없어요.
+                  </div>
+                  {cancelErr && <div className="mt-2 text-xs font-bold text-[#e14e2b]">{cancelErr}</div>}
+                  <div className="mt-3 flex gap-2">
+                    <div
+                      onClick={async () => {
+                        if (canceling) return;
+                        setCanceling(true);
+                        setCancelErr(null);
+                        const err = await cancelDeal(deal.id);
+                        setCanceling(false);
+                        if (err) setCancelErr(err);
+                        else setAskCancel(false);
+                      }}
+                      className="key key-primary flex-1 py-2 text-[13px]"
+                    >
+                      [ {canceling ? "취소 중…" : "취소하기"} ]
+                    </div>
+                    <div
+                      onClick={() => {
+                        setAskCancel(false);
+                        setCancelErr(null);
+                      }}
+                      className="key key-line flex-1 py-2 text-[13px]"
+                    >
+                      [ 그만두기 ]
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => setAskCancel(true)}
+                  className="rule-dash mt-3.5 cursor-pointer pt-3 text-center text-xs font-bold text-[#e14e2b]"
+                >
+                  거래 취소
+                </div>
+              ))}
+          </div>
+          <div className="receipt-edge" />
+        </div>
+
+        <div className="w-[280px] flex-none">
+          <div className="receipt px-5 py-[18px]">
+            <div className="rule-dash border-b border-t-0 pb-2.5 text-xs font-bold tracking-[.14em]">
+              참여 명단 // 실시간
+            </div>
+            <div className="mt-3 flex flex-col gap-2.5 text-[13px]">
+              {participantAvatars.map((p) => (
+                <div key={p.userId} className="flex items-center gap-2.5">
+                  <Avatar ch={p.initials} />
+                  <span className="font-sans-ko truncate">{p.nickname}</span>
+                  {p.isHost && <span className="ml-auto text-[10px] text-[#9c9ca3]">주최</span>}
+                </div>
+              ))}
+              {Array.from({ length: Math.max(0, deal.goal - deal.joined) }).map((_, i) => (
+                <div key={`empty-${i}`} className="flex items-center gap-2.5 text-[#9c9ca3]">
+                  <span className="inline-flex h-[26px] min-w-[26px] items-center justify-center border-[1.5px] border-dashed border-[#c9c9c4] text-[11px]">
+                    ·
+                  </span>
+                  <span>공석</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="receipt-edge" />
         </div>
       </div>
     </div>

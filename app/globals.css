@@ -1,43 +1,249 @@
 @import "tailwindcss";
 
+/**
+ * 영수증 POS 디자인 언어 (#143) — 회색 데스크 위에 감열지 전표를 올린 화면.
+ * 색은 시안 hex 를 그대로 쓴다 (CLAUDE.md — 임의 팔레트 금지).
+ *   데스크 #E4E4E0 · 감열지 #FDFDFB · 잉크 #1B1917 · 레드 인주 #E14E2B · 정산 블루 #4A6FA5
+ * 서체는 IBM Plex Mono 를 먼저 두고 Pretendard 를 폴백으로 둔다 — 라틴·숫자는 모노,
+ * 한글은 자동으로 Pretendard 로 떨어져서 시안의 "전표 인쇄" 느낌이 그대로 난다.
+ */
 body {
   margin: 0;
-  background: #eef4ec;
-  color: #17301f;
+  background: #e4e4e0;
+  color: #1b1917;
+  font-family: "IBM Plex Mono", "Pretendard Variable", Pretendard, system-ui, monospace;
+  font-feature-settings: "zero" 1;
+  font-variant-numeric: slashed-zero;
+}
+
+/* 제목·본문 한글은 Pretendard 로 — 모노는 숫자·라벨용 */
+.font-sans-ko {
   font-family: "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  font-feature-settings: normal;
+  font-variant-numeric: normal;
 }
 
 ::placeholder {
-  color: #9db5a4;
+  color: #9c9ca3;
 }
 
-input {
+input,
+textarea,
+button {
   font-family: inherit;
 }
 
-.font-jua {
-  font-family: Jua, sans-serif;
-}
-
 .tnum {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums slashed-zero;
 }
 
-/* 상태 배지 — 색상은 statusOf()가 인라인으로 주입 */
-.badge {
+/* ── 전표(감열지) ───────────────────────────────────────── */
+
+/** 영수증 한 장. 아래에 .receipt-edge 를 붙이면 절취선까지 완성된다 */
+.receipt {
+  background: #fdfdfb;
+  border-radius: 4px 4px 0 0;
+  box-shadow: 0 12px 26px rgba(27, 25, 23, 0.13);
+}
+
+/** 마감·취소된 전표 — 색이 빠진 종이 */
+.receipt-dead {
+  background: #f1efe8;
+  color: #a29b8e;
+  box-shadow: 0 8px 18px rgba(27, 25, 23, 0.08);
+}
+
+/**
+ * 전표 하단 지그재그 절취선.
+ * 두 gradient 가 겹쳐 만드는 V 홈은 16px 타일의 아래쪽에 생긴다 — 높이를 타일보다
+ * 낮게 주면 홈이 잘려서 그냥 막대로 보인다. 16px 를 유지할 것.
+ */
+.receipt-edge {
+  height: 16px;
+  background:
+    linear-gradient(45deg, transparent 8px, #fdfdfb 0),
+    linear-gradient(-45deg, transparent 8px, #fdfdfb 0);
+  background-size: 16px 16px;
+  background-repeat: repeat-x;
+  background-position: left top;
+}
+
+.receipt-dead + .receipt-edge,
+.receipt-edge-dead {
+  background-image:
+    linear-gradient(45deg, transparent 8px, #f1efe8 0),
+    linear-gradient(-45deg, transparent 8px, #f1efe8 0);
+}
+
+/** 전표 머리글 — ＊ 대파 공구 ＊ */
+.receipt-head {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+}
+
+/** 전표 구분선 */
+.rule-dash {
+  border-top: 1.5px dashed #d8d2c6;
+}
+.rule-dot {
+  border-bottom: 1.5px dotted #e3ded2;
+}
+
+/**
+ * 점선 리더 한 줄 — "수령지 ......... 래미안 정문"
+ * <div class="leader"><span>수령지</span><i></i><b>래미안 정문</b></div>
+ */
+.leader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.leader > i {
+  flex: 1;
+  border-bottom: 1.5px dotted #d8d2c6;
+  transform: translateY(-3px);
+}
+.leader > b {
+  font-weight: 700;
+  color: #1b1917;
+}
+
+/** 바코드 — 전표 맨 아래 */
+.barcode {
+  width: 100%;
+  height: 28px;
+  background: repeating-linear-gradient(
+    90deg,
+    #1b1917 0 2px,
+    transparent 2px 4px,
+    #1b1917 4px 7px,
+    transparent 7px 10px,
+    #1b1917 10px 11px,
+    transparent 11px 14px
+  );
+}
+
+/** 원형 인주 도장 — 강조·완료 표시 */
+.stamp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 99px;
+  border: 2px solid #e14e2b;
+  color: #e14e2b;
+  font-weight: 700;
+  transform: rotate(-8deg);
+}
+
+/* ── 태그·키·칩 ────────────────────────────────────────── */
+
+/** 상태 태그 — 각진 네모 + 기호. 색은 statusOf() 가 인라인으로 넣는다 */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  border-width: 1.5px;
+  border-style: solid;
   padding: 3px 10px;
   font-size: 12px;
-  font-weight: 800;
-  flex: none;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-/* 기본 입력 필드 */
-.input-base {
-  border: 1.5px solid #d5e6d6;
-  border-radius: 11px;
-  padding: 12px 14px;
+/** 마감임박 ▲ 점멸 */
+@keyframes pulse-mark {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+.mark-pulse {
+  animation: pulse-mark 1.2s infinite;
+}
+
+/** 키(버튼) 공통 — 라벨은 [ ] 로 감싼다 */
+.key {
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  user-select: none;
+}
+.key-primary {
+  background: #e14e2b;
+  color: #fff;
+}
+.key-primary:hover {
+  background: #b93c1f;
+}
+.key-ink {
+  background: #1b1917;
+  color: #fff;
+}
+.key-ink:hover {
+  background: #000;
+}
+.key-line {
+  border: 1.5px solid #1b1917;
+  color: #1b1917;
+}
+.key-line:hover {
+  background: #1b1917;
+  color: #fdfdfb;
+}
+.key-off {
+  background: #ededea;
+  color: #9c9ca3;
+  cursor: default;
+}
+
+/** 칩(필터·선택) — 각진 네모 */
+.chip {
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  background: #fdfdfb;
+  border: 1px solid #c9c9c4;
+  color: #77777f;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chip:hover {
+  border-color: #1b1917;
+  color: #1b1917;
+}
+.chip-on {
+  background: #26262b;
+  border-color: #26262b;
+  color: #fff;
+}
+.chip-on:hover {
+  color: #fff;
+}
+
+/** 입력 필드 — 흰 종이 위 잉크 테두리 */
+.field {
+  background: #fff;
+  border: 1.5px solid #1b1917;
+  padding: 11px 14px;
   font-size: 14px;
   outline: none;
-  background: #fff;
+  border-radius: 0;
+}
+.field:focus {
+  border-color: #e14e2b;
+}
+.field-sub {
+  border: 1px solid #c9c9c4;
+}
+.field-sub:focus {
+  border-color: #1b1917;
 }
