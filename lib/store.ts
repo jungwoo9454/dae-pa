@@ -158,6 +158,7 @@ const seedMsgs: Record<string, Msg[]> = {
 const EMPTY_FORM: DealForm = {
   cat: "식료품",
   title: "",
+  description: "",
   total: "",
   goal: "",
   mins: "",

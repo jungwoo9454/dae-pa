@@ -120,6 +120,8 @@ export interface HistoryItem {
 export interface DealForm {
   cat: Category;
   title: string;
+  /** 설명 (선택) — 품목·수량은 별도 칸 없이 줄바꿈으로 여기 적는다 (#91) */
+  description: string;
   /** 배달음식은 선택 — 비워두면 서버가 minOrderAmount로 채운다 (#95) */
   total: string;
   goal: string;

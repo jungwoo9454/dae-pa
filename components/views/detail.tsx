@@ -119,9 +119,9 @@ export default function DetailView() {
               {deal.cat} · 주최 {deal.host}
             </div>
           </div>
-          <div className="rounded-[14px] border border-[#dbe9da] bg-white px-4 py-3.5 leading-[1.7] text-[#3c5546]">
-            품질 좋은 걸 대용량으로 사서 나눠요. 마감되면 채팅방에서 수령 시간을 맞추고, 정산은 앱에서
-            자동 1/N로 진행됩니다.
+          <div className="whitespace-pre-line rounded-[14px] border border-[#dbe9da] bg-white px-4 py-3.5 leading-[1.7] text-[#3c5546]">
+            {deal.description ||
+              "품질 좋은 걸 대용량으로 사서 나눠요. 마감되면 채팅방에서 수령 시간을 맞추고, 정산은 앱에서 자동 1/N로 진행됩니다."}
           </div>
           <div className="flex flex-wrap gap-2.5">
             <div className="flex items-center gap-1.5 rounded-[10px] border border-[#dbe9da] bg-white px-3 py-2 text-[13px]">
