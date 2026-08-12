@@ -12,6 +12,7 @@ import {
   leavable,
   perAmount,
   perLabel,
+  settleStartable,
   statusOf,
 } from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
@@ -32,6 +33,8 @@ export default function DetailView() {
   const leave = useStore((s) => s.leave);
   const openSettle = useStore((s) => s.openSettle);
   const cancelDeal = useStore((s) => s.cancelDeal);
+  const startSettlement = useStore((s) => s.startSettlement);
+  const [settleErr, setSettleErr] = useState<string | null>(null);
   const [askCancel, setAskCancel] = useState(false);
   const [cancelErr, setCancelErr] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
@@ -76,6 +79,11 @@ export default function DetailView() {
   // 나가기는 주최자가 아닌 참여자만, 모집중이고 마감 5분 전까지만 (#94 — DB 의 leave_group_buy 판정과 같다).
   // 정산 시작 후엔 금액이 걸려있어 범위 밖 — 1차는 모집중에서만 허용.
   const canLeave = leavable(deal, now);
+  // 정원 미달로 마감된 공구 — 주최자가 모인 인원 그대로 정산에 넣을 수 있다 (#131).
+  // DB 의 start_settlement 판정과 같은 기준이고, 서버도 같은 조건으로 다시 거부한다.
+  const canStartSettle = settleStartable(deal, now);
+  // 마감됐는데 주최자 혼자면 정산할 게 없다 — 버튼만 '마감됨'이면 이유를 알 수 없어 따로 안내한다.
+  const settleAlone = deal.mine && deal.status === "recruiting" && deal.end <= now && deal.joined < 2;
   // 나갈 수 있었는데 마감이 임박해서 막힌 경우 — 버튼만 바뀌면 이유를 알 수 없어 따로 알려준다.
   // 이미 마감된 공구는 배지가 '마감'이라 굳이 다시 알리지 않는다.
   const leaveClosed =
@@ -87,7 +95,10 @@ export default function DetailView() {
 
   const onMainAction = () => {
     if (deal.status === "settling") openSettle(deal.id);
-    else if (canLeave) setAskLeave(true);
+    else if (canStartSettle) {
+      setSettleErr(null);
+      void startSettlement(deal.id).then((err) => setSettleErr(err));
+    } else if (canLeave) setAskLeave(true);
     else join(deal.id);
   };
 
@@ -228,13 +239,21 @@ export default function DetailView() {
             className={`cursor-pointer rounded-xl p-[13px] text-center text-base font-extrabold hover:brightness-105 ${
               canLeave
                 ? "border-[1.5px] border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#b3261e] hover:text-[#b3261e]"
-                : active || deal.status === "settling"
+                : active || canStartSettle || deal.status === "settling"
                   ? "bg-[#1f8a4c] text-white"
                   : "bg-[#e6efe4] text-[#6b8573]"
             }`}
           >
             {canLeave ? "나가기" : joinLabel(deal, now)}
           </div>
+          {settleErr && (
+            <div className="-mt-2.5 text-center text-[12px] text-[#b3261e]">{settleErr}</div>
+          )}
+          {settleAlone && (
+            <div className="-mt-2.5 text-center text-[12px] text-[#8aa392]">
+              참여자가 없어 정산할 게 없어요 — 공구를 취소해주세요
+            </div>
+          )}
           {leaveClosed && (
             <div className="-mt-2.5 text-center text-[12px] text-[#8aa392]">
               마감 {LEAVE_CUTOFF_MS / 60_000}분 전부터는 나갈 수 없어요

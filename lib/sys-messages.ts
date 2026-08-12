@@ -12,6 +12,8 @@ export const sysText = {
   /** 참여 취소 — 모집중 상태에서만 가능 (#94). DB 의 leave_group_buy RPC 도 같은 문구를 넣는다 */
   left: (who: string) => `${who}님이 나갔어요`,
   goalReached: () => "목표 달성! 정산이 시작돼요 🎉",
+  /** 정원 미달로 마감된 공구를 주최자가 정산 시작 (#131). DB 의 start_settlement RPC 도 같은 문구를 넣는다 */
+  settleStarted: (joined: number) => `마감! 모인 ${joined}명으로 정산을 시작해요`,
   deadlineClosed: () => "마감 시간이 지나 모집이 종료됐어요",
   /** 금액 변경 — 규칙 3의 3종 세트 중 채팅 기록 담당 (#12에서 호출) */
   totalChanged: (before: number, after: number, perPerson: number, reason?: string) =>

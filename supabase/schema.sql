@@ -429,6 +429,50 @@ revoke execute on function public.change_total_amount(bigint, integer)
 grant execute on function public.change_total_amount(bigint, integer)
   to authenticated;
 
+-- 정원 미달 마감 → 정산 시작 RPC (#131).
+-- settling 으로 가는 유일한 경로가 join_group_buy 의 정원 도달뿐이라, 정원을 못 채운 채
+-- 마감된 공구는 정산에 못 들어가고 recruiting 에 갇힌다 (마감 크론이 없어 DB status 는
+-- 계속 recruiting). 주최자가 모인 인원 그대로 정산을 시작할 수 있게 한다.
+-- 시스템 메시지·알림은 join_group_buy 의 정원 도달 분기와 같은 타입('settle_start')을 쓴다.
+create or replace function public.start_settlement(p_group_buy_id bigint) returns group_buys
+language plpgsql security definer set search_path = public as $$
+declare g group_buys;
+begin
+  -- join_group_buy/cancel_group_buy 와의 동시 전이를 직렬화한다
+  select * into g from public.group_buys where id = p_group_buy_id for update;
+
+  if g.id is null then
+    raise exception '공구를 찾을 수 없습니다';
+  end if;
+  if g.host_id <> auth.uid() then
+    raise exception '주최자만 정산을 시작할 수 있습니다';
+  end if;
+  if g.status <> 'recruiting' then
+    raise exception '모집중인 공구만 정산을 시작할 수 있습니다';
+  end if;
+  if g.deadline > now() then
+    raise exception '마감 시각이 지나야 정산을 시작할 수 있습니다';
+  end if;
+  -- 주최자 혼자면 1/N 할 게 없다 — 취소로 안내한다
+  if g.joined < 2 then
+    raise exception '참여자가 주최자뿐이라 정산할 게 없어요 — 공구를 취소해주세요';
+  end if;
+
+  update public.group_buys set status = 'settling' where id = p_group_buy_id
+  returning * into g;
+
+  -- 문구는 lib/sys-messages.ts 의 sysText.settleStarted() 와 맞춘다.
+  perform public.post_system_message(g.id, '마감! 모인 ' || g.joined || '명으로 정산을 시작해요');
+
+  insert into public.notifications (user_id, type, payload)
+  select p.user_id, 'settle_start',
+         jsonb_build_object('dealId', g.id,
+           'text', g.title || ' 마감! 모인 ' || g.joined || '명으로 정산이 시작돼요')
+    from public.participations p where p.group_buy_id = g.id;
+
+  return g;
+end $$;
+
 -- ─────────────────────────────────────────────
 -- 2-2. 정산·지갑 RPC (#15~18, 팀원 C)
 --
@@ -1037,6 +1081,9 @@ grant  execute on function public.leave_group_buy(bigint) to authenticated;
 -- 다른 RPC 안에서만 쓰는 내부 함수라 authenticated 에도 안 연다.
 revoke execute on function public.apply_settlement_split(bigint, int, int, jsonb) from public, anon, authenticated;
 revoke execute on function public.complete_group_buy_if_all_paid(bigint) from public, anon, authenticated;
+
+revoke execute on function public.start_settlement(bigint) from public, anon;
+grant  execute on function public.start_settlement(bigint) to authenticated;
 
 revoke execute on function public.confirm_settlement(bigint, int, int, text, jsonb) from public, anon;
 grant  execute on function public.confirm_settlement(bigint, int, int, text, jsonb) to authenticated;

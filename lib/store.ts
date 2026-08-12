@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { CAT_EMOJI, joinable, relativeWhen } from "./deal";
+import { CAT_EMOJI, joinable, relativeWhen, settleStartable } from "./deal";
 import { createClient } from "./supabase/client";
 import { subscribePg } from "./supabase/realtime";
 import { sysText } from "./sys-messages";
@@ -270,6 +270,11 @@ interface StoreState {
   confirmSelfPaid: (participationId: number, method: "account" | "toss") => Promise<void>;
   /** 미입금자 리마인드 (#17) — remind_unpaid RPC, 주최자만 호출 가능 */
   remindUnpaid: (dealId: number) => Promise<void>;
+  /**
+   * 정원 미달 마감 → 정산 시작 (#131) — start_settlement RPC. 주최자 + 마감 + 모집중일 때만
+   * 서버가 허용한다. 성공하면 정산 화면까지 열고, 실패하면 사유 문구를 돌려준다.
+   */
+  startSettlement: (dealId: number) => Promise<string | null>;
   /** 주최자 취소 (#29) — 모집중·정산중이면 canceled 로 보낸다. 실패하면 사유 문구를 돌려준다 */
   cancelDeal: (dealId: number) => Promise<string | null>;
   /** 주최자 삭제 — 모집중이면 DB에서 삭제한다. 실패하면 사유 문구를 돌려준다 */
@@ -910,6 +915,22 @@ export const useStore = create<StoreState>((set, get) => ({
   remindUnpaid: async (dealId) => {
     const { error } = await createClient().rpc("remind_unpaid", { p_group_buy_id: dealId });
     if (error) alert(error.message);
+  },
+
+  // 마감됐는데 정원을 못 채운 공구를 모인 인원 그대로 정산에 넣는다 (#131).
+  // group_buys.status 는 클라이언트가 못 쓰므로 서버 RPC 가 전이·시스템 메시지·알림을 다 한다 —
+  // 여기서는 성공 후 status 만 낙관적으로 반영하고 정산 화면을 연다 (useRealtimeDeals 가 재확인).
+  startSettlement: async (dealId) => {
+    const deal = get().deals.find((d) => d.id === dealId);
+    if (!deal || !settleStartable(deal, Date.now())) return "지금은 정산을 시작할 수 없어요";
+    const { error } = await createClient().rpc("start_settlement", { p_group_buy_id: dealId });
+    // RPC 의 raise exception 문구가 그대로 온다 — 그걸 화면에 보여준다 (cancelDeal 과 동일 패턴)
+    if (error) return error.message;
+    set((st) => ({
+      deals: st.deals.map((d) => (d.id === dealId ? { ...d, status: "settling" as const } : d)),
+    }));
+    get().openSettle(dealId);
+    return null;
   },
 
   // 시스템 메시지·참여자 알림은 서버 RPC 가 넣는다 (채팅은 Realtime 으로 따라온다).

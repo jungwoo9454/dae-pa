@@ -1,7 +1,7 @@
 "use client";
 
 import { Timer } from "lucide-react";
-import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, settleStartable, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Deal } from "@/lib/types";
 import { ProgressBar, StatusBadge } from "./ui";
@@ -18,9 +18,14 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
   // 색은 statusOf 가 이미 쓰는 bg/fg 만 재사용한다 (CLAUDE.md — 임의 팔레트 금지).
   const dimmed = st.key === "closed" || st.key === "canceled";
 
+  // 정원 미달 마감 → 주최자만 보이는 '정산 시작' (#131). 시작 후 정산 화면까지 여는 흐름이
+  // 상세에만 있어서 카드에서는 상세로 넘긴다 — 라벨만 바뀌고 눌러도 안 되는 걸 막는다.
+  const startable = settleStartable(deal, now);
+
   const onJoin = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (deal.status === "settling") openSettle(deal.id);
+    else if (startable) openDeal(deal.id);
     else join(deal.id);
   };
 
@@ -69,7 +74,7 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
         <div
           onClick={onJoin}
           className={`cursor-pointer rounded-[10px] px-4 py-2 text-[13.5px] font-extrabold hover:brightness-105 ${
-            active || deal.status === "settling"
+            active || startable || deal.status === "settling"
               ? "bg-[#1f8a4c] text-white"
               : "bg-[#e6efe4] text-[#6b8573]"
           }`}
