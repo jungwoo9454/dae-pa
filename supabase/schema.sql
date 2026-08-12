@@ -686,7 +686,9 @@ begin
   if p_amount <= 0 then
     raise exception '충전 금액은 0보다 커야 합니다';
   end if;
-  update public.wallets set balance = balance + p_amount where user_id = v_user_id;
+  -- wallets 행이 없으면 UPDATE 가 조용히 0행 갱신으로 끝나 잔액이 반영 안 된다 (#85) — upsert 로 방어
+  insert into public.wallets (user_id, balance) values (v_user_id, p_amount)
+    on conflict (user_id) do update set balance = public.wallets.balance + excluded.balance;
   insert into public.wallet_transactions (user_id, kind, amount, title)
   values (v_user_id, 'charge', p_amount, '충전');
 end $$;
