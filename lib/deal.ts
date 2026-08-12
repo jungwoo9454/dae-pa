@@ -56,6 +56,21 @@ export function remainLabel(d: Deal, now: number) {
   return (dd > 0 ? dd + "일 " : "") + p(h) + ":" + p(m) + ":" + p(ss);
 }
 
+/** 상세 화면 카운트다운 표시 — 상태별로 텍스트·캡션·색상 다르게 */
+export function countdownDisplay(d: Deal, now: number): { text: string; caption: string; color: string } {
+  if (d.status === "settling") {
+    return { text: "정산 진행 중", caption: "정산 진행 중", color: "#0e7490" };
+  }
+  if (d.status === "canceled") {
+    return { text: "취소됨", caption: "공구 취소", color: "#6b7280" };
+  }
+  const left = d.end - now;
+  if (d.status !== "recruiting" || left <= 0) {
+    return { text: "마감됨", caption: "모집 종료", color: "#64748b" };
+  }
+  return { text: remainLabel(d, now), caption: "남은 시간 · 실시간", color: "#1f8a4c" };
+}
+
 /** 1인당 금액 = 총 금액 ÷ 현재 참여자 수 (목표 인원이 아니라 joined) — docs/PLANNING.md 4.2 */
 export function perAmount(d: Deal) {
   return Math.ceil(d.total / Math.max(1, d.joined));
