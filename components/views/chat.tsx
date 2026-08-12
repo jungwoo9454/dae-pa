@@ -222,6 +222,8 @@ export default function ChatView() {
 
             {roomMsgs.map((mg, i) => {
               if (mg.kind === "sys") {
+                // 문구가 빈 시스템 메시지는 "--- ---" 빈 줄로만 남는다 — 건너뛴다
+                if (!mg.text?.trim()) return null;
                 return (
                   <div key={i} className="self-center text-center text-[12.5px] text-[#8b8478]">
                     --- {mg.text} ---
