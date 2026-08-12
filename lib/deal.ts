@@ -27,7 +27,7 @@ export function relativeWhen(iso: string) {
 }
 
 export interface StatusView {
-  key: "settling" | "closed" | "closing" | "recruiting";
+  key: "settling" | "closed" | "closing" | "recruiting" | "canceled";
   label: string;
   bg: string;
   fg: string;
@@ -36,8 +36,8 @@ export interface StatusView {
 /** 마감임박은 DB 상태가 아니라 마감 1시간 전부터 파생 표시 */
 export function statusOf(d: Deal, now: number): StatusView {
   if (d.status === "settling") return { key: "settling", label: "정산중", bg: "#e0f0f1", fg: "#0e7490" };
+  if (d.status === "canceled") return { key: "canceled", label: "취소됨", bg: "#f3f4f6", fg: "#6b7280" };
   const left = d.end - now;
-  // completed/canceled 는 배지 문구가 '마감' 으로 같다 (CLAUDE.md 디자인 규칙)
   if (d.status !== "recruiting" || left <= 0) return { key: "closed", label: "마감", bg: "#eceff0", fg: "#64748b" };
   if (left < 3_600_000) return { key: "closing", label: "마감임박", bg: "#fdf0dc", fg: "#b45309" };
   return { key: "recruiting", label: "모집중", bg: "#e9f6ec", fg: "#166b3a" };
