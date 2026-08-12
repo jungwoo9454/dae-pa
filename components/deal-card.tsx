@@ -1,7 +1,7 @@
 "use client";
 
 import { Timer } from "lucide-react";
-import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Deal } from "@/lib/types";
 import { ProgressBar, StatusBadge } from "./ui";
@@ -58,7 +58,7 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
       </div>
       <div className="flex items-center justify-between">
         <div className="text-[13px] text-[#6b8573]">
-          1인 <b className="text-[15px] text-[#17301f]">{fmt(perAmount(deal))}</b>
+          {perLabel(deal)} <b className="text-[15px] text-[#17301f]">{fmt(perAmount(deal))}</b>
         </div>
         <div
           onClick={onJoin}

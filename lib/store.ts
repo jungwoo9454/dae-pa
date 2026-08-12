@@ -155,7 +155,18 @@ const seedMsgs: Record<string, Msg[]> = {
   d5: [{ kind: "sys", text: "공구방이 열렸어요 · 목표 2명" }],
 };
 
-const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "", store_link: "", imageUrl: "" };
+const EMPTY_FORM: DealForm = {
+  cat: "식료품",
+  title: "",
+  total: "",
+  goal: "",
+  mins: "",
+  place: "",
+  store_link: "",
+  imageUrl: "",
+  minOrderAmount: "",
+  deliveryFee: "",
+};
 
 interface AuthForm {
   nick: string;
@@ -739,8 +750,8 @@ export const useStore = create<StoreState>((set, get) => ({
 
   // 서버가 주최자+모집중 여부를 재확인하고(RLS와 별개로 RPC 안에서 명시 체크), 통과하면
   // "알림 + 시스템 메시지"까지 한 트랜잭션 안에서 같이 처리한다(CLAUDE.md 규칙 3의 3종 세트).
-  // 1인당 금액 재계산은 lib/deal.ts의 perAmount가 deal.total/deal.joined로 매번 다시
-  // 계산하므로 여기서 따로 할 일이 없다 — total만 반영하면 화면은 자동으로 맞는다.
+  // 1인당 금액 재계산은 lib/deal.ts의 perAmount가 (deal.total+deliveryFee)/deal.joined로 매번
+  // 다시 계산하므로 여기서 따로 할 일이 없다 — total만 반영하면 화면은 자동으로 맞는다.
   changeTotalAmount: async (dealId, newTotal) => {
     if (newTotal <= 0) return;
     const { data, error } = await createClient().rpc("change_total_amount", {

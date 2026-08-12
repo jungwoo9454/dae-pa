@@ -9,6 +9,8 @@ export interface GroupBuyRow {
   store_link: string | null;
   total_amount: number; // 원 단위 정수
   delivery_fee: number;
+  /** 배달음식 전용 — 가게 최소 주문 금액 (#95). 다른 카테고리는 null */
+  min_order_amount: number | null;
   goal: number; // 목표 인원
   joined: number; // 현재 참여자 수
   deadline: string; // ISO 8601 timestamp

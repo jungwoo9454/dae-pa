@@ -3,7 +3,7 @@
 import { Ban, Coins, MapPin, MessageCircle, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ProgressBar, StatusBadge } from "@/components/ui";
-import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, statusOf } from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
@@ -182,7 +182,7 @@ export default function DetailView() {
               참여 <b>{deal.joined}</b>/{deal.goal}명
             </span>
             <span>
-              1인 <b className="text-base">{fmt(perAmount(deal))}</b>
+              {perLabel(deal)} <b className="text-base">{fmt(perAmount(deal))}</b>
             </span>
           </div>
           <div className="flex">
