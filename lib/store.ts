@@ -254,6 +254,8 @@ interface StoreState {
   setForm: (patch: Partial<DealForm>) => void;
   /** 공구 참여 (#5) — join_group_buy RPC 호출. 서버가 정원/마감/중복을 원자적으로 거부한다 */
   join: (id: number) => Promise<void>;
+  /** 참여 취소·공구 나가기 (#94) — leave_group_buy RPC. 모집중일 때만 서버가 허용 */
+  leave: (id: number) => Promise<string | null>;
   shareDeal: (dealId: number, roomId: string) => void;
   /** 주최자 개별 금액 조정 (#16) — adjust_participation_amount RPC. 본인 몫은 나머지로 자동 계산 */
   adjustParticipationAmount: (participationId: number, newAmount: number) => Promise<void>;
@@ -656,6 +658,14 @@ export const useStore = create<StoreState>((set, get) => ({
         filter: `user_id=eq.${uid}`,
         handler: () => void loadRooms(),
       },
+      // 공구에서 나가면(leave_group_buy, #94) 방이 하나 빠진다 — 마찬가지로 다시 읽는다.
+      // DELETE 페이로드에 user_id 가 실리려면 participations 에 replica identity full 이 필요하다.
+      {
+        event: "DELETE",
+        table: "participations",
+        filter: `user_id=eq.${uid}`,
+        handler: () => void loadRooms(),
+      },
     ]);
 
     return () => {
@@ -768,6 +778,19 @@ export const useStore = create<StoreState>((set, get) => ({
         d.id === id ? { ...d, joined: g.joined, status: g.status, me: true } : d,
       ),
     }));
+  },
+
+  // 모집중일 때만 서버가 허용한다(leave_group_buy). 시스템 메시지·주최자 알림은 RPC 안에서
+  // 처리되므로, 여기서는 성공 후 deals의 joined/me만 낙관적으로 반영한다 —
+  // useRealtimeDeals 구독이 실제 값으로 다시 맞춰준다.
+  leave: async (id) => {
+    const { error } = await createClient().rpc("leave_group_buy", { p_group_buy_id: id });
+    // RPC 의 raise exception 문구가 그대로 온다 — 그걸 화면에 보여준다 (cancelDeal 과 동일 패턴)
+    if (error) return error.message;
+    set((st) => ({
+      deals: st.deals.map((d) => (d.id === id ? { ...d, joined: d.joined - 1, me: false } : d)),
+    }));
+    return null;
   },
 
   adjustParticipationAmount: async (participationId, newAmount) => {

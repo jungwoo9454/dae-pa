@@ -1,6 +1,6 @@
 // app/api/deals/route.ts
 import { createClient } from "@/lib/supabase/server"; //SUPERBASE추가후
-import { CAT_EMOJI } from "@/lib/deal";
+import { CAT_EMOJI, MIN_DEADLINE_MIN } from "@/lib/deal";
 import type { Category } from "@/lib/types";
 
 /** 카테고리 이모지는 lib/deal.ts 의 CAT_EMOJI 한 벌만 쓴다 (#90) — DB 값이 정해진 카테고리를 벗어나면 기타 */
@@ -95,7 +95,14 @@ export async function POST(req: Request) {
     // 임시 수정 (인증 스킵):
     // const user = {id: "30019992-ef88-40c5-b7a7-5cad74ea6a4e",};
 
+    // 마감이 너무 짧으면 아무도 못 보고 끝난다 — 폼에서도 막지만 서버에서도 거부한다
     const minN = parseInt(mins) || 60;
+    if (minN < MIN_DEADLINE_MIN) {
+      return Response.json(
+        { error: `마감 시간은 최소 ${MIN_DEADLINE_MIN}분이에요` },
+        { status: 400 }
+      );
+    }
 
     const { data: newDeal, error } = await supabase
       .from('group_buys')
