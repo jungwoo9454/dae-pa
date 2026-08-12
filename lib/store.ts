@@ -917,9 +917,6 @@ export const useStore = create<StoreState>((set, get) => ({
     if (error) alert(error.message);
   },
 
-  // 시스템 메시지·참여자 알림은 서버 RPC 가 넣는다 (채팅은 Realtime 으로 따라온다).
-  // 목록은 홈에서 fetchDeals() 로 다시 읽고 useRealtimeDeals 가 group_buys UPDATE 도
-  // 받으므로, 성공했을 때만 화면 상태를 바꾼다 (홈 밖에서 취소한 경우를 위해 남겨둔다).
   // 마감됐는데 정원을 못 채운 공구를 모인 인원 그대로 정산에 넣는다 (#131).
   // group_buys.status 는 클라이언트가 못 쓰므로 서버 RPC 가 전이·시스템 메시지·알림을 다 한다 —
   // 여기서는 성공 후 status 만 낙관적으로 반영하고 정산 화면을 연다 (useRealtimeDeals 가 재확인).
@@ -936,6 +933,9 @@ export const useStore = create<StoreState>((set, get) => ({
     return null;
   },
 
+  // 시스템 메시지·참여자 알림은 서버 RPC 가 넣는다 (채팅은 Realtime 으로 따라온다).
+  // 목록은 홈에서 fetchDeals() 로 다시 읽고 useRealtimeDeals 가 group_buys UPDATE 도
+  // 받으므로, 성공했을 때만 화면 상태를 바꾼다 (홈 밖에서 취소한 경우를 위해 남겨둔다).
   cancelDeal: async (dealId) => {
     const deal = get().deals.find((d) => d.id === dealId);
     if (!deal || !deal.mine) return "주최자만 취소할 수 있어요";
