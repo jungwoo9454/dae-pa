@@ -19,11 +19,15 @@ export default function DetailView() {
   const goRoom = useStore((s) => s.goRoom);
   const shareDeal = useStore((s) => s.shareDeal);
   const join = useStore((s) => s.join);
+  const leave = useStore((s) => s.leave);
   const openSettle = useStore((s) => s.openSettle);
   const cancelDeal = useStore((s) => s.cancelDeal);
   const [askCancel, setAskCancel] = useState(false);
   const [cancelErr, setCancelErr] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
+  const [askLeave, setAskLeave] = useState(false);
+  const [leaveErr, setLeaveErr] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const changeTotalAmount = useStore((s) => s.changeTotalAmount);
   const [editingTotal, setEditingTotal] = useState(false);
   const [totalInput, setTotalInput] = useState("");
@@ -58,9 +62,13 @@ export default function DetailView() {
   }));
   // 취소는 주최자만, 모집중·정산중일 때만 (#29 — DB 의 cancel_group_buy 판정과 같다)
   const cancelable = deal.mine && (deal.status === "recruiting" || deal.status === "settling");
+  // 나가기는 주최자가 아닌 참여자만, 모집중일 때만 (#94 — DB 의 leave_group_buy 판정과 같다).
+  // 정산 시작 후엔 금액이 걸려있어 범위 밖 — 1차는 모집중에서만 허용.
+  const leavable = deal.me && !deal.mine && deal.status === "recruiting";
 
-  const onJoin = () => {
+  const onMainAction = () => {
     if (deal.status === "settling") openSettle(deal.id);
+    else if (leavable) setAskLeave(true);
     else join(deal.id);
   };
 
@@ -195,15 +203,53 @@ export default function DetailView() {
             </span>
           </div>
           <div
-            onClick={onJoin}
+            onClick={onMainAction}
             className={`cursor-pointer rounded-xl p-[13px] text-center text-base font-extrabold hover:brightness-105 ${
-              active || deal.status === "settling"
-                ? "bg-[#1f8a4c] text-white"
-                : "bg-[#e6efe4] text-[#6b8573]"
+              leavable
+                ? "border-[1.5px] border-[#d5e6d6] bg-white text-[#4d6d58] hover:border-[#b3261e] hover:text-[#b3261e]"
+                : active || deal.status === "settling"
+                  ? "bg-[#1f8a4c] text-white"
+                  : "bg-[#e6efe4] text-[#6b8573]"
             }`}
           >
-            {joinLabel(deal, now)}
+            {leavable ? "나가기" : joinLabel(deal, now)}
           </div>
+          {askLeave && (
+            <div className="flex flex-col gap-2 rounded-xl bg-[#fdecec] p-3">
+              <div className="text-[13px] font-extrabold text-[#b3261e]">공구에서 나갈까요?</div>
+              <div className="text-[12px] text-[#8a6a6a]">참여가 취소되고 채팅방에 나갔다는 메시지가 남아요.</div>
+              {leaveErr && (
+                <div className="rounded-[8px] bg-white px-2.5 py-1.5 text-[12px] font-bold text-[#b3261e]">
+                  {leaveErr}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <div
+                  onClick={async () => {
+                    if (leaving) return;
+                    setLeaving(true);
+                    setLeaveErr(null);
+                    const err = await leave(deal.id);
+                    setLeaving(false);
+                    if (err) setLeaveErr(err);
+                    else setAskLeave(false);
+                  }}
+                  className="flex-1 cursor-pointer rounded-[10px] bg-[#b3261e] p-2 text-center text-[13px] font-extrabold text-white hover:brightness-110"
+                >
+                  {leaving ? "나가는 중…" : "나가기"}
+                </div>
+                <div
+                  onClick={() => {
+                    setAskLeave(false);
+                    setLeaveErr(null);
+                  }}
+                  className="flex-1 cursor-pointer rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white p-2 text-center text-[13px] font-bold text-[#4d6d58] hover:border-[#1f8a4c]"
+                >
+                  그만두기
+                </div>
+              </div>
+            </div>
+          )}
           <div
             onClick={() => goRoom("d" + deal.id)}
             className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#1f8a4c] p-2.5 font-extrabold text-[#1f8a4c] hover:bg-[#e9f6ec]"
