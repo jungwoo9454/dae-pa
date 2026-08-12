@@ -15,7 +15,9 @@ const TOSS_CONFIRM_URL = "https://api.tosspayments.com/v1/payments/confirm";
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const back = (q: string) => Response.redirect(new URL(`/?${q}`, url.origin), 303);
+  // Location 은 상대 경로로 준다 — 리버스 프록시 뒤에서는 url.origin 이 컨테이너 내부 주소
+  // (https://0.0.0.0:3000) 라 절대 URL 을 만들면 결제 후 아무 데도 못 간다.
+  const back = (q: string) => new Response(null, { status: 303, headers: { Location: `/?${q}` } });
 
   const paymentKey = url.searchParams.get("paymentKey");
   const orderId = url.searchParams.get("orderId");

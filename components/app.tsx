@@ -5,6 +5,7 @@ import Sidebar from "./sidebar";
 import TopBar from "./top-bar";
 import ProfilePopover from "./profile-popover";
 import NotiPopover from "./noti-popover";
+import DongBanner from "./dong-banner";
 import AuthView from "./views/auth";
 import HomeView from "./views/home";
 import DetailView from "./views/detail";
@@ -27,6 +28,7 @@ export default function App() {
         <TopBar />
         {profileOpen && <ProfilePopover />}
         {notiOpen && <NotiPopover />}
+        {page === "home" && <DongBanner />}
         {page === "home" && <HomeView />}
         {page === "detail" && <DetailView />}
         {page === "my" && <MyView />}

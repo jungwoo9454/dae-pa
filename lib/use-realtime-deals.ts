@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { subscribePg } from "@/lib/supabase/realtime";
 import { fetchDeals } from "@/lib/supabase/queries";
 import { useStore } from "@/lib/store";
 import { CAT_EMOJI } from "@/lib/deal";
@@ -30,14 +30,11 @@ import type { GroupBuyRow } from "@/lib/db-types";
  */
 export function useRealtimeDeals(): void {
   useEffect(() => {
-    const sb = createClient();
-
-    const channel = sb
-      .channel("home-group-buys")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "group_buys" },
-        (payload) => {
+    return subscribePg("home-group-buys", [
+      {
+        event: "UPDATE",
+        table: "group_buys",
+        handler: (payload) => {
           const row = payload.new as GroupBuyRow;
           useStore.setState((st) => {
             if (!st.deals.some((d) => d.id === row.id)) return {};
@@ -65,11 +62,11 @@ export function useRealtimeDeals(): void {
             };
           });
         },
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "group_buys" },
-        () => {
+      },
+      {
+        event: "INSERT",
+        table: "group_buys",
+        handler: () => {
           void fetchDeals().then((fresh) =>
             useStore.setState((st) => {
               // fetchDeals는 목록용이라 participations를 비운 채로 준다 — 이미 상세에서
@@ -84,11 +81,7 @@ export function useRealtimeDeals(): void {
             }),
           );
         },
-      )
-      .subscribe();
-
-    return () => {
-      void sb.removeChannel(channel);
-    };
+      },
+    ]);
   }, []);
 }

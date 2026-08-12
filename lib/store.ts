@@ -3,12 +3,10 @@
 import { create } from "zustand";
 import { CAT_EMOJI, joinable, relativeWhen } from "./deal";
 import { createClient } from "./supabase/client";
+import { subscribePg } from "./supabase/realtime";
 import { sysText } from "./sys-messages";
 import type { GroupBuyRow } from "./db-types";
 import type { AuthMode, Deal, DealForm, HistoryItem, Me, Msg, Noti, PageKey, Room } from "./types";
-
-/** 동네 인증은 아직 모의 — 위치 기반 판정은 별도 이슈 */
-export const DONG = "역삼동";
 
 /** 마감 몇 분 전에 알림을 넣을지 (#13) */
 const DEADLINE_MS = 30 * 60_000;
@@ -116,6 +114,7 @@ async function patchProfile(uid: string, patch: Record<string, unknown>) {
 const PROFILE_COL: Record<string, string> = {
   nickname: "nickname",
   avatarUrl: "avatar_url",
+  dong: "dong",
   bankAccount: "bank_account",
   transferApp: "transfer_app",
 };
@@ -155,7 +154,19 @@ const seedMsgs: Record<string, Msg[]> = {
   d5: [{ kind: "sys", text: "공구방이 열렸어요 · 목표 2명" }],
 };
 
-const EMPTY_FORM: DealForm = { cat: "식료품", title: "", total: "", goal: "", mins: "", place: "", store_link: "", imageUrl: "" };
+const EMPTY_FORM: DealForm = {
+  cat: "식료품",
+  title: "",
+  description: "",
+  total: "",
+  goal: "",
+  mins: "",
+  place: "",
+  store_link: "",
+  imageUrl: "",
+  minOrderAmount: "",
+  deliveryFee: "",
+};
 
 interface AuthForm {
   nick: string;
@@ -174,11 +185,15 @@ interface StoreState {
   authBusy: boolean;
   authError: string;
   dongOk: boolean;
+  /** 사용자가 적은 동네 이름 — 확정 시 profiles.dong 으로 간다 (#83) */
+  dongValue: string;
   room: string;
   chatInput: string;
   search: string;
   mySearch: string;
   filter: string;
+  statusFilter: string;
+  myDealsOnly: boolean;
   profileOpen: boolean;
   notiOpen: boolean;
   notis: Noti[];
@@ -204,7 +219,11 @@ interface StoreState {
 
   setAuth: (patch: Partial<AuthForm>) => void;
   switchAuthMode: () => void;
-  verifyDong: () => void;
+  /** bfcache 복원 등으로 남은 authBusy 를 푼다 — 안 풀면 로그인 버튼이 죽는다 (#82) */
+  resetAuthBusy: () => void;
+  setDongValue: (v: string) => void;
+  /** 동네 확정 — 가입 전이면 dongOk 만 켜고, 로그인 상태면 profiles.dong 까지 저장한다 (#83) */
+  confirmDong: () => void;
   /** 세션 구독 시작. 정리 함수를 돌려준다 */
   initAuth: () => () => void;
   signIn: () => Promise<void>;
@@ -230,6 +249,8 @@ interface StoreState {
   setSearch: (v: string) => void;
   setMySearch: (v: string) => void;
   setFilter: (v: string) => void;
+  setStatusFilter: (v: string) => void;
+  setMyDealsOnly: (v: boolean) => void;
   setForm: (patch: Partial<DealForm>) => void;
   /** 공구 참여 (#5) — join_group_buy RPC 호출. 서버가 정원/마감/중복을 원자적으로 거부한다 */
   join: (id: number) => Promise<void>;
@@ -251,6 +272,8 @@ interface StoreState {
   remindUnpaid: (dealId: number) => Promise<void>;
   /** 주최자 취소 (#29) — 모집중·정산중이면 canceled 로 보낸다. 실패하면 사유 문구를 돌려준다 */
   cancelDeal: (dealId: number) => Promise<string | null>;
+  /** 주최자 삭제 — 모집중이면 DB에서 삭제한다. 실패하면 사유 문구를 돌려준다 */
+  deleteDeal: (dealId: number) => Promise<string | null>;
   toggleTopup: () => void;
   setTopupAmt: (v: number) => void;
   doTopup: () => Promise<void>;
@@ -268,7 +291,9 @@ interface StoreState {
   toggleN1: () => void;
   toggleN2: () => void;
   /** 닉네임·아바타·계좌·송금 앱 저장 (#20, #15) — 화면은 즉시 바꾸고 profiles 에 반영한다 */
-  saveProfile: (patch: Partial<Pick<Me, "nickname" | "avatarUrl" | "bankAccount" | "transferApp">>) => void;
+  saveProfile: (
+    patch: Partial<Pick<Me, "nickname" | "avatarUrl" | "bankAccount" | "transferApp" | "dong">>,
+  ) => void;
   submitNew: () => void;
 }
 
@@ -282,11 +307,14 @@ export const useStore = create<StoreState>((set, get) => ({
   authBusy: false,
   authError: "",
   dongOk: false,
+  dongValue: "",
   room: "lounge",
   chatInput: "",
   search: "",
   mySearch: "",
   filter: "전체",
+  statusFilter: "전체",
+  myDealsOnly: false,
   profileOpen: false,
   notiOpen: false,
   notis: [],
@@ -312,24 +340,46 @@ export const useStore = create<StoreState>((set, get) => ({
   setAuth: (patch) => set((st) => ({ auth: { ...st.auth, ...patch }, authError: "" })),
   switchAuthMode: () =>
     set((st) => ({ authMode: st.authMode === "signup" ? "login" : "signup", authError: "" })),
-  verifyDong: () => set({ dongOk: true }),
+  resetAuthBusy: () => set({ authBusy: false }),
+  setDongValue: (v) => set({ dongValue: v }),
+
+  confirmDong: () => {
+    const dong = get().dongValue.trim();
+    if (!dong) return;
+    set({ dongOk: true, dongValue: dong });
+    // 이미 로그인한 사용자(소셜 가입 등)는 바로 profiles 에 저장한다. 가입 폼에서는
+    // 아직 계정이 없으니 signUp 이 raw_user_meta_data 로 넘긴다
+    if (get().me) get().saveProfile({ dong });
+  },
 
   initAuth: () => {
     const sb = createClient();
-    let walletChannel: ReturnType<typeof sb.channel> | null = null;
-    // 소셜 로그인 콜백이 실패하면 /?auth_error=1 로 돌아온다
-    if (new URLSearchParams(window.location.search).has("auth_error")) {
-      set({ authError: "소셜 로그인에 실패했어요. 다시 시도해주세요" });
+    let unsubWallet: (() => void) | null = null;
+    // onAuthStateChange 콜백은 setTimeout 으로 이어진다. 그 사이 로그아웃/재로그인/정리가 일어나면
+    // 뒤늦게 도착한 예전 세션의 응답으로 남의 잔액을 쓰거나 채널을 열면 안 된다 (#107)
+    let gen = 0;
+    // 인증 콜백이 실패하면 /?auth_error=email|oauth 로 돌아온다
+    const authErrorKind = new URLSearchParams(window.location.search).get("auth_error");
+    if (authErrorKind) {
+      set({
+        authError:
+          authErrorKind === "email"
+            ? "이메일 인증 링크가 만료됐거나 이미 사용됐어요. 가입한 브라우저에서 다시 열어주세요"
+            : "소셜 로그인에 실패했어요. 다시 시도해주세요",
+      });
       window.history.replaceState(null, "", window.location.pathname);
     }
     const { data } = sb.auth.onAuthStateChange((_event, session) => {
+      const myGen = ++gen;
       const uid = session?.user.id;
+      // 가입 수단 표시용 (#81) — profiles 에는 없고 auth user 메타에만 있다
+      const provider = session?.user.app_metadata?.provider ?? null;
       if (!uid) {
         // 다음 사람이 남의 알림·대화·설정을 보지 않게 목록·중복 표시·토글을 비운다
         firedDeadlines.clear();
         nickCache.clear();
-        walletChannel?.unsubscribe();
-        walletChannel = null;
+        unsubWallet?.();
+        unsubWallet = null;
         set((st) => ({
           me: null,
           notis: [],
@@ -371,12 +421,14 @@ export const useStore = create<StoreState>((set, get) => ({
           await sb.auth.signOut();
           return;
         }
+        if (myGen !== gen) return;
         set({
           me: {
             id: uid,
             nickname: p?.nickname ?? "파티원",
             avatarUrl: p?.avatar_url ?? null,
             dong: p?.dong ?? null,
+            provider,
             bankAccount: p?.bank_account ?? null,
             transferApp: p?.transfer_app ?? null,
           },
@@ -393,6 +445,7 @@ export const useStore = create<StoreState>((set, get) => ({
           .eq("user_id", uid)
           .order("created_at", { ascending: false })
           .limit(30);
+        if (myGen !== gen) return;
         set({
           balance: w?.balance ?? 0,
           history: (txs ?? []).map((t) => ({
@@ -403,18 +456,19 @@ export const useStore = create<StoreState>((set, get) => ({
           })),
         });
 
-        walletChannel?.unsubscribe();
-        walletChannel = sb
-          .channel("wallet:" + uid)
-          .on(
-            "postgres_changes",
-            { event: "UPDATE", schema: "public", table: "wallets", filter: `user_id=eq.${uid}` },
-            (payload) => set({ balance: (payload.new as { balance: number }).balance }),
-          )
-          .on(
-            "postgres_changes",
-            { event: "INSERT", schema: "public", table: "wallet_transactions", filter: `user_id=eq.${uid}` },
-            (payload) => {
+        unsubWallet?.();
+        unsubWallet = subscribePg("wallet:" + uid, [
+          {
+            event: "UPDATE",
+            table: "wallets",
+            filter: `user_id=eq.${uid}`,
+            handler: (payload) => set({ balance: (payload.new as { balance: number }).balance }),
+          },
+          {
+            event: "INSERT",
+            table: "wallet_transactions",
+            filter: `user_id=eq.${uid}`,
+            handler: (payload) => {
               const t = payload.new as { kind: string; amount: number; title: string; created_at: string };
               set((st) => ({
                 history: [
@@ -423,13 +477,14 @@ export const useStore = create<StoreState>((set, get) => ({
                 ],
               }));
             },
-          )
-          .subscribe();
+          },
+        ]);
       }, 0);
     });
     return () => {
-      data.subscription.unsubscribe();
-      walletChannel?.unsubscribe();
+      gen++;
+      data.subscription.unsubscribe(); // Auth 리스너 — 채널이 아니라 정상
+      unsubWallet?.();
     };
   },
 
@@ -458,7 +513,7 @@ export const useStore = create<StoreState>((set, get) => ({
       password: pw,
       options: {
         // 닉네임·동네는 raw_user_meta_data 로 들어가 handle_new_user 트리거가 profiles 에 넣는다
-        data: { nickname: nick, dong: get().dongOk ? DONG : null },
+        data: { nickname: nick, dong: get().dongOk ? get().dongValue : null },
         // 없으면 확인 링크가 항상 Site URL(프로덕션)로 가서 로컬 테스트가 막힌다
         emailRedirectTo: `${location.origin}/auth/callback`,
       },
@@ -469,7 +524,11 @@ export const useStore = create<StoreState>((set, get) => ({
     }
     // 대시보드에서 Confirm email 이 켜져 있으면 세션 없이 끝난다
     if (!data.session) {
-      set({ authBusy: false, authError: "메일로 보낸 인증 링크를 확인한 뒤 로그인해주세요" });
+      set({
+        authBusy: false,
+        authError:
+          "메일로 보낸 인증 링크를 확인한 뒤 로그인해주세요 — 링크는 가입한 이 브라우저에서 열어야 해요",
+      });
     }
   },
 
@@ -585,32 +644,33 @@ export const useStore = create<StoreState>((set, get) => ({
 
     void loadRooms();
 
-    const ch = sb
-      .channel("chat")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, ({ new: row }) => {
-        void onMsg(row as MsgRow);
-      })
+    // 토픽에 uid 를 넣는다 — 다른 사람이 로그인하면 필터가 달라야 하므로 채널도 달라야 한다
+    const unsub = subscribePg(`chat:${uid}`, [
+      {
+        event: "INSERT",
+        table: "messages",
+        handler: ({ new: row }) => void onMsg(row as MsgRow),
+      },
       // 공구를 만들거나 참여하면 방이 하나 늘어난다 — 목록을 다시 읽는다
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "participations", filter: `user_id=eq.${uid}` },
-        () => {
-          void loadRooms();
-        },
-      )
-      // 공구에서 나가면(leave_group_buy, #94) 방이 하나 빠진다 — 마찬가지로 다시 읽는다
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "participations", filter: `user_id=eq.${uid}` },
-        () => {
-          void loadRooms();
-        },
-      )
-      .subscribe();
+      {
+        event: "INSERT",
+        table: "participations",
+        filter: `user_id=eq.${uid}`,
+        handler: () => void loadRooms(),
+      },
+      // 공구에서 나가면(leave_group_buy, #94) 방이 하나 빠진다 — 마찬가지로 다시 읽는다.
+      // DELETE 페이로드에 user_id 가 실리려면 participations 에 replica identity full 이 필요하다.
+      {
+        event: "DELETE",
+        table: "participations",
+        filter: `user_id=eq.${uid}`,
+        handler: () => void loadRooms(),
+      },
+    ]);
 
     return () => {
       alive = false;
-      void sb.removeChannel(ch);
+      unsub();
     };
   },
 
@@ -635,21 +695,18 @@ export const useStore = create<StoreState>((set, get) => ({
       });
     })();
 
-    const ch = sb
-      .channel("notis")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` },
-        ({ new: row }) =>
+    return subscribePg(`notis:${uid}`, [
+      {
+        event: "INSERT",
+        table: "notifications",
+        filter: `user_id=eq.${uid}`,
+        handler: ({ new: row }) =>
           set((st) => {
             const n = toNoti(row as NotiRow);
             return st.notis.some((x) => x.id === n.id) ? {} : { notis: [n, ...st.notis] };
           }),
-      )
-      .subscribe();
-    return () => {
-      void sb.removeChannel(ch);
-    };
+      },
+    ]);
   },
 
   // supabase-js 쿼리 빌더는 await 해야 요청이 나간다 — 결과를 안 봐도 async 로 둔다
@@ -695,6 +752,8 @@ export const useStore = create<StoreState>((set, get) => ({
   setSearch: (v) => set({ search: v }),
   setMySearch: (v) => set({ mySearch: v }),
   setFilter: (v) => set({ filter: v }),
+  setStatusFilter: (v) => set({ statusFilter: v }),
+  setMyDealsOnly: (v) => set({ myDealsOnly: v }),
   setForm: (patch) => set((st) => ({ form: { ...st.form, ...patch } })),
 
   // 정원 검사 + joined 증가 + 정원 도달 시 settling 전환을 서버가 한 트랜잭션으로
@@ -746,8 +805,8 @@ export const useStore = create<StoreState>((set, get) => ({
 
   // 서버가 주최자+모집중 여부를 재확인하고(RLS와 별개로 RPC 안에서 명시 체크), 통과하면
   // "알림 + 시스템 메시지"까지 한 트랜잭션 안에서 같이 처리한다(CLAUDE.md 규칙 3의 3종 세트).
-  // 1인당 금액 재계산은 lib/deal.ts의 perAmount가 deal.total/deal.joined로 매번 다시
-  // 계산하므로 여기서 따로 할 일이 없다 — total만 반영하면 화면은 자동으로 맞는다.
+  // 1인당 금액 재계산은 lib/deal.ts의 perAmount가 (deal.total+deliveryFee)/deal.joined로 매번
+  // 다시 계산하므로 여기서 따로 할 일이 없다 — total만 반영하면 화면은 자동으로 맞는다.
   changeTotalAmount: async (dealId, newTotal) => {
     if (newTotal <= 0) return;
     const { data, error } = await createClient().rpc("change_total_amount", {
@@ -856,6 +915,18 @@ export const useStore = create<StoreState>((set, get) => ({
     if (error) return error.message;
     set((st) => ({
       deals: st.deals.map((d) => (d.id === dealId ? { ...d, status: "canceled" as const } : d)),
+    }));
+    return null;
+  },
+
+  deleteDeal: async (dealId) => {
+    const deal = get().deals.find((d) => d.id === dealId);
+    if (!deal || !deal.mine) return "주최자만 삭제할 수 있어요";
+    if (deal.status !== "recruiting") return "모집중인 공구만 삭제할 수 있어요";
+    const { error } = await createClient().rpc("delete_group_buy", { p_group_buy_id: dealId });
+    if (error) return error.message;
+    set((st) => ({
+      deals: st.deals.filter((d) => d.id !== dealId),
     }));
     return null;
   },

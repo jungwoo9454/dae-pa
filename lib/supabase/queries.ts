@@ -2,6 +2,7 @@
 "use client";
 
 import { createClient } from "./client";
+import { subscribePg } from "./realtime";
 import type { Deal, Settlement } from "@/lib/types";
 import type { GroupBuyRow, ParticipationWithProfile, ProfileRow, SettlementRow } from "@/lib/db-types";
 import { CAT_EMOJI } from "@/lib/deal";
@@ -140,25 +141,14 @@ export function subscribeToParticipations(
 
   void loadParticipations();
 
-  const channel = sb
-    .channel(`participations:${dealId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "participations",
-        filter: `group_buy_id=eq.${dealId}`,
-      },
-      () => {
-        void loadParticipations();
-      },
-    )
-    .subscribe();
-
-  return () => {
-    void sb.removeChannel(channel);
-  };
+  return subscribePg(`participations:${dealId}`, [
+    {
+      event: "*",
+      table: "participations",
+      filter: `group_buy_id=eq.${dealId}`,
+      handler: () => void loadParticipations(),
+    },
+  ]);
 }
 
 /**
@@ -171,10 +161,13 @@ export function subscribeToSettlement(
   callback: (settlement: Settlement | null) => void,
 ): () => void {
   const sb = createClient();
-  let voteChannel: ReturnType<typeof sb.channel> | null = null;
+  let unsubVotes: (() => void) | null = null;
   let currentSettlementId: number | null = null;
+  // load() 는 async 라 구독 해제 뒤에도 뒤늦게 이어질 수 있다. 그때 채널을 새로 열면 안 된다 (#78)
+  let disposed = false;
 
   const load = async () => {
+    if (disposed) return;
     const { data, error } = await sb
       .from("settlements")
       .select("*")
@@ -193,17 +186,19 @@ export function subscribeToSettlement(
 
     const row = data as SettlementRow;
 
+    if (disposed) return;
+
     if (row.id !== currentSettlementId) {
       currentSettlementId = row.id;
-      voteChannel?.unsubscribe();
-      voteChannel = sb
-        .channel(`settlement_votes:${row.id}`)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "settlement_votes", filter: `settlement_id=eq.${row.id}` },
-          () => void load(),
-        )
-        .subscribe();
+      unsubVotes?.();
+      unsubVotes = subscribePg(`settlement_votes:${row.id}`, [
+        {
+          event: "*",
+          table: "settlement_votes",
+          filter: `settlement_id=eq.${row.id}`,
+          handler: () => void load(),
+        },
+      ]);
     }
 
     const { data: voteRows, error: voteErr } = await sb
@@ -211,6 +206,8 @@ export function subscribeToSettlement(
       .select("user_id, agree")
       .eq("settlement_id", row.id);
     if (voteErr) console.error("[subscribeToSettlement:votes]", voteErr.message);
+
+    if (disposed) return;
 
     callback({
       id: row.id,
@@ -224,18 +221,14 @@ export function subscribeToSettlement(
 
   void load();
 
-  const channel = sb
-    .channel(`settlement:${dealId}`)
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "settlements", filter: `group_buy_id=eq.${dealId}` },
-      () => void load(),
-    )
-    .subscribe();
+  const unsubSettlement = subscribePg(`settlement:${dealId}`, [
+    { event: "*", table: "settlements", filter: `group_buy_id=eq.${dealId}`, handler: () => void load() },
+  ]);
 
   return () => {
-    void sb.removeChannel(channel);
-    voteChannel?.unsubscribe();
+    disposed = true;
+    unsubSettlement();
+    unsubVotes?.();
   };
 }
 
@@ -258,6 +251,7 @@ function rowToDeal(
     description: row.description || undefined,
     total: row.total_amount,
     deliveryFee: row.delivery_fee,
+    minOrderAmount: row.min_order_amount,
     goal: row.goal,
     // group_buys.joined는 join_group_buy RPC가 원자적으로 유지하는 값 — 참여자
     // 목록을 함께 불러왔을 때(fetchDeal)는 실제 행 수로, 아니면(fetchDeals) 이 컬럼으로 채운다.
