@@ -6,7 +6,37 @@ import { Toggle } from "@/components/ui";
 import { isSubmitEnter } from "@/lib/keys";
 import { useStore } from "@/lib/store";
 
-const TRANSFER_APPS = ["토스", "카카오페이", "네이버페이", "은행 앱"];
+/** 정산 계좌를 받을 수 있는 국내 은행 (#155) — 표기가 제각각이 되지 않게 목록에서만 고른다 */
+const BANKS = [
+  "KB국민은행",
+  "신한은행",
+  "우리은행",
+  "하나은행",
+  "NH농협은행",
+  "IBK기업은행",
+  "카카오뱅크",
+  "토스뱅크",
+  "케이뱅크",
+  "SC제일은행",
+  "새마을금고",
+  "신협",
+  "우체국",
+  "수협은행",
+  "부산은행",
+  "대구은행",
+  "경남은행",
+  "광주은행",
+  "전북은행",
+  "제주은행",
+];
+
+/** 저장된 "은행명 계좌번호" 를 다시 두 칸으로 가른다 — 목록에 없는 예전 값은 통째로 번호 칸에 둔다 */
+function splitAccount(v: string | null | undefined): { bank: string; no: string } {
+  const s = (v ?? "").trim();
+  if (!s) return { bank: "", no: "" };
+  const bank = BANKS.find((b) => s.startsWith(b));
+  return bank ? { bank, no: s.slice(bank.length).trim() } : { bank: "", no: s };
+}
 
 /** 가입 수단 표기 (#81) — auth user.app_metadata.provider 값 그대로 들어온다 */
 const PROVIDER_LABEL: Record<string, string> = {
@@ -15,7 +45,7 @@ const PROVIDER_LABEL: Record<string, string> = {
   github: "깃허브 계정",
 };
 
-type EditKey = "bank" | "app" | "account";
+type EditKey = "bank" | "account";
 
 const INPUT = "field w-full text-[15px]";
 const BTN = "key key-ink px-4 py-2 text-[14.5px]";
@@ -61,17 +91,25 @@ export default function SettingsView() {
   const logout = useStore((s) => s.logout);
 
   const [edit, setEdit] = useState<EditKey | null>(null);
-  const [bank, setBank] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankNo, setBankNo] = useState("");
   const [nick, setNick] = useState("");
 
   const open = (k: EditKey) => {
-    if (k === "bank") setBank(me?.bankAccount ?? "");
+    if (k === "bank") {
+      const cur = splitAccount(me?.bankAccount);
+      setBankName(cur.bank);
+      setBankNo(cur.no);
+    }
     if (k === "account") setNick(me?.nickname ?? "");
     setEdit(edit === k ? null : k);
   };
 
+  // 은행·번호가 다 있어야 저장한다 — 한쪽만 있으면 정산 때 어디로 보낼지 알 수 없다
+  const bankOk = !!bankName && bankNo.trim() !== "";
   const saveBank = () => {
-    saveProfile({ bankAccount: bank.trim() || null });
+    if (!bankOk) return;
+    saveProfile({ bankAccount: `${bankName} ${bankNo.trim()}` });
     setEdit(null);
   };
 
@@ -164,46 +202,39 @@ export default function SettingsView() {
             onClick={() => open("bank")}
           >
             {edit === "bank" && (
-              <div className="flex gap-2">
-                <input
-                  value={bank}
-                  onChange={(e) => setBank(e.target.value)}
-                  onKeyDown={(e) => isSubmitEnter(e) && saveBank()}
-                  placeholder="초록은행 1104-04"
-                  className={INPUT}
-                  autoFocus
-                />
-                <button onClick={saveBank} className={BTN}>
-                  저장
-                </button>
-              </div>
-            )}
-          </Row>
-          {/* main 과 같은 동작 — 현재 선택값을 sub 로 보여주고, 행을 눌러야 선택지가 펼쳐진다 */}
-          <Row
-            title="기본 송금 앱"
-            sub={me?.transferApp ?? "선택 안 함"}
-            right={edited}
-            onClick={() => open("app")}
-          >
-            {edit === "app" && (
-              <div className="flex flex-wrap gap-1.5">
-                {TRANSFER_APPS.map((app) => (
-                  <span
-                    key={app}
-                    onClick={() => {
-                      saveProfile({ transferApp: app });
-                      setEdit(null);
-                    }}
-                    className={`chip px-3.5 py-1.5 text-xs ${me?.transferApp === app ? "chip-on" : ""}`}
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <select
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    className="field w-[168px] flex-none cursor-pointer text-[15px]"
+                    autoFocus
                   >
-                    {app}
-                  </span>
-                ))}
+                    <option value="">은행 선택</option>
+                    {BANKS.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={bankNo}
+                    onChange={(e) => setBankNo(e.target.value.replace(/[^0-9-]/g, ""))}
+                    onKeyDown={(e) => isSubmitEnter(e) && saveBank()}
+                    placeholder="계좌번호 (- 포함)"
+                    inputMode="numeric"
+                    className="field tnum min-w-0 flex-1 text-[15px]"
+                  />
+                  <button onClick={saveBank} className={bankOk ? BTN : "key key-off px-4 py-2 text-[14.5px]"}>
+                    저장
+                  </button>
+                </div>
+                {!bankOk && (
+                  <div className="text-xs text-[#8b8478]">은행과 계좌번호를 모두 입력해주세요</div>
+                )}
               </div>
             )}
           </Row>
-
           <div className="flex items-center pt-5">
             <span onClick={logout} className="cursor-pointer text-[14.5px] font-extrabold tracking-[.1em] text-[#e14e2b]">
               [ 로그아웃 ]
