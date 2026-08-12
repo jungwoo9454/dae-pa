@@ -56,6 +56,7 @@ export function useRealtimeDeals(): void {
                       joined: row.joined,
                       end: new Date(row.deadline).getTime(),
                       place: row.place || "채팅방에서 협의",
+                      imageUrl: row.image_url,
                       store_link: row.store_link || undefined,
                       status: row.status,
                     }

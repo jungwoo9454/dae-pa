@@ -3,11 +3,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "대파 — 대용량 파티원",
-  description: "공고부터 정산까지 한 번에 끝내는 동네 공동구매 플랫폼",
+  description: "공구 등록부터 정산까지 한 번에 끝내는 동네 공동구매 플랫폼",
   // 파비콘은 app/icon.svg 를 Next.js 가 자동으로 잡는다 (#64)
   openGraph: {
     title: "대파 — 대용량 파티원",
-    description: "공고부터 정산까지 한 번에 끝내는 동네 공동구매 플랫폼",
+    description: "공구 등록부터 정산까지 한 번에 끝내는 동네 공동구매 플랫폼",
     images: ["/logo-mark.svg"],
   },
 };

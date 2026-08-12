@@ -1,11 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import ImageUpload from "@/components/image-upload";
 import { Toggle } from "@/components/ui";
 import { isSubmitEnter } from "@/lib/keys";
 import { useStore } from "@/lib/store";
 
 const TRANSFER_APPS = ["토스", "카카오페이", "네이버페이", "은행 앱"];
+
+/** 가입 수단 표기 (#81) — auth user.app_metadata.provider 값 그대로 들어온다 */
+const PROVIDER_LABEL: Record<string, string> = {
+  email: "이메일 가입",
+  google: "구글 계정",
+  github: "깃허브 계정",
+};
 
 type EditKey = "bank" | "app" | "account";
 
@@ -149,12 +157,33 @@ export default function SettingsView() {
 
         <Row
           title="계정 관리"
-          sub={`${me?.nickname ?? "파티원"}${me?.dong ? ` · ${me.dong}` : ""} · 로그아웃`}
+          sub={[
+            me?.nickname ?? "파티원",
+            me?.dong,
+            me?.provider ? (PROVIDER_LABEL[me.provider] ?? me.provider) : null,
+            "로그아웃",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
           right={chevron}
           onClick={() => open("account")}
         >
           {edit === "account" && (
             <div className="flex flex-col gap-2.5">
+              <div className="flex items-center gap-3">
+                <ImageUpload
+                  kind="avatars"
+                  value={me?.avatarUrl}
+                  onChange={(url) => saveProfile({ avatarUrl: url })}
+                  height={64}
+                  round
+                />
+                <div className="text-[12.5px] text-[#6b8573]">
+                  프로필 사진
+                  <br />
+                  정사각형으로 잘려요
+                </div>
+              </div>
               <div className="flex gap-2">
                 <input
                   value={nick}

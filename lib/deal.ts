@@ -1,12 +1,24 @@
+import { Carrot, Package, ShoppingBag, SprayCan, UtensilsCrossed } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { ParticipationWithProfile } from "./db-types";
 import type { Category, Deal } from "./types";
 
+/** 카테고리 이모지 — 화면·API 모두 이 한 벌만 쓴다 (예전엔 API 에 다른 맵이 하나 더 있었다, #90) */
 export const CAT_EMOJI: Record<Category, string> = {
   식료품: "🥬",
   배달음식: "🍗",
   생활용품: "🧻",
   대량구매: "📦",
   기타: "🛒",
+};
+
+/** 카테고리 아이콘 — 앱 전반이 lucide 체제(#65)라 칩·버튼은 이모지 대신 이걸 쓴다 (#90) */
+export const CAT_ICON: Record<Category, LucideIcon> = {
+  식료품: Carrot,
+  배달음식: UtensilsCrossed,
+  생활용품: SprayCan,
+  대량구매: Package,
+  기타: ShoppingBag,
 };
 
 export function fmt(n: number) {

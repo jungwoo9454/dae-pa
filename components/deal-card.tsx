@@ -51,8 +51,13 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
       style={{ borderColor: colorScheme.primary, borderWidth: "1px" }}
     >
       <div className="flex items-center gap-2.5">
-        <div className="flex h-11 w-11 flex-none items-center justify-center rounded-xl text-[22px]" style={{ backgroundColor: colorScheme.light }}>
-          {deal.emoji}
+        <div className="flex h-11 w-11 flex-none items-center justify-center overflow-hidden rounded-xl text-[22px]"  style={{ backgroundColor: colorScheme.light }}>
+          {deal.imageUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */
+            <img src={deal.imageUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            deal.emoji
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[15px] font-extrabold">

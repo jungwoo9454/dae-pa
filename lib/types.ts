@@ -21,6 +21,8 @@ export interface Me {
   nickname: string;
   avatarUrl: string | null;
   dong: string | null;
+  /** 가입 수단 — auth user.app_metadata.provider ("email" | "google" | "github") (#81) */
+  provider: string | null;
   /** 정산 받을 계좌 (#20) */
   bankAccount: string | null;
   /** 기본 송금 앱 (#20) */
@@ -45,6 +47,8 @@ export interface Settlement {
   id: number;
   finalTotal: number;
   hasReceipt: boolean;
+  /** 첨부된 영수증 사진 — R2 공개 URL (#15). 없으면 과반 동의로 확정하는 흐름 */
+  receiptUrl?: string | null;
   confirmed: boolean;
   /** 참여자 user_id(uuid) → 동의 여부. 영수증 없을 때 과반 동의로 확정할 때만 사용 */
   votes: Record<string, boolean>;
@@ -64,6 +68,8 @@ export interface Deal {
   status: DealStatus;
   me: boolean;
   mine: boolean;
+  /** 대표 이미지 — R2 공개 URL (#15). 없으면 emoji 를 그대로 쓴다 */
+  imageUrl?: string | null;
   /** 배달비 — 있으면 항상 균등 분배, 개별 조정 대상 아님 */
   deliveryFee?: number;
   settlement?: Settlement;
@@ -88,8 +94,8 @@ export interface Deal {
 export type Msg =
   | { kind: "sys"; text: string; id?: number }
   | { kind: "card"; cardOf: number; who: string; id?: number }
-  | { kind: "other"; who: string; text: string; id?: number }
-  | { kind: "mine"; text: string; id?: number };
+  | { kind: "other"; who: string; text: string; id?: number; imageUrl?: string }
+  | { kind: "mine"; text: string; id?: number; imageUrl?: string };
 
 /** 채팅방 한 개 (#7) — chat_rooms 행에서 만든다 */
 export interface Room {
@@ -117,4 +123,6 @@ export interface DealForm {
   mins: string;
   place: string;
   store_link: string;
+  /** 대표 이미지 R2 URL — 빈 문자열이면 첨부 안 함 */
+  imageUrl: string;
 }
