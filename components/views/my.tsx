@@ -1,15 +1,17 @@
 "use client";
 
 import { Ban } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StatusBadge } from "@/components/ui";
-import { fmt, perAmount, perLabel, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, perAmount, perLabel, profileStats, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
+import { fetchDeals } from "@/lib/supabase/queries";
 import { useNow } from "@/lib/use-now";
 
 export default function MyView() {
   const now = useNow();
   const deals = useStore((s) => s.deals);
+  const me = useStore((s) => s.me);
   const mySearch = useStore((s) => s.mySearch);
   const setMySearch = useStore((s) => s.setMySearch);
   const goRoom = useStore((s) => s.goRoom);
@@ -20,6 +22,15 @@ export default function MyView() {
   const [deleteErr, setDeleteErr] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // 홈을 거치지 않고 바로 들어오면 store.deals 가 비어 있어 요약이 0 으로 뜬다 (#84)
+  useEffect(() => {
+    (async () => {
+      const list = await fetchDeals();
+      useStore.setState({ deals: list });
+    })();
+  }, []);
+
+  const { hosted, joined } = profileStats(deals, now, me?.id ?? null);
   const myDeals = deals.filter((x) => x.me && (!mySearch || x.title.includes(mySearch)));
 
   return (
@@ -30,6 +41,17 @@ export default function MyView() {
         placeholder="내 공구 검색"
         className="mb-4 w-[280px] rounded-[10px] border-[1.5px] border-[#d5e6d6] bg-white px-3.5 py-[9px] text-[13.5px] outline-none"
       />
+      {/* 프로필 팝오버에 있던 참여·주최 수를 여기로 옮겼다 (#84) */}
+      <div className="mb-4 flex gap-2.5">
+        <div className="flex-1 rounded-[12px] border border-[#dbe9da] bg-white px-4 py-3">
+          <div className="text-[12px] text-[#6b8573]">참여한 공구</div>
+          <div className="text-[19px] font-extrabold">{joined}</div>
+        </div>
+        <div className="flex-1 rounded-[12px] border border-[#dbe9da] bg-white px-4 py-3">
+          <div className="text-[12px] text-[#6b8573]">내가 연 공구</div>
+          <div className="text-[19px] font-extrabold">{hosted}</div>
+        </div>
+      </div>
       <div className="flex flex-col gap-2.5">
         {myDeals.map((m) => {
           const deletable = m.mine && m.status === "recruiting";
