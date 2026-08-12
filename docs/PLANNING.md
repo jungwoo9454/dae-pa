@@ -204,7 +204,8 @@ notifications       id, user_id, type, payload(jsonb), is_read, created_at
   `code` 를 세션 쿠키로 교환한다.
 - 총 금액 변경은 RLS 로 **주최자 + `status='recruiting'` + 마감 전** 일 때만 허용 (정산 진입·마감 후 서버 거부).
 - 시스템 메시지(`kind='sys'`)는 클라이언트가 삽입할 수 없고 서버 함수만 기록한다.
-- 실시간: `group_buys`, `participations`, `messages`, `notifications` Realtime 구독
+- 실시간: `group_buys`, `participations`, `messages`, `notifications`, `wallets`, `wallet_transactions`,
+  `settlements`, `settlement_votes` Realtime 구독 (단일 출처는 `supabase/schema.sql` 6번 섹션)
 - 영수증 이미지: Supabase Storage 버킷 `receipts` (자동 인식 없음, 참고용 첨부)
 
 ## 8. 기술 스택
