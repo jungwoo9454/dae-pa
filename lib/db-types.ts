@@ -13,6 +13,8 @@ export interface GroupBuyRow {
   joined: number; // 현재 참여자 수
   deadline: string; // ISO 8601 timestamp
   place: string | null;
+  /** 대표 이미지 — R2 공개 URL (#15). null 이면 UI 가 카테고리 이모지를 쓴다 */
+  image_url: string | null;
   status: DealStatus;
   created_at: string;
 }

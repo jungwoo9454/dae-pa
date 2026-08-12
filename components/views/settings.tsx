@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ImageUpload from "@/components/image-upload";
 import { Toggle } from "@/components/ui";
 import { isSubmitEnter } from "@/lib/keys";
 import { useStore } from "@/lib/store";
@@ -155,6 +156,20 @@ export default function SettingsView() {
         >
           {edit === "account" && (
             <div className="flex flex-col gap-2.5">
+              <div className="flex items-center gap-3">
+                <ImageUpload
+                  kind="avatars"
+                  value={me?.avatarUrl}
+                  onChange={(url) => saveProfile({ avatarUrl: url })}
+                  height={64}
+                  round
+                />
+                <div className="text-[12.5px] text-[#6b8573]">
+                  프로필 사진
+                  <br />
+                  정사각형으로 잘려요
+                </div>
+              </div>
               <div className="flex gap-2">
                 <input
                   value={nick}

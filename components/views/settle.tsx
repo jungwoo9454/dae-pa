@@ -2,6 +2,7 @@
 
 import { Bell, Bike, Landmark, Lock, ReceiptText, Send, Vote, Wallet } from "lucide-react";
 import { useEffect } from "react";
+import ImageUpload from "@/components/image-upload";
 import { Avatar, ProgressBar } from "@/components/ui";
 import { fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
@@ -20,9 +21,9 @@ export default function SettleView() {
   const remindUnpaid = useStore((s) => s.remindUnpaid);
   const adjustParticipationAmount = useStore((s) => s.adjustParticipationAmount);
   const settleTotalInput = useStore((s) => s.settleTotalInput);
-  const settleReceipt = useStore((s) => s.settleReceipt);
+  const settleReceiptUrl = useStore((s) => s.settleReceiptUrl);
   const setSettleTotalInput = useStore((s) => s.setSettleTotalInput);
-  const toggleSettleReceipt = useStore((s) => s.toggleSettleReceipt);
+  const setSettleReceiptUrl = useStore((s) => s.setSettleReceiptUrl);
   const confirmSettlement = useStore((s) => s.confirmSettlement);
   const voteSettlement = useStore((s) => s.voteSettlement);
 
@@ -84,16 +85,29 @@ export default function SettleView() {
           </div>
           {settlement?.confirmed ? (
             <div className="flex items-center gap-3 rounded-[14px] border border-[#cfe4d0] bg-white px-4 py-3.5">
-              <div
-                className="flex h-16 w-[52px] items-center justify-center rounded-lg border border-[#d8e7d6]"
-                style={{ background: "repeating-linear-gradient(0deg,#f2f6ef 0 6px,#fff 6px 12px)" }}
-              >
-                {settlement.hasReceipt ? (
-                  <ReceiptText aria-hidden className="h-6 w-6 text-[#1f8a4c]" />
-                ) : (
-                  <Vote aria-hidden className="h-6 w-6 text-[#1f8a4c]" />
-                )}
-              </div>
+              {settlement.receiptUrl ? (
+                <a
+                  href={settlement.receiptUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="영수증 크게 보기"
+                  className="h-16 w-[52px] flex-none overflow-hidden rounded-lg border border-[#d8e7d6]"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */}
+                  <img src={settlement.receiptUrl} alt="첨부된 영수증" className="h-full w-full object-cover" />
+                </a>
+              ) : (
+                <div
+                  className="flex h-16 w-[52px] items-center justify-center rounded-lg border border-[#d8e7d6]"
+                  style={{ background: "repeating-linear-gradient(0deg,#f2f6ef 0 6px,#fff 6px 12px)" }}
+                >
+                  {settlement.hasReceipt ? (
+                    <ReceiptText aria-hidden className="h-6 w-6 text-[#1f8a4c]" />
+                  ) : (
+                    <Vote aria-hidden className="h-6 w-6 text-[#1f8a4c]" />
+                  )}
+                </div>
+              )}
               <div className="flex-1">
                 <div className="font-extrabold">
                   {settlement.hasReceipt ? "영수증 인증 완료" : "참여자 과반 동의로 확정"}{" "}
@@ -146,10 +160,18 @@ export default function SettleView() {
                 placeholder={String(sd.total)}
                 className="tnum rounded-lg border border-[#d5e6d6] px-3 py-2 text-[14px] outline-none focus:border-[#1f8a4c]"
               />
-              <label className="flex items-center gap-2 text-[12.5px] text-[#4d6d58]">
-                <input type="checkbox" checked={settleReceipt} onChange={toggleSettleReceipt} />
-                영수증 사진 첨부함 (선택)
-              </label>
+              <div className="flex flex-col gap-1.5">
+                <div className="text-[12.5px] text-[#4d6d58]">
+                  영수증 사진 (선택) — 첨부하면 투표 없이 바로 확정돼요
+                </div>
+                <ImageUpload
+                  kind="receipts"
+                  value={settleReceiptUrl}
+                  onChange={setSettleReceiptUrl}
+                  label="영수증 사진 첨부"
+                  height={104}
+                />
+              </div>
               <div
                 onClick={() => confirmSettlement(sd.id)}
                 className="cursor-pointer rounded-lg bg-[#1f8a4c] py-2.5 text-center text-[13.5px] font-extrabold text-white hover:bg-[#187741]"
