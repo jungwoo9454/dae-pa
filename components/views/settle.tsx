@@ -246,7 +246,10 @@ export default function SettleView() {
                   <span className="font-sans-ko truncate">
                     {nickname}
                     {isHostRow && <span className="ml-1 text-[10px] text-[#9c9ca3]">주최</span>}
-                    {p.note && <span className="ml-1 text-[11px] text-[#9c9ca3]">· {p.note}</span>}
+                    {/* 주최자 행은 DB 트리거가 note 를 '주최자' 로 넣어둬서 위 태그와 겹친다 */}
+                    {p.note && !isHostRow && (
+                      <span className="ml-1 text-[11px] text-[#9c9ca3]">· {p.note}</span>
+                    )}
                   </span>
                   <span className="mb-[3px] flex-1 border-b-[1.5px] border-dotted border-[#d8d2c6]" />
                   {editable ? (

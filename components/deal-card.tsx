@@ -44,21 +44,26 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
         </div>
         <div className="rule-dash mt-3.5" />
 
-        <div className="mt-4 flex min-h-[70px] items-center gap-3.5">
+        <div className="mt-4 flex min-h-[70px] items-start gap-3.5">
           <div
             className={`font-sans-ko text-[22px] font-black leading-[1.35] ${dead ? "text-[#8b8478]" : ""}`}
           >
             {deal.title}
           </div>
-          {!dead && (
-            <div
-              className="stamp ml-auto h-[70px] w-[70px] flex-none flex-col"
-              style={{ borderColor: st.fg, color: st.fg }}
-            >
-              <span className="text-[9px] font-bold">마감까지</span>
-              <span className="tnum mt-0.5 text-[12px] font-bold">{remainLabel(deal, now)}</span>
-            </div>
-          )}
+          {/* 상태 태그는 전표 안 우측 상단에 — 종이 밖에 두면 카드마다 높이가 달라 붕 뜬다 */}
+          <div className="ml-auto flex flex-none flex-col items-end gap-2">
+            <StatusBadge s={st} />
+            {/* 도장은 실제로 초가 흐를 때만 (정산중·마감이면 '마감됨' 만 찍혀 의미가 없다) */}
+            {deal.status === "recruiting" && deal.end > now && (
+              <div
+                className="stamp h-[70px] w-[70px] flex-col"
+                style={{ borderColor: st.fg, color: st.fg }}
+              >
+                <span className="text-[9px] font-bold">마감까지</span>
+                <span className="tnum mt-0.5 text-[12px] font-bold">{remainLabel(deal, now)}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="mt-3.5 flex flex-col gap-[9px] text-sm text-[#6e675e]">
@@ -85,7 +90,16 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
 
         {dead ? (
           <div className="relative mt-6 h-2 rounded-full bg-[#dad4c8]">
-            <span className="stamp absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-[2.5px] border-[rgba(140,133,120,.55)] bg-[rgba(241,239,232,.85)] px-5 py-1 text-base tracking-[.4em] text-[rgba(140,133,120,.7)]">
+            {/* .stamp 이 border/color 를 직접 잡고 있어(레이어 밖 CSS) 유틸리티로는 안 덮인다 — 인라인으로 */}
+            <span
+              className="stamp absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-5 py-1 text-base tracking-[.4em]"
+              style={{
+                borderWidth: 2.5,
+                borderColor: "rgba(140,133,120,.55)",
+                color: "rgba(140,133,120,.7)",
+                background: "rgba(241,239,232,.85)",
+              }}
+            >
               {st.label}
             </span>
           </div>
@@ -109,10 +123,6 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
         </div>
       </div>
       <div className={`receipt-edge ${dead ? "receipt-edge-dead" : ""}`} />
-      {/* 상태 태그는 전표 밖 스티커처럼 얹는다 — 전표 내부는 인쇄물이라 색을 아낀다 */}
-      <div className="mt-2 flex justify-end">
-        <StatusBadge s={st} />
-      </div>
     </div>
   );
 }

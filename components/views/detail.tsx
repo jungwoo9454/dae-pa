@@ -158,13 +158,16 @@ export default function DetailView() {
               <div className="font-sans-ko text-[23px] font-black leading-[1.35]">{deal.title}</div>
               <div className="ml-auto flex flex-none flex-col items-end gap-2">
                 <StatusBadge s={st} />
-                <div
-                  className="stamp h-[74px] w-[74px] flex-col"
-                  style={{ borderColor: cd.color, color: cd.color }}
-                >
-                  <span className="text-[9px] font-bold">{cd.caption}</span>
-                  <span className="tnum mt-0.5 text-[12px] font-bold">{cd.text}</span>
-                </div>
+                {/* 도장은 실제로 초가 흐를 때만 — 마감·정산중이면 문구가 원 밖으로 넘친다 */}
+                {deal.status === "recruiting" && deal.end > now && (
+                  <div
+                    className="stamp h-[74px] w-[74px] flex-col"
+                    style={{ borderColor: cd.color, color: cd.color }}
+                  >
+                    <span className="text-[9px] font-bold">마감까지</span>
+                    <span className="tnum mt-0.5 text-[12px] font-bold">{cd.text}</span>
+                  </div>
+                )}
               </div>
             </div>
 

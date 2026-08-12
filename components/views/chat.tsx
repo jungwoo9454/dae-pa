@@ -225,29 +225,33 @@ export default function ChatView() {
                 if (!cd) return null;
                 const st = statusOf(cd, now);
                 return (
-                  <div
-                    key={i}
-                    onClick={() => openDeal(cd.id)}
-                    className="w-[250px] cursor-pointer self-end border-[1.5px] border-dashed border-[#1b1917] bg-white p-4"
-                  >
-                    <div className="rule-dash border-b border-t-0 pb-2 text-center text-[10px] tracking-[.14em] text-[#8b8478]">
-                      ＊ 전표 공유 · {receiptNo(cd.id, cd.created_at)} ＊
-                    </div>
-                    <div className="font-sans-ko mt-2.5 text-[13px] font-extrabold">{cd.title}</div>
-                    <div className="tnum mt-1.5 text-[11px] text-[#6e675e]">
-                      {cd.joined}/{cd.goal}명 · {remainLabel(cd, now)} · {fmt(perAmount(cd))} {perLabel(cd)}
-                    </div>
+                  // 공유 카드는 보낸 사람이 따로 있다 — 오른쪽(=내 말풍선) 정렬이면 내가 보낸 걸로 읽힌다
+                  <div key={i} className="flex max-w-[78%] gap-2.5 self-start">
+                    <Avatar ch={mg.who[0] ?? "?"} />
                     <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        join(cd.id);
-                      }}
-                      className={`mt-2.5 py-2 text-xs ${
-                        joinable(cd, now) ? "key key-primary" : "key key-off"
-                      }`}
-                      style={!joinable(cd, now) ? undefined : { background: st.fg }}
+                      onClick={() => openDeal(cd.id)}
+                      className="w-[250px] cursor-pointer border-[1.5px] border-dashed border-[#1b1917] bg-white p-4"
                     >
-                      [ {joinable(cd, now) ? "바로 참여" : joinLabel(cd, now)} ]
+                      <div className="rule-dash border-b border-t-0 pb-2 text-center text-[10px] tracking-[.14em] text-[#8b8478]">
+                        ＊ 전표 공유 · {receiptNo(cd.id, cd.created_at)} ＊
+                      </div>
+                      <div className="font-sans-ko mt-2.5 text-[13px] font-extrabold">{cd.title}</div>
+                      <div className="tnum mt-1.5 text-[11px] text-[#6e675e]">
+                        {cd.joined}/{cd.goal}명 · {remainLabel(cd, now)} · {fmt(perAmount(cd))}{" "}
+                        {perLabel(cd)}
+                      </div>
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          join(cd.id);
+                        }}
+                        className={`mt-2.5 py-2 text-xs ${
+                          joinable(cd, now) ? "key key-primary" : "key key-off"
+                        }`}
+                        style={joinable(cd, now) ? { background: st.fg } : undefined}
+                      >
+                        [ {joinable(cd, now) ? "바로 참여" : joinLabel(cd, now)} ]
+                      </div>
                     </div>
                   </div>
                 );

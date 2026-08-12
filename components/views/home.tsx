@@ -73,7 +73,9 @@ export default function HomeView() {
           />
           <div className="border-[1.5px] border-dashed border-[#b9b9b4] px-5 py-3 text-left text-[#8b8478]">
             <div className="text-[13px] font-semibold tracking-[.18em]">DAEPA MARKET</div>
-            <div className="tnum mt-1.5 text-[11px]">{new Date().toISOString().slice(0, 10)}</div>
+            <div className="tnum mt-1.5 text-[11px]">
+              {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })}
+            </div>
           </div>
         </div>
       </div>
