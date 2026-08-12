@@ -36,7 +36,7 @@ export default function MyView() {
     <div className="flex-1 overflow-auto px-9 py-8">
       <div className="mx-auto w-[820px]">
         <div className="mb-4 flex items-baseline gap-3.5">
-          <span className="font-sans-ko text-2xl font-black">내 거래 원장</span>
+          <span className="font-sans-ko text-2xl font-black">내 공구</span>
           <span className="text-xs text-[#77777f]">
             주최 {hosted} · 참여 {joined}
           </span>
@@ -50,11 +50,11 @@ export default function MyView() {
 
         <div className="receipt px-7 py-6">
           <div className="rule-dash receipt-head border-b border-t-0 pb-3 text-[14.5px] tracking-[.4em]">
-            ＊ {me?.nickname ?? "파티원"} 님의 거래 기록 ＊
+            ＊ {me?.nickname ?? "파티원"} 님의 공구 기록 ＊
           </div>
 
           {myDeals.length === 0 && (
-            <div className="py-10 text-center text-[14.5px] text-[#8b8478]">기록된 거래가 없어요</div>
+            <div className="py-10 text-center text-[14.5px] text-[#8b8478]">기록된 공구가 없어요</div>
           )}
 
           {myDeals.map((m) => {

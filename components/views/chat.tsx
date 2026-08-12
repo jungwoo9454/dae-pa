@@ -188,7 +188,7 @@ export default function ChatView() {
             </div>
             {currentDeal && (
               <div onClick={() => openDeal(currentDeal.id)} className="key key-line ml-auto px-3 py-1.5 text-xs">
-                [전표 보기]
+                [공구 보기]
               </div>
             )}
           </div>
@@ -207,7 +207,7 @@ export default function ChatView() {
                 <div className="mt-1 flex gap-2 text-[14.5px]">
                   {missingDeal && (
                     <div onClick={() => openDeal(missingDeal.id)} className="key key-primary px-4 py-2">
-                      [ 전표 보기 ]
+                      [ 공구 보기 ]
                     </div>
                   )}
                   <div onClick={() => goRoom("lounge")} className="key key-line px-4 py-2">
@@ -241,7 +241,7 @@ export default function ChatView() {
                       className="w-[250px] cursor-pointer border-[1.5px] border-dashed border-[#1b1917] bg-white p-4"
                     >
                       <div className="rule-dash border-b border-t-0 pb-2 text-center text-[11px] tracking-[.14em] text-[#8b8478]">
-                        ＊ 전표 공유 · {receiptNo(cd.id, cd.created_at)} ＊
+                        ＊ 공구 공유 · {receiptNo(cd.id, cd.created_at)} ＊
                       </div>
                       <div className="font-sans-ko mt-2.5 text-[14.5px] font-extrabold">{cd.title}</div>
                       <div className="tnum mt-1.5 text-[12.5px] text-[#6e675e]">

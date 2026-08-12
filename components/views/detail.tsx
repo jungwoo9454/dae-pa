@@ -136,9 +136,9 @@ export default function DetailView() {
       <div className="flex justify-center gap-[30px]">
         <div className="w-[560px] flex-none">
           <div className="receipt px-[30px] pb-6 pt-7">
-            <div className="receipt-head text-[17px]">＊ 거래 전표 ＊</div>
+            <div className="receipt-head text-[17px]">＊ 공구 상세 ＊</div>
             <div className="mt-[7px] text-center text-xs text-[#8b8478]">
-              {receiptNo(deal.id, deal.created_at)} ｜ {deal.cat} ｜ 발행: {deal.host}
+              {receiptNo(deal.id, deal.created_at)} ｜ {deal.cat} ｜ 주최: {deal.host}
               {deal.mine ? "(나)" : ""}
             </div>
             <div className="rule-dash mt-3.5" />
@@ -343,7 +343,7 @@ export default function DetailView() {
                   onClick={() => setAskCancel(true)}
                   className="rule-dash mt-3.5 cursor-pointer pt-3 text-center text-xs font-bold text-[#e14e2b]"
                 >
-                  거래 취소
+                  공구 취소
                 </div>
               ))}
           </div>

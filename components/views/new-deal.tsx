@@ -110,7 +110,7 @@ export default function NewDealView() {
       <div className="mx-auto flex w-[960px] justify-center gap-[30px]">
         <div className="receipt w-[540px] flex-none p-7 text-[14.5px]">
           <div className="rule-dash border-b border-t-0 pb-3 text-[14.5px] font-extrabold tracking-[.2em]">
-            발행 정보 입력
+            공구 정보 입력
           </div>
 
           <div className="mt-4 text-[13px] font-bold text-[#8b8478]">카테고리</div>
@@ -246,14 +246,14 @@ export default function NewDealView() {
               canSubmit ? "key key-primary" : "key key-off"
             }`}
           >
-            [ 전표 발행 ]
+            [ 공구 올리기 ]
           </div>
         </div>
 
         {/* 실시간 인쇄 미리보기 */}
         <div className="w-[360px] flex-none">
           <div className="mb-2.5 text-[12.5px] tracking-[.14em] text-[#8b8478]">
-            // 실시간 인쇄 미리보기
+            // 실시간 미리보기
           </div>
           <div className="receipt px-[22px] pb-[18px] pt-[22px]">
             <div className="receipt-head text-[14.5px]">＊ 대파 공구 ＊</div>

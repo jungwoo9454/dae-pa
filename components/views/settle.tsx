@@ -122,7 +122,7 @@ export default function SettleView() {
         onClick={() => go("my")}
         className="mb-4 inline-block cursor-pointer text-[14.5px] text-[#77777f] hover:text-[#e14e2b]"
       >
-        ← 원장으로
+        ← 내 공구로
       </div>
       <div className="mx-auto w-[580px]">
         <div className="receipt px-[30px] pb-6 pt-7">
