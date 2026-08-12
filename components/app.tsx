@@ -18,6 +18,7 @@ import SettingsView from "./views/settings";
 
 export default function App() {
   const page = useStore((s) => s.page);
+  const sel = useStore((s) => s.sel);
   const profileOpen = useStore((s) => s.profileOpen);
   const notiOpen = useStore((s) => s.notiOpen);
   if (page === "login") return <AuthView />;
@@ -30,7 +31,9 @@ export default function App() {
         {notiOpen && <NotiPopover />}
         {page === "home" && <DongBanner />}
         {page === "home" && <HomeView />}
-        {page === "detail" && <DetailView />}
+        {/* key={sel} — 알림에서 다른 공구 상세로 바로 넘어갈 때 이전 공구의 에러 문구·
+            열려있던 확인창이 그대로 따라붙는다. 공구가 바뀌면 통째로 새로 마운트한다. */}
+        {page === "detail" && <DetailView key={sel} />}
         {page === "my" && <MyView />}
         {page === "chat" && <ChatView />}
         {page === "settle" && <SettleView />}

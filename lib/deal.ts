@@ -158,7 +158,10 @@ export function settleStartable(d: Deal, now: number) {
 export function joinLabel(d: Deal, now: number) {
   if (d.status === "settling") return "정산 보기";
   if (settleStartable(d, now)) return "정산 시작";
+  // 마감·취소·완료된 공구는 참여 여부와 상관없이 '마감됨' — 버튼은 "누르면 뭐가 되는지"를
+  // 말해야 하고, 참여 여부는 배지·'내 공구' 탭이 따로 알려준다 (#131).
+  // joinable() 로는 못 가른다 — !d.me 가 들어 있어 모집중인 내 공구도 false 가 된다.
+  if (d.status !== "recruiting" || d.end - now <= 0) return "마감됨";
   if (d.me) return "참여중 ✓";
-  if (!joinable(d, now)) return "마감됨";
   return "참여하기";
 }
