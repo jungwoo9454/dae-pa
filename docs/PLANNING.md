@@ -174,6 +174,7 @@ chat_rooms          id, type(lounge|group_buy), group_buy_id?, name
 messages            id, room_id, user_id?, kind(text|sys|card),
                     content, payload(jsonb), created_at
 settlements         id, group_buy_id, total_amount, delivery_fee, receipt_url,
+                    overrides(jsonb, 확정 전 손수 조정한 참여자별 금액),
                     status(pending|confirmed), confirmed_at
 settlement_votes    settlement_id, user_id, agree(boolean)
 wallet_transactions id, user_id, kind(charge|withdraw|pay|receive), amount,

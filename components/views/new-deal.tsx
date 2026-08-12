@@ -2,14 +2,11 @@
 
 import { Coins, Timer } from "lucide-react";
 import ImageUpload from "@/components/image-upload";
-import { CAT_EMOJI, CAT_ICON, MIN_DEADLINE_MIN, fmt } from "@/lib/deal";
+import { CAT_EMOJI, CAT_ICON, MIN_DEADLINE_MIN, commaFmt, digits, fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Category } from "@/lib/types";
 
 const FORM_CATS: Category[] = ["식료품", "배달음식", "생활용품", "대량구매", "기타"];
-const digits = (v: string) => v.replace(/[^0-9]/g, "");
-/** 입력창에 천 단위 콤마로 보여준다 — 저장은 digits()가 걸러낸 원 단위 정수 문자열 그대로 (#95) */
-const commaFmt = (v: string) => (v ? Number(v).toLocaleString("ko-KR") : "");
 
 export default function NewDealView() {
   const form = useStore((s) => s.form);

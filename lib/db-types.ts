@@ -52,6 +52,8 @@ export interface SettlementRow {
   total_amount: number;
   delivery_fee: number;
   receipt_url: string | null;
+  /** 확정 전 손수 조정한 {participation_id: 금액} (#95). jsonb라 키는 문자열로 온다 */
+  overrides: Record<string, number> | null;
   status: "pending" | "confirmed";
   confirmed_at: string | null;
   created_at: string;

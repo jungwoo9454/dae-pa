@@ -1,10 +1,11 @@
 "use client";
 
 import { Bell, Bike, Landmark, Lock, ReceiptText, Vote, Wallet } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import ImageUpload from "@/components/image-upload";
 import { Avatar, ProgressBar } from "@/components/ui";
-import { fmt } from "@/lib/deal";
+import { commaFmt, digits, fmt } from "@/lib/deal";
+import type { ParticipationWithProfile } from "@/lib/db-types";
 import { useStore } from "@/lib/store";
 import { ensureDealLoaded } from "@/lib/supabase/queries";
 import { useRealtimeParticipations } from "@/lib/use-realtime-participations";
@@ -26,6 +27,9 @@ export default function SettleView() {
   const setSettleReceiptUrl = useStore((s) => s.setSettleReceiptUrl);
   const confirmSettlement = useStore((s) => s.confirmSettlement);
   const voteSettlement = useStore((s) => s.voteSettlement);
+  // 총액 확정 전, 주최자가 참여자별로 손수 조정한 금액 (participation id → 금액).
+  // DB엔 확정 시점까지 아무것도 안 쓰고 화면 미리보기로만 들고 있는다.
+  const [overrides, setOverrides] = useState<Record<number, number>>({});
 
   useRealtimeParticipations(sel);
   useRealtimeSettlement(sel);
@@ -40,6 +44,11 @@ export default function SettleView() {
   const sd =
     deals.find((x) => x.id === sel && (x.status === "settling" || x.status === "completed")) ??
     deals.find((x) => x.status === "settling");
+
+  // 정산 대상 공구가 바뀌거나(다른 공구 열람) 확정되고 나면 이전 미리보기 조정값은 의미가 없다
+  useEffect(() => {
+    setOverrides({});
+  }, [sel, sd?.settlement?.confirmed]);
 
   if (!sd) {
     return (
@@ -59,6 +68,40 @@ export default function SettleView() {
   const agreeN = Object.values(settlement?.votes ?? {}).filter(Boolean).length;
   const myVote = me ? settlement?.votes[me.id] : undefined;
   const isHost = sd.host_id === me?.id;
+
+  // 확정 전(주최자가 총액 입력 중이거나, 확정 요청 후 과반 동의 대기 중)엔 얼마씩 내는지
+  // 미리 보여준다. 실제 확정 값(participations.amount_due)은 apply_settlement_split RPC 가
+  // 정산 "확정" 시점에만 채우므로 그 전엔 항상 null — 여기선 같은 공식(항목 균등 + 배달비 균등,
+  // 나머지는 주최자)을 클라이언트에서 그대로 계산만 해서 보여준다. DB엔 아무것도 쓰지 않는다.
+  //
+  // 총액·조정값 출처: settlements 행이 아직 없으면(주최자가 타이핑 중) 로컬 상태를, 이미
+  // 있으면(확정 대기 중 — 영수증 없이 투표로 넘어간 경우) 서버에 저장된 settlement.overrides를
+  // 쓴다 — 이래야 동의 투표 화면에서도(주최자뿐 아니라 참여자 전원에게) 조정값이 보인다.
+  //
+  // 참여자별 손수 조정이 있으면 그 사람 몫은 조정값 그대로, 나머지 미조정 참여자는 균등
+  // 분배값 그대로 두고, 그 차액을 전부 주최자가 흡수한다 — 확정 시점에 apply_settlement_split
+  // RPC가 실제로 하는 계산과 정확히 같은 결과가 나오도록 맞춘 것.
+  const previewTotalN = settlement ? settlement.finalTotal : parseInt(settleTotalInput) || 0;
+  const effectiveOverrides = settlement ? (settlement.overrides ?? {}) : overrides;
+  const showPreview = !settlement?.confirmed && previewTotalN > 0;
+  const n = Math.max(1, mem.length);
+  const deliveryFee = sd.deliveryFee ?? 0;
+  const itemTotal = previewTotalN - deliveryFee;
+  const itemBase = Math.floor(itemTotal / n);
+  const itemRemainder = itemTotal - itemBase * n;
+  const deliveryBase = Math.floor(deliveryFee / n);
+  const deliveryRemainder = deliveryFee - deliveryBase * n;
+  const autoEven = itemBase + deliveryBase;
+  const autoHostShare = itemBase + itemRemainder + deliveryBase + deliveryRemainder;
+  const overrideDeltaSum = Object.entries(effectiveOverrides).reduce((sum, [pid, amt]) => {
+    const p = mem.find((m) => m.id === Number(pid));
+    if (!p || p.user_id === sd.host_id) return sum;
+    return sum + (amt - autoEven);
+  }, 0);
+  const previewAmount = (p: ParticipationWithProfile) => {
+    if (p.user_id === sd.host_id) return autoHostShare - overrideDeltaSum;
+    return effectiveOverrides[p.id] ?? autoEven;
+  };
 
   return (
     <div className="flex-1 overflow-auto px-7 py-5">
@@ -156,9 +199,8 @@ export default function SettleView() {
             <div className="flex flex-col gap-2.5 rounded-[14px] border border-[#cfe4d0] bg-white px-4 py-3.5">
               <div className="font-extrabold">최종 총액 확정</div>
               <input
-                type="number"
-                value={settleTotalInput}
-                onChange={(e) => setSettleTotalInput(e.target.value)}
+                value={commaFmt(settleTotalInput)}
+                onChange={(e) => setSettleTotalInput(digits(e.target.value))}
                 placeholder={String(sd.total)}
                 className="tnum rounded-lg border border-[#d5e6d6] px-3 py-2 text-[14px] outline-none focus:border-[#1f8a4c]"
               />
@@ -175,7 +217,7 @@ export default function SettleView() {
                 />
               </div>
               <div
-                onClick={() => confirmSettlement(sd.id)}
+                onClick={() => confirmSettlement(sd.id, overrides)}
                 className="cursor-pointer rounded-lg bg-[#1f8a4c] py-2.5 text-center text-[13.5px] font-extrabold text-white hover:bg-[#187741]"
               >
                 총액 확정하기
@@ -195,7 +237,12 @@ export default function SettleView() {
           <div className="flex flex-col gap-2">
             {mem.map((p) => {
               const isHostRow = p.user_id === sd.host_id;
-              const editable = isHost && !isHostRow;
+              // 손수 입력은 "주최자가 아직 총액 확정 전에 타이핑 중"이거나 "확정된 뒤"에만
+              // 의미가 있다 — 영수증 없이 확정 요청해서 과반 동의 대기 중일 땐(settlement 존재,
+              // 미확정) 이미 서버에 넘어간 제안이라 화면에서 더 손댈 수 없다(읽기 전용 미리보기).
+              const composing = !settlement && showPreview;
+              const editable = isHost && !isHostRow && (composing || !!settlement?.confirmed);
+              const displayAmount = showPreview ? previewAmount(p) : (p.amount_due ?? 0);
               const nickname = p.profile?.nickname ?? "탈퇴한 사용자";
               return (
                 <div
@@ -215,13 +262,18 @@ export default function SettleView() {
                       <span className="text-xs text-[#8aa392]">금액</span>
                       <input
                         type="number"
-                        value={p.amount_due ?? 0}
-                        onChange={(e) => adjustParticipationAmount(p.id, parseInt(e.target.value) || 0)}
+                        value={composing ? (overrides[p.id] ?? autoEven) : (p.amount_due ?? 0)}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value) || 0;
+                          if (composing) setOverrides((o) => ({ ...o, [p.id]: v }));
+                          else void adjustParticipationAmount(p.id, v);
+                        }}
                         className="tnum w-[90px] rounded-lg border border-[#d5e6d6] px-2 py-1 text-right text-[13px] outline-none focus:border-[#1f8a4c]"
                       />
                     </div>
                   )}
-                  <b className="tnum">{fmt(p.amount_due ?? 0)}</b>
+                  <b className="tnum">{fmt(displayAmount)}</b>
+                  {showPreview && <span className="text-[10.5px] text-[#8aa392]">예상</span>}
                   <span
                     className="badge"
                     style={
@@ -254,12 +306,16 @@ export default function SettleView() {
           <div className="text-center">
             <div className="text-[12.5px] text-[#6b8573]">내가 낼 금액 (개별 조정 반영)</div>
             <div className="font-jua text-[30px] text-[#17301f]">
-              {mine ? fmt(mine.amount_due ?? 0) : "—"}
+              {mine ? fmt(showPreview ? previewAmount(mine) : (mine.amount_due ?? 0)) : "—"}
             </div>
           </div>
           {mine && !mine.is_paid && (
             <>
-              {insufficient ? (
+              {isHost ? (
+                <div className="flex cursor-not-allowed items-center justify-center gap-1.5 rounded-xl bg-[#e6efe4] p-3 text-[15px] font-extrabold text-[#8a9a8e]">
+                  <Wallet aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 대파페이로 바로 내기
+                </div>
+              ) : insufficient ? (
                 <div className="rounded-xl bg-[#fdecec] p-3 text-center text-[13px] font-bold text-[#b3261e]">
                   잔액이 {fmt((mine.amount_due ?? 0) - balance)} 부족해요
                   <div
@@ -277,19 +333,27 @@ export default function SettleView() {
                   <Wallet aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 대파페이로 바로 내기
                 </div>
               )}
-              <div
-                onClick={() => confirmSelfPaid(mine.id, "account")}
-                className="flex cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-[13.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
-              >
-                <Landmark aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 계좌로 보내기
-                <span className="rounded-md bg-[#e9f6ec] px-[7px] py-px text-[11px] text-[#166b3a]">
-                  복사
-                </span>
-              </div>
+              {isHost ? (
+                <div className="flex cursor-not-allowed flex-wrap items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#e6efe4] p-2.5 text-[13.5px] font-bold text-[#b7c3ba]">
+                  <Landmark aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 계좌로 보내기
+                </div>
+              ) : (
+                <div
+                  onClick={() => confirmSelfPaid(mine.id, "account")}
+                  className="flex cursor-pointer flex-wrap items-center justify-center gap-1.5 rounded-xl border-[1.5px] border-[#d5e6d6] p-2.5 text-[13.5px] font-bold hover:border-[#1f8a4c] hover:text-[#1f8a4c]"
+                >
+                  <Landmark aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" /> 계좌로 보내기
+                  <span className="rounded-md bg-[#e9f6ec] px-[7px] py-px text-[11px] text-[#166b3a]">
+                    복사
+                  </span>
+                </div>
+              )}
               <div className="text-center text-[11.5px] text-[#8aa392]">
-                {insufficient
-                  ? "잔액 부족 시 계좌/토스로 보내고 셀프 체크해주세요"
-                  : "대파페이는 자동 확인 · 계좌/토스는 셀프 체크"}
+                {isHost
+                  ? "주최자는 먼저 대용량으로 사고 참여자들에게 엔빵 받는 쪽이라 따로 낼 필요 없어요"
+                  : insufficient
+                    ? "잔액 부족 시 계좌/토스로 보내고 셀프 체크해주세요"
+                    : "대파페이는 자동 확인 · 계좌/토스는 셀프 체크"}
               </div>
             </>
           )}

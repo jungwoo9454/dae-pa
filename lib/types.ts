@@ -52,6 +52,8 @@ export interface Settlement {
   confirmed: boolean;
   /** 참여자 user_id(uuid) → 동의 여부. 영수증 없을 때 과반 동의로 확정할 때만 사용 */
   votes: Record<string, boolean>;
+  /** 확정 전 주최자가 손수 조정한 {participation_id: 금액} (#95). 동의 대기 중에도 미리보기에 쓴다 */
+  overrides: Record<number, number> | null;
 }
 
 export interface Deal {

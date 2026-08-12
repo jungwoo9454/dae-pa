@@ -96,6 +96,9 @@ create table settlements (
   total_amount  int  not null check (total_amount > 0),  -- 수동 입력 확정 총액
   delivery_fee  int  not null default 0 check (delivery_fee >= 0),
   receipt_url   text,          -- Storage 'receipts' 버킷 (참고용 첨부, 자동 인식 없음)
+  -- 주최자가 확정 전에 손수 조정한 참여자별 금액 {participation_id: amount} (#95).
+  -- pending(과반 동의 대기)으로 빠져도 나중에 finalize_settlement_vote 가 이 값을 그대로 적용한다.
+  overrides     jsonb,
   status        text not null default 'pending' check (status in ('pending','confirmed')),
   confirmed_at  timestamptz,
   created_at    timestamptz not null default now()
@@ -437,20 +440,32 @@ grant execute on function public.change_total_amount(bigint, integer)
 
 -- 확정 총액을 참여자 수만큼 균등 분배하고, 항목·배달비 나머지는 모두 주최자가 흡수한다.
 -- (CLAUDE.md 규칙 4·5 — 배달비 항상 균등, 1/N 나머지는 주최자 부담)
+--
+-- p_overrides 가 붙기 전 구버전 시그니처를 먼저 지운다 — create or replace 는 파라미터 개수가
+-- 바뀌면 교체가 아니라 새 오버로드를 만들어서, 이미 배포된 DB 에 이 파일을 다시 돌리면 구버전이
+-- 그대로 남아 PostgREST 오버로드 충돌이 난다 (#95).
+drop function if exists public.apply_settlement_split(bigint, int, int);
 create or replace function public.apply_settlement_split(
   p_group_buy_id bigint,
   p_total_amount int,
-  p_delivery_fee int
+  p_delivery_fee int,
+  -- 주최자가 확정 전 손수 조정한 {participation_id: amount} (#95). 게스트만 대상 — 주최자
+  -- 본인 행이 섞여 있어도 무시하고, 조정분 총합만큼 주최자 몫에서 빼서 합계를 맞춘다.
+  p_overrides jsonb default null
 ) returns void
 language plpgsql security definer set search_path = public as $$
 declare
   v_host_id uuid;
+  v_host_participation_id bigint;
   v_n int;
   v_item_total int;
   v_item_base int;
   v_item_remainder int;
   v_delivery_base int;
   v_delivery_remainder int;
+  v_auto_even int;
+  v_delta_sum int := 0;
+  v_row record;
 begin
   select host_id into v_host_id from public.group_buys where id = p_group_buy_id;
   select count(*) into v_n from public.participations where group_buy_id = p_group_buy_id;
@@ -461,22 +476,48 @@ begin
   v_item_remainder := v_item_total - v_item_base * v_n;
   v_delivery_base := p_delivery_fee / v_n;
   v_delivery_remainder := p_delivery_fee - v_delivery_base * v_n;
+  v_auto_even := v_item_base + v_delivery_base;
 
   update public.participations
-    set amount_due = v_item_base + v_delivery_base
+    set amount_due = v_auto_even
   where group_buy_id = p_group_buy_id and user_id <> v_host_id;
 
+  -- 주최자는 이미 가게에 선결제한 쪽이라 자기한테 입금할 게 없다 — 확정과 동시에 입금 완료로
+  -- 처리한다. 안 그러면 complete_group_buy_if_all_paid 가 주최자 행 때문에 영영 통과 못 해서
+  -- 공구가 settling 에서 멈춘다 (#95).
   update public.participations
-    set amount_due = v_item_base + v_item_remainder + v_delivery_base + v_delivery_remainder
-  where group_buy_id = p_group_buy_id and user_id = v_host_id;
+    set amount_due = v_item_base + v_item_remainder + v_delivery_base + v_delivery_remainder,
+        is_paid = true,
+        paid_at = coalesce(paid_at, now())
+  where group_buy_id = p_group_buy_id and user_id = v_host_id
+  returning id into v_host_participation_id;
+
+  if p_overrides is not null then
+    for v_row in select key::bigint as pid, value::int as amt from jsonb_each_text(p_overrides)
+    loop
+      if v_row.pid = v_host_participation_id then continue; end if;
+      update public.participations set amount_due = v_row.amt
+      where id = v_row.pid and group_buy_id = p_group_buy_id and user_id <> v_host_id;
+      if found then v_delta_sum := v_delta_sum + (v_row.amt - v_auto_even); end if;
+    end loop;
+    if v_host_participation_id is not null then
+      update public.participations set amount_due = amount_due - v_delta_sum
+      where id = v_host_participation_id;
+    end if;
+  end if;
 end $$;
 
 -- 정산 시작/총액 확정 (#15). 영수증 있으면 즉시 확정, 없으면 과반 동의 대기(pending).
+-- 위 apply_settlement_split 과 같은 이유로 구버전 시그니처를 먼저 지운다 (#95).
+drop function if exists public.confirm_settlement(bigint, int, int, text);
 create or replace function public.confirm_settlement(
   p_group_buy_id bigint,
   p_total_amount int,
   p_delivery_fee int default 0,
-  p_receipt_url text default null
+  p_receipt_url text default null,
+  -- 주최자가 확정 전 미리보기에서 손수 조정한 {participation_id: amount} (#95).
+  -- pending(과반 동의)으로 빠져도 settlements 에 저장해뒀다가 finalize_settlement_vote 가 적용한다.
+  p_overrides jsonb default null
 ) returns bigint
 language plpgsql security definer set search_path = public as $$
 declare
@@ -497,19 +538,20 @@ begin
 
   v_status := case when p_receipt_url is not null then 'confirmed' else 'pending' end;
 
-  insert into public.settlements (group_buy_id, total_amount, delivery_fee, receipt_url, status, confirmed_at)
-  values (p_group_buy_id, p_total_amount, p_delivery_fee, p_receipt_url, v_status,
+  insert into public.settlements (group_buy_id, total_amount, delivery_fee, receipt_url, overrides, status, confirmed_at)
+  values (p_group_buy_id, p_total_amount, p_delivery_fee, p_receipt_url, p_overrides, v_status,
           case when v_status = 'confirmed' then now() else null end)
   on conflict (group_buy_id) do update
     set total_amount = excluded.total_amount,
         delivery_fee = excluded.delivery_fee,
         receipt_url = excluded.receipt_url,
+        overrides = excluded.overrides,
         status = excluded.status,
         confirmed_at = excluded.confirmed_at
   returning id into v_settlement_id;
 
   if v_status = 'confirmed' then
-    perform public.apply_settlement_split(p_group_buy_id, p_total_amount, p_delivery_fee);
+    perform public.apply_settlement_split(p_group_buy_id, p_total_amount, p_delivery_fee, p_overrides);
     perform public.post_system_message(p_group_buy_id,
       '🧾 영수증 인증 완료 · 총 ' || to_char(p_total_amount, 'FM999,999,999') || '원 · 금액 잠금');
   else
@@ -528,12 +570,13 @@ declare
   v_group_buy_id bigint;
   v_total_amount int;
   v_delivery_fee int;
+  v_overrides jsonb;
   v_status text;
   v_n int;
   v_agree int;
 begin
-  select group_buy_id, total_amount, delivery_fee, status
-    into v_group_buy_id, v_total_amount, v_delivery_fee, v_status
+  select group_buy_id, total_amount, delivery_fee, overrides, status
+    into v_group_buy_id, v_total_amount, v_delivery_fee, v_overrides, v_status
   from public.settlements where id = p_settlement_id;
 
   if v_group_buy_id is null then
@@ -552,7 +595,7 @@ begin
   end if;
 
   update public.settlements set status = 'confirmed', confirmed_at = now() where id = p_settlement_id;
-  perform public.apply_settlement_split(v_group_buy_id, v_total_amount, v_delivery_fee);
+  perform public.apply_settlement_split(v_group_buy_id, v_total_amount, v_delivery_fee, v_overrides);
   perform public.post_system_message(v_group_buy_id,
     '✅ 참여자 과반 동의로 총 ' || to_char(v_total_amount, 'FM999,999,999') || '원 확정 · 금액 잠금');
 
@@ -984,11 +1027,11 @@ grant  execute on function public.leave_group_buy(bigint) to authenticated;
 
 -- 정산·지갑 RPC (#15~18) — apply_settlement_split·complete_group_buy_if_all_paid 는
 -- 다른 RPC 안에서만 쓰는 내부 함수라 authenticated 에도 안 연다.
-revoke execute on function public.apply_settlement_split(bigint, int, int) from public, anon, authenticated;
+revoke execute on function public.apply_settlement_split(bigint, int, int, jsonb) from public, anon, authenticated;
 revoke execute on function public.complete_group_buy_if_all_paid(bigint) from public, anon, authenticated;
 
-revoke execute on function public.confirm_settlement(bigint, int, int, text) from public, anon;
-grant  execute on function public.confirm_settlement(bigint, int, int, text) to authenticated;
+revoke execute on function public.confirm_settlement(bigint, int, int, text, jsonb) from public, anon;
+grant  execute on function public.confirm_settlement(bigint, int, int, text, jsonb) to authenticated;
 
 revoke execute on function public.finalize_settlement_vote(bigint) from public, anon;
 grant  execute on function public.finalize_settlement_vote(bigint) to authenticated;
