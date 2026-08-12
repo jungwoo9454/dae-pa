@@ -64,6 +64,11 @@ export function remainLabel(d: Deal, now: number) {
  * 배달비만 엔빵해서 보여준다(핵심 규칙 4). 그 외 카테고리는 총액을 다 같이 부담하는 공동구매라
  * (총 금액 + 배달비) 전체를 나눈다.
  */
+/** "1인" 라벨 — 배달음식은 배달비만 나눈 값이라 그대로 쓰면 음식값까지 포함된 걸로 읽힌다 (#95) */
+export function perLabel(d: Deal) {
+  return d.cat === "배달음식" ? "1인 배달비" : "1인";
+}
+
 export function perAmount(d: Deal) {
   const shared = d.cat === "배달음식" ? (d.deliveryFee ?? 0) : d.total + (d.deliveryFee ?? 0);
   return Math.ceil(shared / Math.max(1, d.joined));

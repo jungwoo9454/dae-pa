@@ -1,7 +1,7 @@
 "use client";
 
 import { StatusBadge } from "@/components/ui";
-import { fmt, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, perAmount, perLabel, remainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
 
@@ -39,7 +39,7 @@ export default function MyView() {
                 <span className="text-[11.5px] text-[#8aa392]">{m.mine ? "주최" : "참여"}</span>
               </div>
               <div className="mt-[3px] text-[12.5px] text-[#6b8573]">
-                {m.joined}/{m.goal}명 · ⏱ {remainLabel(m, now)} · 1인 {fmt(perAmount(m))}
+                {m.joined}/{m.goal}명 · ⏱ {remainLabel(m, now)} · {perLabel(m)} {fmt(perAmount(m))}
               </div>
             </div>
             <div

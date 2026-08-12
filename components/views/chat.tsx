@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { uploadImage } from "@/components/image-upload";
 import { Avatar } from "@/components/ui";
-import { fmt, joinLabel, joinable, perAmount, remainLabel, statusOf } from "@/lib/deal";
+import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, statusOf } from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
 import { RECENT_LIMIT, useStore } from "@/lib/store";
 import { useNow } from "@/lib/use-now";
@@ -209,7 +209,7 @@ export default function ChatView() {
                       </span>
                       <Timer aria-hidden className="h-[1.15em] w-[1.15em] shrink-0" />
                       <span>
-                        {remainLabel(cd, now)} · 1인 {fmt(perAmount(cd))}
+                        {remainLabel(cd, now)} · {perLabel(cd)} {fmt(perAmount(cd))}
                       </span>
                     </div>
                     {/* 대화 중 카드에서 바로 참여 — 상세로 안 나가도 됨 (#10) */}

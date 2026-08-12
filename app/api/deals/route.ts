@@ -65,8 +65,10 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-      // 총 금액을 안 적으면 최소 주문 금액으로 시작한다 — total_amount 는 DB에서 not null
-      if (totalN <= 0) totalN = minOrderN;
+      // 총 금액을 안 적으면 최소 주문 금액 + 배달비로 시작한다 — total_amount 는 DB에서 not null.
+      // 배달비를 더하는 건 정산식이 total_amount 에 배달비가 포함돼 있다고 보기 때문이다
+      // (supabase/schema.sql apply_settlement_split: 항목비 = total_amount - delivery_fee).
+      if (totalN <= 0) totalN = minOrderN + deliveryFeeN;
     } else if (totalN <= 0) {
       return Response.json(
         { error: "총 금액은 0보다 커야 합니다" },
