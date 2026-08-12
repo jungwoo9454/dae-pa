@@ -265,7 +265,7 @@ interface StoreState {
   toggleAutoPay: () => void;
   toggleN1: () => void;
   toggleN2: () => void;
-  /** 닉네임·계좌·송금 앱 저장 (#20) — 화면은 즉시 바꾸고 profiles 에 반영한다 */
+  /** 닉네임·아바타·계좌·송금 앱 저장 (#20, #15) — 화면은 즉시 바꾸고 profiles 에 반영한다 */
   saveProfile: (patch: Partial<Pick<Me, "nickname" | "avatarUrl" | "bankAccount" | "transferApp">>) => void;
   submitNew: () => void;
 }
@@ -488,7 +488,18 @@ export const useStore = create<StoreState>((set, get) => ({
 
   go: (page) => set({ page, profileOpen: false, notiOpen: false }),
   openDeal: (id) => set({ page: "detail", sel: id, profileOpen: false, notiOpen: false }),
-  openSettle: (id) => set({ page: "settle", sel: id, profileOpen: false, notiOpen: false }),
+  // 총액 입력과 영수증 첨부는 "이 공구" 의 것이다 — 초기화하지 않으면 A 공구에서 올린
+  // 영수증이 B 공구 확정에 그대로 붙고, receipt_url 이 있으면 서버가 투표 없이 즉시
+  // 확정하므로 과반 동의 절차까지 건너뛴다.
+  openSettle: (id) =>
+    set({
+      page: "settle",
+      sel: id,
+      profileOpen: false,
+      notiOpen: false,
+      settleTotalInput: "",
+      settleReceiptUrl: null,
+    }),
   goRoom: (roomId) => set({ page: "chat", room: roomId, profileOpen: false, notiOpen: false }),
   toggleProfile: () => set((st) => ({ profileOpen: !st.profileOpen, notiOpen: false })),
 
