@@ -786,7 +786,11 @@ export const useStore = create<StoreState>((set, get) => ({
   sendImageMsg: (imageUrl) => {
     const st = get();
     const target = st.rooms.find((r) => roomKey(r) === st.room);
-    if (!target || !st.me) return;
+    if (!target || !st.me) {
+      // 사진은 이미 올라간 뒤라 여기서 조용히 사라지면 사용자는 아무 일도 안 일어난 걸로 본다
+      alert("채팅방을 아직 불러오지 못했어요. 잠시 후 다시 보내주세요.");
+      return;
+    }
     void insertOwnMsg(
       target.id,
       st.room,

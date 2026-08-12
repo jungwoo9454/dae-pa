@@ -113,7 +113,7 @@ Caddy `reverse_proxy` 는 기본 body 크기 제한이 없어 10MB 업로드가 
 
 테스트 인프라가 없는 프로젝트라 수동 3개로 대신한다.
 
-1. jpg 를 올려 R2 에 `.webp` 가 생기고 화면에 출력되는지 — **R2 자격증명이 있어야 해서 미검증**
+1. jpg/png 를 올려 R2 에 `.webp` 가 생기고 화면에 출력되는지 — **4곳 전부 검증 완료**
 2. `.txt` 를 `.jpg` 로 rename 해 올렸을 때 400 이 나는지 (신뢰 경계) — **검증 완료**
 3. iOS 세로 사진이 눕지 않는지 (EXIF `.rotate()`) — **실물 사진 필요, 미검증**
 
@@ -125,7 +125,26 @@ Caddy `reverse_proxy` 는 기본 body 크기 제한이 없어 10MB 업로드가 
 | 진짜 PNG 2400x900 | 통과 → 1600px 이내 webp 로 변환 |
 | SVG | 400 (화이트리스트 밖 — 래스터화 시 SSRF) |
 
-## 8. 알아둘 것
+## 8. 구현 중 드러난 것 — 이 설계 밖의 결함
+
+브라우저 검증에서 이 설계와 무관한 기존 결함 두 개가 드러났다. 하나는 이 기능이
+동작하지 못하게 막아서 같이 고쳤고, 하나는 별도 이슈로 뺐다.
+
+**고침 — `patchProfile` 이 요청을 보내지 않았다.** supabase-js 쿼리 빌더는 thenable 이라
+`.then()` 이 불릴 때 비로소 fetch 한다. `void createClient()...update()` 는 `.then()` 을
+부르지 않아 HTTP 요청이 아예 안 나갔다. 바로 윗줄의 낙관적 `set({ me })` 때문에 화면만
+바뀌고 새로고침하면 되돌아간다. 호출부 4곳(닉네임·계좌·송금 앱·아바타, 자동 결제 토글,
+마감 알림, 입금 알림)이 전부 무동작이었다. 아바타 저장이 이 경로를 타므로 함께 고쳤다.
+
+**이슈로 분리 — 정산 실시간이 안 붙는다.** `settlements`·`settlement_votes` 가 realtime
+publication 에 없어서(`group_buys, messages, notifications, participations, wallets,
+wallet_transactions` 만 등록) `subscribeToSettlement` 채널에 이벤트가 오지 않는다.
+영수증뿐 아니라 투표·금액 확정 전부 새로고침해야 반영된다. 덤으로 `queries.ts` 가 채널을
+`unsubscribe()` 만 하고 `removeChannel()` 을 안 해서 같은 이름 채널이 재사용되며
+`cannot add postgres_changes callbacks ... after subscribe()` 가 난다. 둘 다 정산 실시간
+배관 문제라 이 PR 범위 밖이고, 이슈 #77·#78 로 분리했다.
+
+## 9. 알아둘 것
 
 `r2.dev` 공개 버킷은 키를 아는 사람이면 누구나 조회할 수 있다. 키가 UUID 라 사실상 추측이
 불가능하지만, **영수증 사진에 개인정보가 찍혀 있다면 그건 공개 URL 뒤에 놓인다.** 3일 데모

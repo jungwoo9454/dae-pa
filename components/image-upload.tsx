@@ -67,17 +67,33 @@ export default function ImageUpload({
         onChange={(e) => void pick(e.target.files?.[0])}
       />
       {value ? (
-        <div className={`relative overflow-hidden border border-[#d8e7d6] ${shape}`} style={{ height, width: round ? height : undefined }}>
+        // 미리보기를 눌러도 파일 선택이 열린다 — 지웠다가 다시 고르지 않고 바로 교체할 수 있게
+        <label
+          htmlFor={inputId}
+          title="눌러서 다른 사진으로 바꾸기"
+          className={`relative block cursor-pointer overflow-hidden border border-[#d8e7d6] ${shape}`}
+          style={{ height, width: round ? height : undefined }}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element -- R2 공개 URL 이라 next/image 도메인 설정 없이 쓴다 */}
           <img src={value} alt="" className="h-full w-full object-cover" />
+          {busy && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-white">
+              <LoaderCircle aria-hidden className="h-5 w-5 animate-spin" />
+            </div>
+          )}
           <div
-            onClick={() => onChange(null)}
+            onClick={(e) => {
+              // 라벨 안이라 막지 않으면 지우면서 파일 선택창까지 열린다
+              e.preventDefault();
+              e.stopPropagation();
+              onChange(null);
+            }}
             title="사진 지우기"
             className="absolute right-1.5 top-1.5 cursor-pointer rounded-full bg-black/55 p-1 text-white hover:bg-black/75"
           >
             <X aria-hidden className="h-3.5 w-3.5" />
           </div>
-        </div>
+        </label>
       ) : (
         <label
           htmlFor={inputId}
