@@ -173,6 +173,9 @@ export function subscribeToSettlement(
   const sb = createClient();
   let voteChannel: ReturnType<typeof sb.channel> | null = null;
   let currentSettlementId: number | null = null;
+  // load() 가 async 라 구독 해제 후에도 뒤늦게 이어질 수 있다. 그때 채널을 새로 열면
+  // StrictMode 이중 마운트에서 두 인스턴스가 같은 토픽을 잡아 .on() 이 throw 한다 (#78).
+  let disposed = false;
 
   const load = async () => {
     const { data, error } = await sb
@@ -180,6 +183,8 @@ export function subscribeToSettlement(
       .select("*")
       .eq("group_buy_id", dealId)
       .maybeSingle();
+
+    if (disposed) return;
 
     if (error) {
       console.error("[subscribeToSettlement]", error.message);
@@ -195,7 +200,7 @@ export function subscribeToSettlement(
 
     if (row.id !== currentSettlementId) {
       currentSettlementId = row.id;
-      voteChannel?.unsubscribe();
+      if (voteChannel) void sb.removeChannel(voteChannel);
       voteChannel = sb
         .channel(`settlement_votes:${row.id}`)
         .on(
@@ -211,6 +216,7 @@ export function subscribeToSettlement(
       .select("user_id, agree")
       .eq("settlement_id", row.id);
     if (voteErr) console.error("[subscribeToSettlement:votes]", voteErr.message);
+    if (disposed) return;
 
     callback({
       id: row.id,
@@ -234,8 +240,9 @@ export function subscribeToSettlement(
     .subscribe();
 
   return () => {
+    disposed = true;
     void sb.removeChannel(channel);
-    voteChannel?.unsubscribe();
+    if (voteChannel) void sb.removeChannel(voteChannel);
   };
 }
 
