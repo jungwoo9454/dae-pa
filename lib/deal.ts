@@ -76,6 +76,21 @@ export function remainLabel(d: Deal, now: number) {
  * 배달비만 엔빵해서 보여준다(핵심 규칙 4). 그 외 카테고리는 총액을 다 같이 부담하는 공동구매라
  * (총 금액 + 배달비) 전체를 나눈다.
  */
+/**
+ * 상세 카운트다운 표기 (#87) — 마감·정산중·취소된 공구까지 "남은 시간 · 실시간" 초록 카운트다운을
+ * 그대로 보여주면 아직 모집 중인 것처럼 읽힌다. 문구는 statusOf 의 배지 문구를 그대로 쓴다.
+ */
+export function countdownDisplay(d: Deal, now: number) {
+  const st = statusOf(d, now);
+  if (st.key === "recruiting")
+    return { text: remainLabel(d, now), caption: "남은 시간 · 실시간", color: "#1f8a4c" };
+  if (st.key === "closing")
+    return { text: remainLabel(d, now), caption: "곧 마감돼요 · 실시간", color: "#b45309" };
+  if (st.key === "settling") return { text: st.label, caption: "정산 진행 중", color: st.fg };
+  if (st.key === "canceled") return { text: st.label, caption: "주최자가 취소했어요", color: st.fg };
+  return { text: st.label, caption: "모집 종료", color: st.fg };
+}
+
 /** "1인" 라벨 — 배달음식은 배달비만 나눈 값이라 그대로 쓰면 음식값까지 포함된 걸로 읽힌다 (#95) */
 export function perLabel(d: Deal) {
   return d.cat === "배달음식" ? "1인 배달비" : "1인";
