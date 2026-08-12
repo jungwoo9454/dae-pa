@@ -279,7 +279,12 @@ interface StoreState {
   setSettleTotalInput: (v: string) => void;
   setSettleReceiptUrl: (v: string | null) => void;
   /** 정산 시작/총액 확정 (#15) — confirm_settlement RPC. 영수증 있으면 즉시 확정, 없으면 과반 동의 대기 */
-  confirmSettlement: (dealId: number) => Promise<void>;
+  /**
+   * overrides: 확정 전 미리보기에서 주최자가 손수 조정한 참여자별 금액 (participation id → 금액).
+   * 영수증 첨부로 즉시 확정될 때만 반영된다 — 과반 동의 대기로 빠지면 그 시점엔 아직
+   * apply_settlement_split 이 안 돌아서 amount_due 가 비어있어 조정할 기준값이 없다.
+   */
+  confirmSettlement: (dealId: number, overrides?: Record<number, number>) => Promise<void>;
   /** 영수증 없을 때 동의 투표 (#15) — 본인 투표 insert 후 finalize_settlement_vote RPC 로 과반 판정 */
   voteSettlement: (dealId: number, agree: boolean) => Promise<void>;
   toggleWithdraw: () => void;
@@ -952,13 +957,15 @@ export const useStore = create<StoreState>((set, get) => ({
   // 총액 확정은 confirm_settlement RPC 가 담당한다 — settlements upsert, 영수증 있으면
   // 즉시 확정 + amount_due 재분배(apply_settlement_split), 시스템 메시지까지 서버에서 처리한다.
   // useRealtimeSettlement 구독이 결과를 화면에 반영한다.
-  confirmSettlement: async (dealId) => {
+  confirmSettlement: async (dealId, overrides) => {
     const st = get();
     const deal = st.deals.find((d) => d.id === dealId);
     if (!deal || deal.settlement) return;
     const total = parseInt(st.settleTotalInput) || 0;
     if (total <= 0) return;
     // 영수증 사진이 있으면 그 R2 URL 이 곧 증빙 → 서버가 즉시 확정한다. 없으면 과반 동의 투표.
+    // overrides 는 settlements.overrides 에 그대로 저장돼서, 즉시 확정이든 나중에 투표로
+    // 확정되든 apply_settlement_split 이 항상 이 값을 적용한다 (RPC 안에서 처리 — #95).
     const receiptUrl = st.settleReceiptUrl;
     set({ settleTotalInput: "", settleReceiptUrl: null });
     const { error } = await createClient().rpc("confirm_settlement", {
@@ -966,6 +973,7 @@ export const useStore = create<StoreState>((set, get) => ({
       p_total_amount: total,
       p_delivery_fee: deal.deliveryFee ?? 0,
       p_receipt_url: receiptUrl,
+      p_overrides: overrides && Object.keys(overrides).length ? overrides : null,
     });
     if (error) alert(error.message);
   },

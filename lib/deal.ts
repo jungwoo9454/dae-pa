@@ -55,6 +55,11 @@ export function statusOf(d: Deal, now: number): StatusView {
   return { key: "recruiting", label: "모집중", bg: "#e9f6ec", fg: "#166b3a" };
 }
 
+/** 금액 입력창에서 숫자만 남긴다 — 저장은 항상 이 원 단위 정수 문자열로 한다 (핵심 규칙 5) */
+export const digits = (v: string) => v.replace(/[^0-9]/g, "");
+/** 입력창에 천 단위 콤마로 보여준다. 저장 값(digits 결과)은 그대로 두고 표시만 바꾼다 (#95) */
+export const commaFmt = (v: string) => (v ? Number(v).toLocaleString("ko-KR") : "");
+
 export function remainLabel(d: Deal, now: number) {
   if (d.status !== "recruiting") return "마감됨";
   const ms = d.end - now;

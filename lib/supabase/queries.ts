@@ -216,6 +216,7 @@ export function subscribeToSettlement(
       receiptUrl: row.receipt_url,
       confirmed: row.status === "confirmed",
       votes: Object.fromEntries((voteRows ?? []).map((v) => [v.user_id as string, v.agree as boolean])),
+      overrides: row.overrides,
     });
   };
 
