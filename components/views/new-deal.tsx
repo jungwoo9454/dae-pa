@@ -99,6 +99,7 @@ export default function NewDealView() {
   const deliveryFeeN = parseInt(form.deliveryFee) || 0;
   // 배달음식은 메뉴가 사람마다 달라 총액을 안 나누고 배달비만 엔빵해서 보여준다 (lib/deal.ts perAmount 와 동일 기준).
   // 그 외 카테고리는 다 같이 부담하는 공동구매라 총액을 그대로 나눈다.
+  // 나누기는 perAmount·DB 와 같이 내림 — 나머지는 주최자 부담이다 (#189).
   const previewShared = isDelivery ? deliveryFeeN : totalN;
   // 적었는데 5분 미만이면 그 자리에서 빨간 글씨로 알린다. 아직 안 골랐으면(빈 칸)
   // 경고 대신 발행 키를 잠가 둔다 — 처음 폼을 열자마자 빨간 문구가 뜨면 시끄럽다 (#164)
@@ -313,7 +314,7 @@ export default function NewDealView() {
                 1인당{goalN > 0 && previewShared > 0 ? ` (${previewShared.toLocaleString("ko-KR")}÷${goalN})` : ""}
               </span>
               <span className="tnum ml-auto text-[26px] font-black">
-                {goalN > 0 && previewShared > 0 ? fmt(Math.ceil(previewShared / goalN)) : "— 원"}
+                {goalN > 0 && previewShared > 0 ? fmt(Math.floor(previewShared / goalN)) : "— 원"}
               </span>
             </div>
             <div className="barcode mt-3" />

@@ -12,6 +12,7 @@ import {
   perAmount,
   perLabel,
   settleStartable,
+  stampRemainLabel,
   statusOf,
 } from "@/lib/deal";
 import { isSubmitEnter } from "@/lib/keys";
@@ -166,7 +167,7 @@ export default function DetailView() {
                     style={{ borderColor: cd.color, color: cd.color }}
                   >
                     <span className="text-[10px] font-bold">마감까지</span>
-                    <span className="tnum mt-0.5 text-[13.5px] font-bold">{cd.text}</span>
+                    <span className="tnum mt-0.5 text-[13.5px] font-bold">{stampRemainLabel(deal, now)}</span>
                   </div>
                 )}
               </div>
