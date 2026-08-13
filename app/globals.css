@@ -368,10 +368,30 @@ button {
   animation: paper-drop 0.55s cubic-bezier(0.45, 0.02, 0.9, 0.35) forwards;
 }
 
+/**
+ * 목록 한 줄이 떨어질 때는 자리도 같이 닫아야 한다 — 카드 그리드와 달리 줄 사이가 붙어 있어서
+ * 빈 줄이 남으면 눈에 띈다. grid-template-rows 1fr→0fr 은 높이를 몰라도 접을 수 있다.
+ */
+@keyframes row-close {
+  to {
+    grid-template-rows: 0fr;
+  }
+}
+.row-close {
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  animation: row-close 0.55s cubic-bezier(0.45, 0.02, 0.9, 0.35) forwards;
+}
+.row-close > * {
+  min-height: 0;
+}
+
 /* 움직임을 줄이도록 설정한 사용자에게는 애니메이션을 걸지 않는다 */
 @media (prefers-reduced-motion: reduce) {
   .card-print,
   .card-drop,
+  .row-close,
   .mark-pulse {
     animation: none;
   }
