@@ -159,8 +159,10 @@ export function profileStats(deals: Deal[], now: number, meId: string | null) {
 /** 공구 마감까지 최소로 잡을 수 있는 시간(분) — 올리기 폼과 API 가 같은 값을 본다 */
 export const MIN_DEADLINE_MIN = 5;
 
-/** 마감 상한(분) = 7일 — 없으면 영영 안 끝나는 공구가 만들어진다 (#186) */
-export const MAX_DEADLINE_MIN = 7 * 24 * 60;
+/** 마감 상한(분) = 반년 — 없으면 영영 안 끝나는 공구가 만들어진다 (#186) */
+export const MAX_DEADLINE_MIN = 180 * 24 * 60;
+/** 상한 안내 문구 — 폼·API 가 같은 말을 쓰도록 여기 한 벌만 둔다 */
+export const MAX_DEADLINE_LABEL = "반년";
 
 /** 마감 몇 ms 전부터 나가기를 막는지 — DB 의 leave_group_buy 판정과 같은 값이어야 한다 */
 export const LEAVE_CUTOFF_MS = 5 * 60_000;
