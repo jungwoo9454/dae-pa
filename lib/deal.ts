@@ -87,6 +87,20 @@ export function remainLabel(d: Deal, now: number) {
 }
 
 /**
+ * 상태 도장(70px 원) 안에 쓰는 짧은 표기 (#187) — remainLabel 은 "3일 02:11:07" 처럼 길어져
+ * 원 밖으로 넘친다. 초 단위가 의미 있는 건 마감 한 시간 안쪽뿐이다.
+ */
+export function stampRemainLabel(d: Deal, now: number) {
+  const ms = d.end - now;
+  if (d.status !== "recruiting" || ms <= 0) return "마감됨";
+  const dd = Math.floor(ms / 86_400_000);
+  if (dd > 0) return dd + "일 남음";
+  const h = Math.floor(ms / 3_600_000);
+  if (h > 0) return h + "시간 남음";
+  return remainLabel(d, now);
+}
+
+/**
  * 1인당 예상 금액 — 정산 확정 전 미리보기용 추정치. 참여자 수는 목표가 아니라 현재 joined
  * 기준(실시간 갱신, docs/PLANNING.md 4.2).
  *
@@ -115,8 +129,11 @@ export function perLabel(d: Deal) {
 }
 
 export function perAmount(d: Deal) {
-  const shared = d.cat === "배달음식" ? (d.deliveryFee ?? 0) : d.total + (d.deliveryFee ?? 0);
-  return Math.ceil(shared / Math.max(1, d.joined));
+  // 항목·배달비를 각각 내림해서 더한다 — DB 의 apply_settlement_split 과 같은 식이라야
+  // 카드에서 본 금액과 정산서 금액이 안 어긋난다. 나머지는 주최자 부담(핵심 규칙 5, #189).
+  const n = Math.max(1, d.joined);
+  const fee = Math.floor((d.deliveryFee ?? 0) / n);
+  return d.cat === "배달음식" ? fee : Math.floor(d.total / n) + fee;
 }
 
 /** 입금 유예 — 마감 후 하루까지는 미납이어도 신뢰도를 깎지 않는다 */
@@ -141,6 +158,9 @@ export function profileStats(deals: Deal[], now: number, meId: string | null) {
 
 /** 공구 마감까지 최소로 잡을 수 있는 시간(분) — 올리기 폼과 API 가 같은 값을 본다 */
 export const MIN_DEADLINE_MIN = 5;
+
+/** 마감 상한(분) = 7일 — 없으면 영영 안 끝나는 공구가 만들어진다 (#186) */
+export const MAX_DEADLINE_MIN = 7 * 24 * 60;
 
 /** 마감 몇 ms 전부터 나가기를 막는지 — DB 의 leave_group_buy 판정과 같은 값이어야 한다 */
 export const LEAVE_CUTOFF_MS = 5 * 60_000;
