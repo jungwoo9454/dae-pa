@@ -1,6 +1,6 @@
 // app/api/deals/route.ts
 import { createClient } from "@/lib/supabase/server"; //SUPERBASE추가후
-import { CAT_EMOJI, MAX_DEADLINE_MIN, MIN_DEADLINE_MIN } from "@/lib/deal";
+import { CAT_EMOJI, MAX_DEADLINE_LABEL, MAX_DEADLINE_MIN, MIN_DEADLINE_MIN } from "@/lib/deal";
 import type { Category } from "@/lib/types";
 
 /** 카테고리 이모지는 lib/deal.ts 의 CAT_EMOJI 한 벌만 쓴다 (#90) — DB 값이 정해진 카테고리를 벗어나면 기타 */
@@ -106,7 +106,10 @@ export async function POST(req: Request) {
     }
     // 상한이 없으면 영영 마감되지 않는 공구가 목록에 남는다 — 취소 말고는 끝낼 방법이 없다 (#186)
     if (minN > MAX_DEADLINE_MIN) {
-      return Response.json({ error: "마감은 최대 7일까지 잡을 수 있어요" }, { status: 400 });
+      return Response.json(
+        { error: `마감은 최대 ${MAX_DEADLINE_LABEL}까지 잡을 수 있어요` },
+        { status: 400 }
+      );
     }
 
     const { data: newDeal, error } = await supabase

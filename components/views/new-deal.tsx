@@ -2,7 +2,15 @@
 
 import ImageUpload from "@/components/image-upload";
 import { ProgressBar } from "@/components/ui";
-import { CAT_ICON, MAX_DEADLINE_MIN, MIN_DEADLINE_MIN, commaFmt, digits, fmt } from "@/lib/deal";
+import {
+  CAT_ICON,
+  MAX_DEADLINE_LABEL,
+  MAX_DEADLINE_MIN,
+  MIN_DEADLINE_MIN,
+  commaFmt,
+  digits,
+  fmt,
+} from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Category } from "@/lib/types";
 
@@ -38,7 +46,7 @@ export default function NewDealView() {
     }
     if (goalN < 2) return;
     if (minsN < MIN_DEADLINE_MIN || minsN > MAX_DEADLINE_MIN) {
-      alert(`마감 시간은 ${MIN_DEADLINE_MIN}분 ~ 7일 사이로 잡아주세요`);
+      alert(`마감 시간은 ${MIN_DEADLINE_MIN}분 ~ ${MAX_DEADLINE_LABEL} 사이로 잡아주세요`);
       return;
     }
 
@@ -218,7 +226,7 @@ export default function NewDealView() {
 
           <div className="mt-3.5 text-[13px] font-bold text-[#8b8478]">
             마감까지{" "}
-            <span className="font-normal text-[#9c9ca3]">(최소 {MIN_DEADLINE_MIN}분 · 최대 7일)</span>
+            <span className="font-normal text-[#9c9ca3]">(최소 {MIN_DEADLINE_MIN}분 · 최대 {MAX_DEADLINE_LABEL})</span>
           </div>
           <div className="mt-2 flex gap-1.5">
             {[MIN_DEADLINE_MIN, 15, 30, 60].map((m) => (
@@ -244,7 +252,7 @@ export default function NewDealView() {
           )}
           {minsTooLong && (
             <div className="mt-2 text-[13px] font-bold text-[#e14e2b]">
-              마감은 최대 7일까지 잡을 수 있어요
+              마감은 최대 {MAX_DEADLINE_LABEL}까지 잡을 수 있어요
             </div>
           )}
 
