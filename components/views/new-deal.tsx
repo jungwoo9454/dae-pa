@@ -2,7 +2,7 @@
 
 import ImageUpload from "@/components/image-upload";
 import { ProgressBar } from "@/components/ui";
-import { CAT_ICON, MIN_DEADLINE_MIN, commaFmt, digits, fmt } from "@/lib/deal";
+import { CAT_ICON, MAX_DEADLINE_MIN, MIN_DEADLINE_MIN, commaFmt, digits, fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Category } from "@/lib/types";
 
@@ -37,8 +37,8 @@ export default function NewDealView() {
       return;
     }
     if (goalN < 2) return;
-    if (minsN < MIN_DEADLINE_MIN) {
-      alert(`마감 시간은 최소 ${MIN_DEADLINE_MIN}분이에요`);
+    if (minsN < MIN_DEADLINE_MIN || minsN > MAX_DEADLINE_MIN) {
+      alert(`마감 시간은 ${MIN_DEADLINE_MIN}분 ~ 7일 사이로 잡아주세요`);
       return;
     }
 
@@ -104,12 +104,15 @@ export default function NewDealView() {
   // 경고 대신 발행 키를 잠가 둔다 — 처음 폼을 열자마자 빨간 문구가 뜨면 시끄럽다 (#164)
   const minsN = parseInt(form.mins) || 0;
   const minsTooShort = form.mins !== "" && minsN < MIN_DEADLINE_MIN;
+  // 상한이 없으면 999999999분(약 1,900년)짜리 공구가 만들어져 영영 마감되지 않는다 (#186)
+  const minsTooLong = minsN > MAX_DEADLINE_MIN;
   // 1/N 이 성립하려면 최소 2명 — 적었는데 1 이하면 그 자리에서 알려준다 (#148)
   const goalTooSmall = form.goal !== "" && goalN < 2;
   const canSubmit =
     !!form.title &&
     goalN > 1 &&
     minsN >= MIN_DEADLINE_MIN &&
+    minsN <= MAX_DEADLINE_MIN &&
     (isDelivery ? minOrderN > 0 && form.deliveryFee.trim() !== "" && !!form.store_link : totalN > 0);
 
   return (
@@ -213,7 +216,8 @@ export default function NewDealView() {
           </div>
 
           <div className="mt-3.5 text-[13px] font-bold text-[#8b8478]">
-            마감까지 <span className="font-normal text-[#9c9ca3]">(최소 {MIN_DEADLINE_MIN}분)</span>
+            마감까지{" "}
+            <span className="font-normal text-[#9c9ca3]">(최소 {MIN_DEADLINE_MIN}분 · 최대 7일)</span>
           </div>
           <div className="mt-2 flex gap-1.5">
             {[MIN_DEADLINE_MIN, 15, 30, 60].map((m) => (
@@ -235,6 +239,11 @@ export default function NewDealView() {
           {minsTooShort && (
             <div className="mt-2 text-[13px] font-bold text-[#e14e2b]">
               마감은 최소 {MIN_DEADLINE_MIN}분 뒤로 잡아주세요
+            </div>
+          )}
+          {minsTooLong && (
+            <div className="mt-2 text-[13px] font-bold text-[#e14e2b]">
+              마감은 최대 7일까지 잡을 수 있어요
             </div>
           )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, settleStartable, statusOf } from "@/lib/deal";
+import { fmt, joinLabel, joinable, perAmount, perLabel, remainLabel, settleStartable, stampRemainLabel, statusOf } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 import type { Deal } from "@/lib/types";
 import { Barcode, ProgressBar, StatusStamp, receiptNo } from "./ui";
@@ -56,7 +56,7 @@ export default function DealCard({ deal, now }: { deal: Deal; now: number }) {
           </div>
           {/* 상태는 도장 하나로 말한다 — 태그까지 붙이면 같은 걸 두 번 말하게 된다 (#169) */}
           <div className="ml-auto">
-            <StatusStamp s={st} countdown={remainLabel(deal, now)} />
+            <StatusStamp s={st} countdown={stampRemainLabel(deal, now)} />
           </div>
         </div>
 

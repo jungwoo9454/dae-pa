@@ -7,6 +7,14 @@ import { useCountUp } from "@/lib/use-count-up";
 import { fmt } from "@/lib/deal";
 import { useStore } from "@/lib/store";
 
+/** 출금 계좌 표기 — 돈이 나가는 화면이라 뒷 4자리만 남기고 가린다 (#188) */
+function maskAccount(v: string) {
+  const i = v.lastIndexOf(" ");
+  const bank = i > 0 ? v.slice(0, i + 1) : "";
+  const no = i > 0 ? v.slice(i + 1) : v;
+  return bank + no.slice(0, -4).replace(/\d/g, "*") + no.slice(-4);
+}
+
 const TOPUP_OPTIONS = [
   { value: 5000, label: "+5천" },
   { value: 10000, label: "+1만" },
@@ -23,6 +31,9 @@ const TX_ICON: Record<string, LucideIcon> = {
 
 export default function PayView() {
   const balance = useStore((s) => s.balance);
+  // 설정에 저장한 정산 계좌를 그대로 쓴다 — 예전엔 가짜 계좌가 하드코딩돼 있었다 (#188)
+  const account = useStore((s) => s.me?.bankAccount ?? null);
+  const go = useStore((s) => s.go);
   // 금고 LED — 들어오면 0 에서, 충전·출금 뒤엔 직전 금액에서 굴려 올린다 (#174)
   const shownBalance = useCountUp(balance);
   const topupOpen = useStore((s) => s.topupOpen);
@@ -166,14 +177,24 @@ export default function PayView() {
                 placeholder="직접 입력"
                 className="field tnum mt-2 w-full text-right font-bold"
               />
-              {withdrawAmt > balance ? (
+              {!account ? (
+                <div className="key key-off mt-2.5 py-2.5 text-[14.5px]">[ 출금 계좌를 먼저 등록해주세요 ]</div>
+              ) : withdrawAmt > balance ? (
                 <div className="key key-off mt-2.5 py-2.5 text-[14.5px]">[ 잔액이 부족해요 ]</div>
               ) : (
                 <div onClick={doWithdraw} className="key key-primary mt-2.5 py-2.5 text-[14.5px]">
                   [ {fmt(withdrawAmt)} 출금하기 ]
                 </div>
               )}
-              <div className="mt-2.5 text-[12.5px] text-[#9c9ca3]">출금 계좌 · 초록은행 1104-04</div>
+              <div className="mt-2.5 text-[12.5px] text-[#9c9ca3]">
+                {account ? (
+                  `출금 계좌 · ${maskAccount(account)}`
+                ) : (
+                  <span onClick={() => go("set")} className="cursor-pointer underline">
+                    출금 계좌가 없어요 · 설정에서 등록
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>
